@@ -45,14 +45,60 @@ exports.getById = async (req, res) => {
 // Criar novo lançamento
 exports.create = async (req, res) => {
   try {
-    const { descricao, valor, tipo, data, conta_id } = req.body;
+    const { descricao, valor, tipo, data, conta_id, parcelado, num_parcelas } = req.body;
 
+    // Se for parcelado, criar múltiplos lançamentos
+    if (parcelado && num_parcelas > 1) {
+      const lancamentosCriados = [];
+      const dataInicial = new Date(data);
+      
+      for (let i = 0; i < num_parcelas; i++) {
+        const dataLancamento = new Date(dataInicial);
+        dataLancamento.setMonth(dataLancamento.getMonth() + i);
+        
+        const descricaoParcelada = `${descricao} (${i + 1}/${num_parcelas})`;
+        
+        const result = await pool.query(
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, req.userId]
+        );
+        
+        // Atualizar saldo da conta (exceto se for neutro)
+        if (tipo === 'entrada') {
+          await pool.query(
+            'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
+            [valor, conta_id]
+          );
+        } else if (tipo === 'saida') {
+          await pool.query(
+            'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
+            [valor, conta_id]
+          );
+        }
+        
+        lancamentosCriados.push(result.rows[0]);
+      }
+      
+      const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+      await registrarAuditoria(
+        req.userId,
+        user.rows[0]?.nome || 'Usuário',
+        'CRIAR',
+        'lancamentos',
+        null,
+        `Lançamento parcelado "${descricao}" criado (${num_parcelas}x de R$ ${valor})`
+      );
+      
+      return res.status(201).json({ message: `${num_parcelas} lançamentos criados com sucesso`, lancamentos: lancamentosCriados });
+    }
+
+    // Lançamento único (não parcelado)
     const result = await pool.query(
       'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [descricao, valor, tipo, data, conta_id, req.userId]
     );
 
-    // Atualizar saldo da conta
+    // Atualizar saldo da conta (exceto se for neutro)
     if (tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
@@ -64,6 +110,7 @@ exports.create = async (req, res) => {
         [valor, conta_id]
       );
     }
+    // Se tipo === 'neutro', não altera o saldo
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
@@ -100,7 +147,7 @@ exports.update = async (req, res) => {
 
     const antigo = lancamentoAntigo.rows[0];
 
-    // Reverter o valor do lançamento antigo na conta antiga
+    // Reverter o valor do lançamento antigo na conta antiga (exceto se for neutro)
     if (antigo.tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
@@ -112,6 +159,7 @@ exports.update = async (req, res) => {
         [antigo.valor, antigo.conta_id]
       );
     }
+    // Se antigo.tipo === 'neutro', não reverte nada
 
     // Atualizar lançamento
     const result = await pool.query(
@@ -119,7 +167,7 @@ exports.update = async (req, res) => {
       [descricao, valor, tipo, data, conta_id, id, req.userId]
     );
 
-    // Aplicar o novo valor na nova conta
+    // Aplicar o novo valor na nova conta (exceto se for neutro)
     if (tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
@@ -131,6 +179,7 @@ exports.update = async (req, res) => {
         [valor, conta_id]
       );
     }
+    // Se tipo === 'neutro', não aplica alteração
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
@@ -165,7 +214,7 @@ exports.delete = async (req, res) => {
 
     const lancamento = result.rows[0];
 
-    // Reverter o valor do lançamento na conta
+    // Reverter o valor do lançamento na conta (exceto se for neutro)
     if (lancamento.tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
@@ -177,6 +226,7 @@ exports.delete = async (req, res) => {
         [lancamento.valor, lancamento.conta_id]
       );
     }
+    // Se lancamento.tipo === 'neutro', não reverte nada
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(

@@ -106,7 +106,9 @@ function Lancamentos() {
       setSubcategorias([]);
       loadLancamentos();
     } catch (error) {
-      alert('Erro ao salvar lançamento');
+      console.error('Erro completo:', error);
+      console.error('Resposta do erro:', error.response?.data);
+      alert(error.response?.data?.error || 'Erro ao salvar lançamento');
     }
   };
 
@@ -192,10 +194,10 @@ function Lancamentos() {
                     <td>{lancamento.conta_nome || '-'}</td>
                     <td>
                       <span className={`badge ${lancamento.tipo}`}>
-                        {lancamento.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                        {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
                       </span>
                     </td>
-                    <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : 'valor-negativo'}>
+                    <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
                       R$ {parseFloat(lancamento.valor).toFixed(2)}
                     </td>
                     <td>
@@ -232,6 +234,13 @@ function Lancamentos() {
                     onClick={() => setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: ''})}
                   >
                     Saída
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'neutro' ? 'active' : ''}
+                    onClick={() => setFormData({...formData, tipo: 'neutro', categoria_id: '', subcategoria_id: ''})}
+                  >
+                    Neutro
                   </button>
                 </div>
               </div>

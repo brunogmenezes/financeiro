@@ -16,6 +16,11 @@
   color: #721c24;
 }
 
+.badge.neutro {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
 .valor-positivo {
   color: #28a745;
   font-weight: 600;

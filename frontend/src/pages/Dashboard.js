@@ -23,6 +23,7 @@ function Dashboard() {
   const [contas, setContas] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingLancamento, setEditingLancamento] = useState(null);
+  const [mostrarValores, setMostrarValores] = useState(true);
   
   // Define o mês atual como filtro padrão (YYYY-MM)
   const mesAtual = new Date().toISOString().slice(0, 7);
@@ -176,7 +177,45 @@ function Dashboard() {
       <Navbar />
 
       <div className="dashboard-content">
-        <h2>Dashboard</h2>
+        <div className="dashboard-header">
+          <h2>Dashboard</h2>
+          <button 
+            className="btn-toggle-valores"
+            onClick={() => setMostrarValores(!mostrarValores)}
+            title={mostrarValores ? 'Ocultar valores' : 'Mostrar valores'}
+          >
+            {mostrarValores ? '👁️ Ocultar valores' : '🙈 Mostrar valores'}
+          </button>
+        </div>
+
+        {/* Seção de Contas */}
+        <div className="contas-section">
+          <h3>💳 Minhas Contas</h3>
+          <div className="contas-grid">
+            {contas.map(conta => (
+              <div key={conta.id} className="conta-card">
+                <div className="conta-header">
+                  <span className="conta-nome">{conta.nome}</span>
+                </div>
+                <div className="conta-saldo">
+                  {mostrarValores ? (
+                    <>
+                      <span className="label">Saldo:</span>
+                      <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
+                        R$ {parseFloat(conta.saldo_inicial).toFixed(2)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="valor-oculto">R$ ••••••</span>
+                  )}
+                </div>
+                {conta.descricao && (
+                  <div className="conta-descricao">{conta.descricao}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
         
         {dashboardData.length > 0 ? (
           <div className="chart-container">
@@ -214,6 +253,7 @@ function Dashboard() {
                 <option value="TODOS">Todos os tipos</option>
                 <option value="entrada">Entradas</option>
                 <option value="saida">Saídas</option>
+                <option value="neutro">Neutros</option>
               </select>
             </div>
           </div>
@@ -254,11 +294,11 @@ function Dashboard() {
                       <td>{lancamento.conta_nome || '-'}</td>
                       <td>
                         <span className={`badge ${lancamento.tipo}`}>
-                          {lancamento.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                          {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
                         </span>
                       </td>
-                      <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : 'valor-negativo'}>
-                        R$ {parseFloat(lancamento.valor).toFixed(2)}
+                      <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
+                        {mostrarValores ? `R$ ${parseFloat(lancamento.valor).toFixed(2)}` : 'R$ ••••'}
                       </td>
                       <td>
                         <button className="btn-edit" onClick={() => handleEdit(lancamento)}>Editar</button>
