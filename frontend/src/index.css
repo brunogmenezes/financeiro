@@ -1,3 +1,38 @@
+:root {
+  --primary-color: #667eea;
+  --secondary-color: #764ba2;
+}
+
+[data-theme="roxo"] {
+  --primary-color: #667eea;
+  --secondary-color: #764ba2;
+}
+
+[data-theme="azul"] {
+  --primary-color: #1e3c72;
+  --secondary-color: #2a5298;
+}
+
+[data-theme="verde"] {
+  --primary-color: #11998e;
+  --secondary-color: #38ef7d;
+}
+
+[data-theme="laranja"] {
+  --primary-color: #f46b45;
+  --secondary-color: #eea849;
+}
+
+[data-theme="rosa"] {
+  --primary-color: #ee0979;
+  --secondary-color: #ff6a00;
+}
+
+[data-theme="vermelho"] {
+  --primary-color: #cb2d3e;
+  --secondary-color: #ef473a;
+}
+
 * {
   margin: 0;
   padding: 0;

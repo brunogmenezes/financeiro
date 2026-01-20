@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLancamentos, createLancamento, updateLancamento, deleteLancamento, getContas } from '../services/api';
+import { 
+  getLancamentos, 
+  createLancamento, 
+  updateLancamento, 
+  deleteLancamento, 
+  getContas,
+  getCategorias,
+  getSubcategorias
+} from '../services/api';
 import './Lancamentos.css';
 
 function Lancamentos() {
   const [lancamentos, setLancamentos] = useState([]);
   const [contas, setContas] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingLancamento, setEditingLancamento] = useState(null);
   const [formData, setFormData] = useState({
@@ -13,13 +23,16 @@ function Lancamentos() {
     valor: '',
     tipo: 'saida',
     data: new Date().toISOString().split('T')[0],
-    conta_id: ''
+    conta_id: '',
+    categoria_id: '',
+    subcategoria_id: ''
   });
   const navigate = useNavigate();
 
   useEffect(() => {
     loadLancamentos();
     loadContas();
+    loadCategorias();
   }, []);
 
   const loadLancamentos = async () => {
@@ -43,6 +56,29 @@ function Lancamentos() {
     }
   };
 
+  const loadCategorias = async () => {
+    try {
+      const response = await getCategorias();
+      setCategorias(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const loadSubcategoriasPorCategoria = async (categoriaId) => {
+    if (!categoriaId) {
+      setSubcategorias([]);
+      return;
+    }
+    try {
+      const response = await getSubcategorias(categoriaId);
+      setSubcategorias(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar subcategorias:', error);
+      setSubcategorias([]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -58,8 +94,11 @@ function Lancamentos() {
         valor: '',
         tipo: 'saida',
         data: new Date().toISOString().split('T')[0],
-        conta_id: ''
+        conta_id: '',
+        categoria_id: '',
+        subcategoria_id: ''
       });
+      setSubcategorias([]);
       loadLancamentos();
     } catch (error) {
       alert('Erro ao salvar lançamento');
@@ -72,9 +111,14 @@ function Lancamentos() {
       descricao: lancamento.descricao,
       valor: lancamento.valor,
       tipo: lancamento.tipo,
-      data: lancamento.data,
-      conta_id: lancamento.conta_id
+      data: lancamento.data.split('T')[0],
+      conta_id: lancamento.conta_id,
+      categoria_id: lancamento.categoria_id || '',
+      subcategoria_id: lancamento.subcategoria_id || ''
     });
+    if (lancamento.categoria_id) {
+      loadSubcategoriasPorCategoria(lancamento.categoria_id);
+    }
     setShowModal(true);
   };
 
@@ -96,8 +140,11 @@ function Lancamentos() {
       valor: '',
       tipo: 'saida',
       data: new Date().toISOString().split('T')[0],
-      conta_id: contas.length > 0 ? contas[0].id : ''
+      conta_id: contas.length > 0 ? contas[0].id : '',
+      categoria_id: '',
+      subcategoria_id: ''
     });
+    setSubcategorias([]);
     setShowModal(true);
   };
 
@@ -108,6 +155,7 @@ function Lancamentos() {
         <div className="nav-links">
           <button onClick={() => navigate('/dashboard')}>Dashboard</button>
           <button onClick={() => navigate('/contas')}>Contas</button>
+          <button onClick={() => navigate('/auditoria')}>📋 Auditoria</button>
           <button onClick={() => {
             localStorage.clear();
             navigate('/');
@@ -227,6 +275,40 @@ function Lancamentos() {
                   ))}
                 </select>
               </div>
+
+              <div className="form-group">
+                <label>Categoria (opcional)</label>
+                <select
+                  value={formData.categoria_id}
+                  onChange={(e) => {
+                    const categoriaId = e.target.value;
+                    setFormData({...formData, categoria_id: categoriaId, subcategoria_id: ''});
+                    loadSubcategoriasPorCategoria(categoriaId);
+                  }}
+                >
+                  <option value="">Nenhuma</option>
+                  {categorias
+                    .filter(cat => cat.tipo === formData.tipo)
+                    .map(categoria => (
+                      <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>
+                    ))}
+                </select>
+              </div>
+
+              {formData.categoria_id && (
+                <div className="form-group">
+                  <label>Subcategoria (opcional)</label>
+                  <select
+                    value={formData.subcategoria_id}
+                    onChange={(e) => setFormData({...formData, subcategoria_id: e.target.value})}
+                  >
+                    <option value="">Nenhuma</option>
+                    {subcategorias.map(sub => (
+                      <option key={sub.id} value={sub.id}>{sub.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>

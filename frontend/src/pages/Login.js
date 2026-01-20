@@ -31,6 +31,11 @@ function Login() {
         const response = await login(formData.email, formData.senha);
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Aplicar tema do usuário
+        const tema = response.data.user.cor_tema || 'roxo';
+        document.documentElement.setAttribute('data-theme', tema);
+        
         navigate('/dashboard');
       }
     } catch (err) {

@@ -5,6 +5,8 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const contasRoutes = require('./routes/contas');
 const lancamentosRoutes = require('./routes/lancamentos');
+const auditoriaRoutes = require('./routes/auditoria');
+const categoriasRoutes = require('./routes/categorias');
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/contas', contasRoutes);
 app.use('/api/lancamentos', lancamentosRoutes);
+app.use('/api/auditoria', auditoriaRoutes);
+app.use('/api/categorias', categoriasRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {

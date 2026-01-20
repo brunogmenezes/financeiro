@@ -23,7 +23,7 @@
 
 .btn-new {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
   color: white;
   border: none;
   border-radius: 5px;
@@ -148,6 +148,16 @@ th {
 }
 
 .modal-actions .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
   color: white;
+}
+
+.valor-positivo {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.valor-negativo {
+  color: #dc3545;
+  font-weight: 600;
 }

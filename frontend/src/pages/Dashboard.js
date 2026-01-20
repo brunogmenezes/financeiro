@@ -1,27 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboard } from '../services/api';
-import { Bar } from 'react-chartjs-2';
+import { getDashboard, getLancamentos, deleteLancamento, updateLancamento, getContas } from '../services/api';
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
 import './Dashboard.css';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function Dashboard() {
   const [dashboardData, setDashboardData] = useState([]);
+  const [lancamentos, setLancamentos] = useState([]);
+  const [contas, setContas] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingLancamento, setEditingLancamento] = useState(null);
+  
+  // Define o mês atual como filtro padrão (YYYY-MM)
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  const [filterMes, setFilterMes] = useState(mesAtual);
+  const [filterTipo, setFilterTipo] = useState('TODOS');
+  
+  const [formData, setFormData] = useState({
+    descricao: '',
+    valor: '',
+    tipo: 'saida',
+    data: new Date().toISOString().split('T')[0],
+    conta_id: ''
+  });
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     loadDashboard();
+    loadLancamentos();
+    loadContas();
+    // eslint-disable-next-line
   }, []);
 
   const loadDashboard = async () => {
@@ -33,6 +54,68 @@ function Dashboard() {
       if (error.response?.status === 401) {
         navigate('/');
       }
+    }
+  };
+
+  const loadLancamentos = async () => {
+    try {
+      const response = await getLancamentos();
+      setLancamentos(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar lançamentos:', error);
+    }
+  };
+
+  const loadContas = async () => {
+    try {
+      const response = await getContas();
+      setContas(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar contas:', error);
+    }
+  };
+
+  const handleEdit = (lancamento) => {
+    setEditingLancamento(lancamento);
+    setFormData({
+      descricao: lancamento.descricao,
+      valor: lancamento.valor,
+      tipo: lancamento.tipo,
+      data: lancamento.data.split('T')[0], // Pega apenas a parte da data (YYYY-MM-DD)
+      conta_id: lancamento.conta_id
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Deseja realmente excluir este lançamento?')) {
+      try {
+        await deleteLancamento(id);
+        loadLancamentos();
+        loadDashboard();
+      } catch (error) {
+        alert('Erro ao excluir lançamento');
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await updateLancamento(editingLancamento.id, formData);
+      setShowModal(false);
+      setEditingLancamento(null);
+      setFormData({
+        descricao: '',
+        valor: '',
+        tipo: 'saida',
+        data: new Date().toISOString().split('T')[0],
+        conta_id: ''
+      });
+      loadLancamentos();
+      loadDashboard();
+    } catch (error) {
+      alert('Erro ao atualizar lançamento');
     }
   };
 
@@ -65,12 +148,16 @@ function Dashboard() {
         {
           label: 'Entradas',
           data: entradas,
-          backgroundColor: 'rgba(75, 192, 192, 0.6)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.3,
         },
         {
           label: 'Saídas',
           data: saidas,
-          backgroundColor: 'rgba(255, 99, 132, 0.6)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.3,
         },
       ],
     };
@@ -97,6 +184,9 @@ function Dashboard() {
           <span>Olá, {user.nome}</span>
           <button onClick={() => navigate('/contas')}>Contas</button>
           <button onClick={() => navigate('/lancamentos')}>Lançamentos</button>
+          <button onClick={() => navigate('/categorias')}>📂 Categorias</button>
+          <button onClick={() => navigate('/auditoria')}>📋 Auditoria</button>
+          <button onClick={() => navigate('/perfil')}>👤 Perfil</button>
           <button onClick={handleLogout} className="btn-logout">Sair</button>
         </div>
       </nav>
@@ -106,12 +196,174 @@ function Dashboard() {
         
         {dashboardData.length > 0 ? (
           <div className="chart-container">
-            <Bar data={processChartData()} options={chartOptions} />
+            <Line data={processChartData()} options={chartOptions} />
           </div>
         ) : (
           <p>Nenhum dado encontrado. Cadastre lançamentos para visualizar o dashboard.</p>
         )}
+
+        <div className="lancamentos-section">
+          <div className="lancamentos-header">
+            <h3>Lançamentos Recentes</h3>
+            <div className="filters">
+              <select 
+                value={filterMes} 
+                onChange={(e) => setFilterMes(e.target.value)}
+                className="filter-select"
+              >
+                <option value="TODOS">Todos os meses</option>
+                {[...new Set(lancamentos.map(l => {
+                  const data = new Date(l.data);
+                  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+                }))].sort().reverse().map(mes => {
+                  const [ano, mesNum] = mes.split('-');
+                  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                  return <option key={mes} value={mes}>{meses[parseInt(mesNum) - 1]}/{ano}</option>;
+                })}
+              </select>
+              
+              <select 
+                value={filterTipo} 
+                onChange={(e) => setFilterTipo(e.target.value)}
+                className="filter-select"
+              >
+                <option value="TODOS">Todos os tipos</option>
+                <option value="entrada">Entradas</option>
+                <option value="saida">Saídas</option>
+              </select>
+            </div>
+          </div>
+          
+          {(() => {
+            let filtrados = lancamentos;
+            
+            if (filterMes !== 'TODOS') {
+              filtrados = filtrados.filter(l => {
+                const data = new Date(l.data);
+                const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+                return mesLancamento === filterMes;
+              });
+            }
+            
+            if (filterTipo !== 'TODOS') {
+              filtrados = filtrados.filter(l => l.tipo === filterTipo);
+            }
+            
+            return filtrados.length > 0 ? (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Conta</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map(lancamento => (
+                    <tr key={lancamento.id}>
+                      <td>{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
+                      <td>{lancamento.descricao}</td>
+                      <td>{lancamento.conta_nome || '-'}</td>
+                      <td>
+                        <span className={`badge ${lancamento.tipo}`}>
+                          {lancamento.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                        </span>
+                      </td>
+                      <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : 'valor-negativo'}>
+                        R$ {parseFloat(lancamento.valor).toFixed(2)}
+                      </td>
+                      <td>
+                        <button className="btn-edit" onClick={() => handleEdit(lancamento)}>Editar</button>
+                        <button className="btn-delete" onClick={() => handleDelete(lancamento.id)}>Excluir</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>Nenhum lançamento encontrado com os filtros selecionados.</p>
+          );
+          })()}
+        </div>
       </div>
+
+      {showModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Editar Lançamento</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Descrição *</label>
+                <input
+                  type="text"
+                  value={formData.descricao}
+                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Valor *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.valor}
+                    onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Data *</label>
+                  <input
+                    type="date"
+                    value={formData.data}
+                    onChange={(e) => setFormData({...formData, data: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Tipo *</label>
+                <select
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                  required
+                >
+                  <option value="entrada">Entrada</option>
+                  <option value="saida">Saída</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Conta *</label>
+                <select
+                  value={formData.conta_id}
+                  onChange={(e) => setFormData({...formData, conta_id: e.target.value})}
+                  required
+                >
+                  <option value="">Selecione uma conta</option>
+                  {contas.map(conta => (
+                    <option key={conta.id} value={conta.id}>{conta.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
+                <button type="submit" className="btn-primary">Salvar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

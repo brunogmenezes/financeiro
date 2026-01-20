@@ -34,7 +34,11 @@ function Contas() {
     e.preventDefault();
     try {
       if (editingConta) {
-        await updateConta(editingConta.id, formData);
+        // Na edição, não enviar saldo_inicial
+        await updateConta(editingConta.id, {
+          nome: formData.nome,
+          descricao: formData.descricao
+        });
       } else {
         await createConta(formData);
       }
@@ -63,7 +67,8 @@ function Contas() {
         await deleteConta(id);
         loadContas();
       } catch (error) {
-        alert('Erro ao excluir conta');
+        const mensagem = error.response?.data?.error || 'Erro ao excluir conta';
+        alert(mensagem);
       }
     }
   };
@@ -81,6 +86,7 @@ function Contas() {
         <div className="nav-links">
           <button onClick={() => navigate('/dashboard')}>Dashboard</button>
           <button onClick={() => navigate('/lancamentos')}>Lançamentos</button>
+          <button onClick={() => navigate('/auditoria')}>📋 Auditoria</button>
           <button onClick={() => {
             localStorage.clear();
             navigate('/');
@@ -100,7 +106,7 @@ function Contas() {
               <tr>
                 <th>Nome</th>
                 <th>Descrição</th>
-                <th>Saldo Inicial</th>
+                <th>Saldo Atual</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -114,7 +120,9 @@ function Contas() {
                   <tr key={conta.id}>
                     <td>{conta.nome}</td>
                     <td>{conta.descricao || '-'}</td>
-                    <td>R$ {parseFloat(conta.saldo_inicial).toFixed(2)}</td>
+                    <td className={parseFloat(conta.saldo_inicial) >= 0 ? 'valor-positivo' : 'valor-negativo'}>
+                      R$ {parseFloat(conta.saldo_inicial).toFixed(2)}
+                    </td>
                     <td>
                       <button className="btn-edit" onClick={() => handleEdit(conta)}>Editar</button>
                       <button className="btn-delete" onClick={() => handleDelete(conta.id)}>Excluir</button>
@@ -152,12 +160,14 @@ function Contas() {
               </div>
 
               <div className="form-group">
-                <label>Saldo Inicial</label>
+                <label>Saldo Inicial {editingConta && '(não editável)'}</label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.saldo_inicial}
                   onChange={(e) => setFormData({...formData, saldo_inicial: e.target.value})}
+                  disabled={!!editingConta}
+                  style={editingConta ? {backgroundColor: '#f0f0f0', cursor: 'not-allowed'} : {}}
                 />
               </div>
 
