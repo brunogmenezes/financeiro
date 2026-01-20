@@ -9,6 +9,7 @@ import {
   getCategorias,
   getSubcategorias
 } from '../services/api';
+import Navbar from '../components/Navbar';
 import './Lancamentos.css';
 
 function Lancamentos() {
@@ -25,7 +26,9 @@ function Lancamentos() {
     data: new Date().toISOString().split('T')[0],
     conta_id: '',
     categoria_id: '',
-    subcategoria_id: ''
+    subcategoria_id: '',
+    parcelado: false,
+    num_parcelas: 1
   });
   const navigate = useNavigate();
 
@@ -96,7 +99,9 @@ function Lancamentos() {
         data: new Date().toISOString().split('T')[0],
         conta_id: '',
         categoria_id: '',
-        subcategoria_id: ''
+        subcategoria_id: '',
+        parcelado: false,
+        num_parcelas: 1
       });
       setSubcategorias([]);
       loadLancamentos();
@@ -114,7 +119,9 @@ function Lancamentos() {
       data: lancamento.data.split('T')[0],
       conta_id: lancamento.conta_id,
       categoria_id: lancamento.categoria_id || '',
-      subcategoria_id: lancamento.subcategoria_id || ''
+      subcategoria_id: lancamento.subcategoria_id || '',
+      parcelado: false,
+      num_parcelas: 1
     });
     if (lancamento.categoria_id) {
       loadSubcategoriasPorCategoria(lancamento.categoria_id);
@@ -142,7 +149,9 @@ function Lancamentos() {
       data: new Date().toISOString().split('T')[0],
       conta_id: contas.length > 0 ? contas[0].id : '',
       categoria_id: '',
-      subcategoria_id: ''
+      subcategoria_id: '',
+      parcelado: false,
+      num_parcelas: 1
     });
     setSubcategorias([]);
     setShowModal(true);
@@ -150,18 +159,7 @@ function Lancamentos() {
 
   return (
     <div className="page-container">
-      <nav className="navbar">
-        <h1>💰 Controle Financeiro</h1>
-        <div className="nav-links">
-          <button onClick={() => navigate('/dashboard')}>Dashboard</button>
-          <button onClick={() => navigate('/contas')}>Contas</button>
-          <button onClick={() => navigate('/auditoria')}>📋 Auditoria</button>
-          <button onClick={() => {
-            localStorage.clear();
-            navigate('/');
-          }}>Sair</button>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="content">
         <div className="header">
@@ -214,25 +212,37 @@ function Lancamentos() {
 
       {showModal && (
         <div className="modal">
-          <div className="modal-content">
+          <div className="modal-content modal-lancamento">
             <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
+              {/* Direção do lançamento */}
               <div className="form-group">
-                <label>Descrição *</label>
-                <input
-                  type="text"
-                  value={formData.descricao}
-                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                  required
-                />
+                <label>Direção do lançamento *</label>
+                <div className="btn-group">
+                  <button
+                    type="button"
+                    className={formData.tipo === 'entrada' ? 'active' : ''}
+                    onClick={() => setFormData({...formData, tipo: 'entrada', categoria_id: '', subcategoria_id: ''})}
+                  >
+                    Entrada
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'saida' ? 'active' : ''}
+                    onClick={() => setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: ''})}
+                  >
+                    Saída
+                  </button>
+                </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Valor *</label>
+                  <label>{formData.parcelado ? 'Valor da parcela *' : 'Valor *'}</label>
                   <input
                     type="number"
                     step="0.01"
+                    placeholder="R$ 0,00"
                     value={formData.valor}
                     onChange={(e) => setFormData({...formData, valor: e.target.value})}
                     required
@@ -251,15 +261,14 @@ function Lancamentos() {
               </div>
 
               <div className="form-group">
-                <label>Tipo *</label>
-                <select
-                  value={formData.tipo}
-                  onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                <label>Descrição *</label>
+                <input
+                  type="text"
+                  placeholder="Digite sua descrição"
+                  value={formData.descricao}
+                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
                   required
-                >
-                  <option value="entrada">Entrada</option>
-                  <option value="saida">Saída</option>
-                </select>
+                />
               </div>
 
               <div className="form-group">
@@ -269,35 +278,75 @@ function Lancamentos() {
                   onChange={(e) => setFormData({...formData, conta_id: e.target.value})}
                   required
                 >
-                  <option value="">Selecione uma conta</option>
+                  <option value="">Selecione a conta</option>
                   {contas.map(conta => (
                     <option key={conta.id} value={conta.id}>{conta.nome}</option>
                   ))}
                 </select>
               </div>
 
+              {/* Lançamento parcelado */}
               <div className="form-group">
-                <label>Categoria (opcional)</label>
-                <select
-                  value={formData.categoria_id}
-                  onChange={(e) => {
-                    const categoriaId = e.target.value;
-                    setFormData({...formData, categoria_id: categoriaId, subcategoria_id: ''});
-                    loadSubcategoriasPorCategoria(categoriaId);
-                  }}
-                >
-                  <option value="">Nenhuma</option>
+                <label>Lançamento parcelado</label>
+                <div className="btn-group">
+                  <button
+                    type="button"
+                    className={!formData.parcelado ? 'active' : ''}
+                    onClick={() => setFormData({...formData, parcelado: false, num_parcelas: 1})}
+                  >
+                    Não
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.parcelado ? 'active' : ''}
+                    onClick={() => setFormData({...formData, parcelado: true})}
+                  >
+                    Sim
+                  </button>
+                </div>
+              </div>
+
+              {formData.parcelado && (
+                <div className="form-group">
+                  <label>Número de parcelas *</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="120"
+                    placeholder="Número de parcelas"
+                    value={formData.num_parcelas}
+                    onChange={(e) => setFormData({...formData, num_parcelas: e.target.value})}
+                    required={formData.parcelado}
+                  />
+                </div>
+              )}
+
+              {/* Classificação (Categorias) */}
+              <div className="form-group">
+                <label>Classificação</label>
+                <div className="categoria-buttons">
                   {categorias
                     .filter(cat => cat.tipo === formData.tipo)
                     .map(categoria => (
-                      <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>
+                      <button
+                        key={categoria.id}
+                        type="button"
+                        className={formData.categoria_id === categoria.id.toString() ? 'active' : ''}
+                        onClick={() => {
+                          setFormData({...formData, categoria_id: categoria.id.toString(), subcategoria_id: ''});
+                          loadSubcategoriasPorCategoria(categoria.id);
+                        }}
+                      >
+                        {categoria.nome}
+                      </button>
                     ))}
-                </select>
+                </div>
               </div>
 
-              {formData.categoria_id && (
+              {/* Subcategorias */}
+              {formData.categoria_id && subcategorias.length > 0 && (
                 <div className="form-group">
-                  <label>Subcategoria (opcional)</label>
+                  <label>Subcategoria</label>
                   <select
                     value={formData.subcategoria_id}
                     onChange={(e) => setFormData({...formData, subcategoria_id: e.target.value})}

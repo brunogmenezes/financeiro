@@ -40,3 +40,60 @@
   font-size: 14px;
   background: white;
 }
+
+.modal-lancamento {
+  max-width: 600px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-group button {
+  flex: 1;
+  padding: 10px 20px;
+  border: 2px solid #ddd;
+  background: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-group button:hover {
+  border-color: #999;
+}
+
+.btn-group button.active {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  color: white;
+}
+
+.categoria-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.categoria-buttons button {
+  padding: 8px 16px;
+  border: 2px solid #ddd;
+  background: white;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.categoria-buttons button:hover {
+  border-color: #999;
+}
+
+.categoria-buttons button.active {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  color: white;
+}

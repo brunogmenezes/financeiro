@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPerfil, updatePerfil } from '../services/api';
+import Navbar from '../components/Navbar';
 import './Perfil.css';
 
 function Perfil() {
@@ -122,31 +123,26 @@ function Perfil() {
     }
   };
 
-  const handleVoltar = () => {
-    navigate('/dashboard');
-  };
-
   if (loading) {
     return <div className="perfil-container">Carregando...</div>;
   }
 
   return (
-    <div className="perfil-container">
-      <div className="perfil-card">
-        <div className="perfil-header">
-          <h1>Meu Perfil</h1>
-          <button className="btn-voltar" onClick={handleVoltar}>
-            ← Voltar ao Dashboard
-          </button>
-        </div>
-
-        {message.text && (
-          <div className={`message ${message.type}`}>
-            {message.text}
+    <>
+      <Navbar />
+      <div className="perfil-container">
+        <div className="perfil-card">
+          <div className="perfil-header">
+            <h1>Meu Perfil</h1>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="perfil-form">
+          {message.text && (
+            <div className={`message ${message.type}`}>
+              {message.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="perfil-form">
           <div className="form-section">
             <h2>Dados Pessoais</h2>
             
@@ -278,9 +274,6 @@ function Perfil() {
           </div>
 
           <div className="form-actions">
-            <button type="button" className="btn-cancelar" onClick={handleVoltar}>
-              Cancelar
-            </button>
             <button type="submit" className="btn-salvar">
               Salvar Alterações
             </button>
@@ -288,6 +281,7 @@ function Perfil() {
         </form>
       </div>
     </div>
+    </>
   );
 }
 

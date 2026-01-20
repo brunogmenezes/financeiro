@@ -12,6 +12,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import Navbar from '../components/Navbar';
 import './Dashboard.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -119,12 +120,6 @@ function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/');
-  };
-
   // Processar dados para o gráfico
   const processChartData = () => {
     const meses = [...new Set(dashboardData.map(item => item.mes))].sort();
@@ -178,18 +173,7 @@ function Dashboard() {
 
   return (
     <div className="dashboard-container">
-      <nav className="navbar">
-        <h1>💰 Controle Financeiro</h1>
-        <div className="nav-links">
-          <span>Olá, {user.nome}</span>
-          <button onClick={() => navigate('/contas')}>Contas</button>
-          <button onClick={() => navigate('/lancamentos')}>Lançamentos</button>
-          <button onClick={() => navigate('/categorias')}>📂 Categorias</button>
-          <button onClick={() => navigate('/auditoria')}>📋 Auditoria</button>
-          <button onClick={() => navigate('/perfil')}>👤 Perfil</button>
-          <button onClick={handleLogout} className="btn-logout">Sair</button>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="dashboard-content">
         <h2>Dashboard</h2>

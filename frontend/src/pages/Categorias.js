@@ -10,6 +10,7 @@ import {
   updateSubcategoria,
   deleteSubcategoria
 } from '../services/api';
+import Navbar from '../components/Navbar';
 import './Categorias.css';
 
 function Categorias() {
@@ -145,20 +146,7 @@ function Categorias() {
 
   return (
     <div className="page-container">
-      <nav className="navbar">
-        <h1>💰 Controle Financeiro</h1>
-        <div className="nav-links">
-          <button onClick={() => navigate('/dashboard')}>Dashboard</button>
-          <button onClick={() => navigate('/contas')}>Contas</button>
-          <button onClick={() => navigate('/lancamentos')}>Lançamentos</button>
-          <button onClick={() => navigate('/auditoria')}>📋 Auditoria</button>
-          <button onClick={() => navigate('/perfil')}>👤 Perfil</button>
-          <button onClick={() => {
-            localStorage.clear();
-            navigate('/');
-          }}>Sair</button>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="content">
         <div className="categorias-layout">
