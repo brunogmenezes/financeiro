@@ -190,7 +190,6 @@ function Lancamentos() {
                 <th>Data</th>
                 <th>Descrição</th>
                 <th>Conta</th>
-                <th>Categoria</th>
                 <th>Tipo</th>
                 <th>Pago</th>
                 <th>Valor</th>
@@ -200,36 +199,38 @@ function Lancamentos() {
             <tbody>
               {lancamentos.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
+                  <td colSpan="7" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
                 </tr>
               ) : (
                 lancamentos.map(lancamento => (
                   <tr key={lancamento.id}>
                     <td>{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
-                    <td>{lancamento.descricao}</td>
-                    <td>{lancamento.conta_nome || '-'}</td>
                     <td>
-                      {lancamento.categoria_nome ? (
-                        <div className="categoria-badges">
-                          <span 
-                            className="categoria-badge"
-                            style={{ backgroundColor: lancamento.categoria_cor || '#7c3aed' }}
-                            title={lancamento.categoria_nome}
-                          >
-                            {lancamento.categoria_nome}
-                          </span>
-                          {lancamento.subcategoria_nome && (
+                      <div>
+                        <div>{lancamento.descricao}</div>
+                        {lancamento.categoria_nome && (
+                          <div className="categoria-badges-inline">
                             <span 
-                              className="subcategoria-badge"
-                              style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
-                              title={lancamento.subcategoria_nome}
+                              className="categoria-badge-small"
+                              style={{ backgroundColor: lancamento.categoria_cor || '#7c3aed' }}
+                              title={lancamento.categoria_nome}
                             >
-                              {lancamento.subcategoria_nome}
+                              {lancamento.categoria_nome}
                             </span>
-                          )}
-                        </div>
-                      ) : '-'}
+                            {lancamento.subcategoria_nome && (
+                              <span 
+                                className="subcategoria-badge-small"
+                                style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
+                                title={lancamento.subcategoria_nome}
+                              >
+                                {lancamento.subcategoria_nome}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
+                    <td>{lancamento.conta_nome || '-'}</td>
                     <td>
                       <span className={`badge ${lancamento.tipo}`}>
                         {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
