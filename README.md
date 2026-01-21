@@ -46,7 +46,134 @@ Sistema completo de controle financeiro com Node.js, Express, PostgreSQL e React
   - Base URL: https://netconnect.netsolutions.com.br
   - Endpoints: `/instance/connectionState`, `/message/sendText`
 
-## ⚙️ Configuração
+## 🚀 Início Rápido
+
+### 1. Clonar o Repositório
+
+```bash
+# Clone o repositório do GitHub
+git clone https://github.com/brunogmenezes/financeiro.git
+
+# Entre na pasta do projeto
+cd financeiro
+```
+
+### 2. Pré-requisitos
+
+Certifique-se de ter instalado:
+- **Node.js** v25+ ([Download](https://nodejs.org/))
+- **PostgreSQL** 12+ ([Download](https://www.postgresql.org/download/))
+- **Git** ([Download](https://git-scm.com/))
+- **(Opcional)** PM2 para gerenciar processos: `npm install -g pm2`
+
+### 3. Configurar Banco de Dados
+
+```sql
+-- No PostgreSQL, crie o banco de dados
+CREATE DATABASE financeiro;
+```
+
+### 4. Configurar Backend
+
+```bash
+# Entre na pasta backend
+cd backend
+
+# Instale as dependências
+npm install
+
+# Copie o arquivo .env.example e configure
+# Ou crie manualmente o arquivo .env com:
+```
+
+Crie o arquivo `backend/.env`:
+```env
+PORT=5000
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=financeiro
+DB_USER=postgres
+DB_PASSWORD=sua_senha_postgres
+JWT_SECRET=seu_secret_jwt_super_secreto
+
+# Opcional: Integração WhatsApp (Evolution API)
+EVOLUTION_BASE_URL=https://netconnect.netsolutions.com.br
+EVOLUTION_API_KEY=sua_api_key
+EVOLUTION_INSTANCE=nome_da_instancia
+REMINDER_TZ=America/Sao_Paulo
+REMINDER_HOUR=09:00
+```
+
+```bash
+# Execute as migrações do banco
+npm run setup
+
+# Isso executará:
+# - Criação de todas as tabelas
+# - Estrutura de auditoria
+# - Categorias padrão
+# - Configurações iniciais
+```
+
+### 5. Configurar Frontend
+
+```bash
+# Volte para a raiz e entre no frontend
+cd ../frontend
+
+# Instale as dependências
+npm install
+```
+
+### 6. Iniciar o Projeto
+
+**Opção A: Com PM2 (Recomendado para produção)**
+
+```bash
+# Na raiz do projeto
+cd backend
+pm2 start src/server.js --name "financeiro-backend"
+
+cd ../frontend
+pm2 start start.js --name "financeiro-frontend"
+
+# Ver status
+pm2 list
+
+# Ver logs em tempo real
+pm2 logs
+
+# Reiniciar
+pm2 restart all
+
+# Parar
+pm2 stop all
+```
+
+**Opção B: Modo Desenvolvimento (2 terminais)**
+
+```bash
+# Terminal 1 - Backend
+cd backend
+npm start
+# Backend rodando em http://localhost:5000
+
+# Terminal 2 - Frontend
+cd frontend
+npm start
+# Frontend rodando em http://localhost:3000
+```
+
+### 7. Acessar o Sistema
+
+Abra seu navegador em: **http://localhost:3000**
+
+1. Clique em "Registrar"
+2. Crie sua conta
+3. Faça login
+4. Comece a usar! 🎉
+
+## ⚙️ Configuração Avançada
 
 ### 1. PostgreSQL
 
