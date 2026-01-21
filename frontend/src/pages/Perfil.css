@@ -126,6 +126,66 @@
   color: #aaa;
 }
 
+.wa-status-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.wa-badge {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f1f3f5;
+  color: #333;
+  font-weight: 600;
+  flex: 1;
+  min-width: 200px;
+}
+
+.wa-badge.connecting,
+.wa-badge.open {
+  background: #c8e6c9;
+  color: #2e7d32;
+}
+
+.wa-badge.disconnected,
+.wa-badge.desconhecido {
+  background: #ffccbc;
+  color: #d84315;
+}
+
+.wa-badge.erro {
+  background: #ef5350;
+  color: white;
+}
+
+.btn-wa-connect,
+.btn-wa-refresh {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-wa-connect {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+}
+
+.btn-wa-connect:disabled,
+.btn-wa-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-wa-refresh {
+  background: #f0f0f0;
+  color: #555;
+}
+
 .form-actions {
   display: flex;
   gap: 15px;
@@ -206,6 +266,109 @@
   font-size: 0.9em;
 }
 
+/* WhatsApp Section */
+.wa-status-row {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.wa-badge {
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.95em;
+  flex: 1;
+  min-width: 200px;
+}
+
+.wa-badge.connecting,
+.wa-badge.open {
+  background: #c8e6c9;
+  color: #2e7d32;
+}
+
+.wa-badge.disconnected,
+.wa-badge.desconhecido {
+  background: #ffccbc;
+  color: #d84315;
+}
+
+.wa-badge.erro {
+  background: #ef5350;
+  color: white;
+}
+
+.btn-wa-connect,
+.btn-test-message,
+.btn-save-config,
+.btn-send-reminders {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.95em;
+}
+
+.btn-wa-connect:hover:not(:disabled),
+.btn-test-message:hover:not(:disabled),
+.btn-save-config:hover:not(:disabled),
+.btn-send-reminders:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-wa-connect:disabled,
+.btn-test-message:disabled,
+.btn-save-config:disabled,
+.btn-send-reminders:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-test-message,
+.btn-send-reminders {
+  width: 100%;
+  margin-top: 15px;
+}
+
+.btn-send-reminders {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+}
+
+.section-info {
+  color: #0066cc;
+  font-weight: 500;
+  margin: 15px 0 10px 0;
+  font-size: 0.95em;
+}
+
+.reminder-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 20px 0;
+  background: #f0f7ff;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #0066cc;
+}
+
+.reminder-checklist li {
+  padding: 8px 0;
+  color: #333;
+  font-size: 0.95em;
+}
+
+.reminder-checklist li strong {
+  color: #0066cc;
+}
+
 @media (max-width: 768px) {
   .perfil-card {
     padding: 25px;
@@ -237,4 +400,182 @@
   .theme-selector {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .wa-status-row {
+    flex-direction: column;
+  }
+
+  .wa-badge {
+    width: 100%;
+  }
+
+  .btn-wa-connect {
+    width: 100%;
+  }
 }
+
+/* Modal QR Code */
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.qr-modal-content {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.qr-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 30px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.qr-modal-header h2 {
+  margin: 0;
+  font-size: 1.5em;
+  color: #333;
+}
+
+.qr-modal-close {
+  background: none;
+  border: none;
+  font-size: 2em;
+  color: #999;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.qr-modal-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.qr-modal-body {
+  padding: 30px;
+  text-align: center;
+}
+
+.qr-instructions {
+  font-size: 1.1em;
+  color: #555;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.qr-code-container {
+  background: #f8f9fa;
+  border-radius: 15px;
+  padding: 20px;
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.qr-code-image {
+  width: 280px;
+  height: 280px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.qr-note {
+  text-align: left;
+  background: #e3f2fd;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 20px;
+  color: #1565c0;
+  line-height: 1.6;
+  font-size: 0.9em;
+}
+
+.qr-note strong {
+  color: #0d47a1;
+}
+
+.qr-modal-footer {
+  padding: 20px 30px;
+  border-top: 2px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-qr-close {
+  padding: 12px 30px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-qr-close:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .qr-modal-content {
+    width: 95%;
+  }
+
+  .qr-code-image {
+    width: 220px;
+    height: 220px;
+  }
+
+  .qr-modal-header,
+  .qr-modal-body,
+  .qr-modal-footer {
+    padding: 20px;
+  }
+}
+

@@ -31,6 +31,13 @@ function Contas() {
     }
   };
 
+  const formatarMoeda = (valor) => {
+    return Number(valor || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -111,7 +118,7 @@ function Contas() {
                     <td>{conta.nome}</td>
                     <td>{conta.descricao || '-'}</td>
                     <td className={parseFloat(conta.saldo_inicial) >= 0 ? 'valor-positivo' : 'valor-negativo'}>
-                      R$ {parseFloat(conta.saldo_inicial).toFixed(2)}
+                      R$ {formatarMoeda(conta.saldo_inicial)}
                     </td>
                     <td>
                       <button className="btn-edit" onClick={() => handleEdit(conta)}>Editar</button>

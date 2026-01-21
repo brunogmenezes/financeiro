@@ -78,7 +78,8 @@ exports.login = async (req, res) => {
         id: user.id,
         nome: user.nome,
         email: user.email,
-        cor_tema: user.cor_tema || 'roxo'
+        cor_tema: user.cor_tema || 'roxo',
+        whatsapp: user.whatsapp || ''
       }
     });
   } catch (error) {
@@ -91,7 +92,7 @@ exports.login = async (req, res) => {
 exports.getPerfil = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nome, email, cor_tema, created_at FROM usuarios WHERE id = $1',
+      'SELECT id, nome, email, cor_tema, whatsapp, created_at FROM usuarios WHERE id = $1',
       [req.userId]
     );
 
@@ -109,7 +110,7 @@ exports.getPerfil = async (req, res) => {
 // Atualizar perfil do usuário
 exports.updatePerfil = async (req, res) => {
   try {
-    const { nome, email, senhaAtual, novaSenha, corTema } = req.body;
+    const { nome, email, senhaAtual, novaSenha, corTema, whatsapp } = req.body;
     const userId = req.userId;
 
     // Buscar usuário atual
@@ -141,16 +142,16 @@ exports.updatePerfil = async (req, res) => {
     }
 
     // Preparar atualização
-    let query = 'UPDATE usuarios SET nome = $1, email = $2, cor_tema = $3';
-    let params = [nome, email, corTema || 'roxo'];
+    let query = 'UPDATE usuarios SET nome = $1, email = $2, cor_tema = $3, whatsapp = $4';
+    let params = [nome, email, corTema || 'roxo', whatsapp || null];
     
     if (novaSenha) {
       const hashedPassword = await bcrypt.hash(novaSenha, 10);
-      query += ', senha = $4';
+      query += ', senha = $5';
       params.push(hashedPassword);
     }
     
-    query += ` WHERE id = $${params.length + 1} RETURNING id, nome, email, cor_tema`;
+    query += ` WHERE id = $${params.length + 1} RETURNING id, nome, email, cor_tema, whatsapp`;
     params.push(userId);
 
     // Atualizar usuário

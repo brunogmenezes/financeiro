@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPerfil, updatePerfil } from '../services/api';
+import { getPerfil, updatePerfil, getWhatsappStatus, getEvolutionConfig, updateEvolutionConfig, sendTestMessage, sendRemindersNow } from '../services/api';
 import Navbar from '../components/Navbar';
 import './Perfil.css';
 
@@ -8,9 +8,20 @@ function Perfil() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [waStatus, setWaStatus] = useState({ state: 'desconhecido', message: '' });
+  const [waLoading, setWaLoading] = useState(false);
+  const [evolutionConfig, setEvolutionConfig] = useState({
+    url: '',
+    instancia: '',
+    token: ''
+  });
+  const [configLoading, setConfigLoading] = useState(false);
+  const [testMessageLoading, setTestMessageLoading] = useState(false);
+  const [remindersLoading, setRemindersLoading] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
+    whatsapp: '',
     corTema: 'roxo',
     senhaAtual: '',
     novaSenha: '',
@@ -19,6 +30,8 @@ function Perfil() {
 
   useEffect(() => {
     fetchPerfil();
+    fetchWhatsappStatus();
+    fetchEvolutionConfig();
   }, []);
 
   const fetchPerfil = async () => {
@@ -27,6 +40,7 @@ function Perfil() {
       setFormData({
         nome: response.data.nome,
         email: response.data.email,
+        whatsapp: response.data.whatsapp || '',
         corTema: response.data.cor_tema || 'roxo',
         senhaAtual: '',
         novaSenha: '',
@@ -43,6 +57,82 @@ function Perfil() {
       setLoading(false);
     }
   };
+
+  const fetchWhatsappStatus = async () => {
+    try {
+      const response = await getWhatsappStatus();
+      const state = response.data?.data?.state || response.data?.data?.connectionStatus || 'desconhecido';
+      const isConnected = state === 'open' || response.data?.data?.isConnected === true;
+      setWaStatus({ 
+        state: isConnected ? 'Conectado ✅' : state,
+        message: isConnected ? 'Instância operacional' : 'Aguardando conexão...'
+      });
+    } catch (error) {
+      setWaStatus({ state: 'Erro ❌', message: error.response?.data?.error || 'Não foi possível obter o status' });
+    }
+  };
+
+  const fetchEvolutionConfig = async () => {
+    try {
+      const response = await getEvolutionConfig();
+      setEvolutionConfig(response.data.data);
+    } catch (error) {
+      console.error('Erro ao carregar config Evolution:', error);
+    }
+  };
+
+  const handleConfigChange = (e) => {
+    const { name, value } = e.target;
+    setEvolutionConfig({ ...evolutionConfig, [name]: value });
+  };
+
+  const handleSaveConfig = async () => {
+    setConfigLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      await updateEvolutionConfig(evolutionConfig);
+      setMessage({ type: 'success', text: 'Configuração salva com sucesso!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao salvar configuração' });
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const handleSendTestMessage = async () => {
+    if (!formData.whatsapp) {
+      setMessage({ type: 'error', text: 'Informe seu número de WhatsApp primeiro!' });
+      return;
+    }
+
+    setTestMessageLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      await sendTestMessage(formData.whatsapp);
+      setMessage({ type: 'success', text: 'Mensagem de teste enviada com sucesso! Verifique seu WhatsApp.' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao enviar mensagem de teste' });
+    } finally {
+      setTestMessageLoading(false);
+    }
+  };
+
+  const handleSendRemindersNow = async () => {
+    setRemindersLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      await sendRemindersNow();
+      setMessage({ type: 'success', text: 'Lembretes disparados com sucesso! Verifique seu WhatsApp para mensagens de hoje e amanhã.' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 6000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao disparar lembretes' });
+    } finally {
+      setRemindersLoading(false);
+    }
+  };
+
 
   const handleChange = (e) => {
     setFormData({
@@ -85,6 +175,7 @@ function Perfil() {
       const data = {
         nome: formData.nome,
         email: formData.email,
+        whatsapp: formData.whatsapp,
         corTema: formData.corTema
       };
 
@@ -100,6 +191,7 @@ function Perfil() {
       user.nome = response.data.user.nome;
       user.email = response.data.user.email;
       user.corTema = response.data.user.cor_tema;
+      user.whatsapp = response.data.user.whatsapp || '';
       localStorage.setItem('user', JSON.stringify(user));
 
       // Aplicar tema imediatamente
@@ -171,6 +263,121 @@ function Perfil() {
                 required
               />
             </div>
+
+            <div className="form-group">
+              <label htmlFor="whatsapp">WhatsApp (com DDD e país)</label>
+              <input
+                type="text"
+                id="whatsapp"
+                name="whatsapp"
+                value={formData.whatsapp}
+                onChange={handleChange}
+                placeholder="Ex: 5511999999999"
+              />
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h2>WhatsApp</h2>
+            <p className="section-description">
+              Informe seu número com DDI e DDD para receber lembretes automáticos (D-1 e no dia) de saídas não pagas.
+            </p>
+            <div className="wa-status-row">
+              <div className={`wa-badge ${waStatus.state}`}>
+                Status da instância: {waStatus.state}
+              </div>
+              <button
+                type="button"
+                className="btn-wa-connect"
+                onClick={fetchWhatsappStatus}
+                disabled={waLoading}
+              >
+                {waLoading ? 'Verificando...' : 'Atualizar status'}
+              </button>
+            </div>
+            <button
+              type="button"
+              className="btn-test-message"
+              onClick={handleSendTestMessage}
+              disabled={testMessageLoading || !formData.whatsapp}
+            >
+              {testMessageLoading ? 'Enviando...' : '📱 Enviar mensagem de teste'}
+            </button>
+          </div>
+
+          <div className="form-section">
+            <h2>Configuração da API Evolution</h2>
+            <p className="section-description">
+              Configure a URL, instância e token da API Evolution para WhatsApp.
+            </p>
+            
+            <div className="form-group">
+              <label htmlFor="url">URL da API</label>
+              <input
+                type="text"
+                id="url"
+                name="url"
+                value={evolutionConfig.url}
+                onChange={handleConfigChange}
+                placeholder="https://netconnect.netsolutions.com.br"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="instancia">Instância</label>
+              <input
+                type="text"
+                id="instancia"
+                name="instancia"
+                value={evolutionConfig.instancia}
+                onChange={handleConfigChange}
+                placeholder="financeiro"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="token">Token / API Key</label>
+              <input
+                type="password"
+                id="token"
+                name="token"
+                value={evolutionConfig.token}
+                onChange={handleConfigChange}
+                placeholder="Cole aqui seu token da API Evolution"
+              />
+            </div>
+
+            <button
+              type="button"
+              className="btn-save-config"
+              onClick={handleSaveConfig}
+              disabled={configLoading}
+            >
+              {configLoading ? 'Salvando...' : 'Salvar Configuração'}
+            </button>
+          </div>
+
+          <div className="form-section">
+            <h2>Teste de Lembretes Automáticos</h2>
+            <p className="section-description">
+              Dispare os lembretes de D-1 e D0 manualmente para testar a integração.
+            </p>
+            <p className="section-info">
+              ℹ️ Certifique-se de que:
+            </p>
+            <ul className="reminder-checklist">
+              <li>Sua instância Evolution está <strong>conectada</strong> ✅</li>
+              <li>Seu <strong>número de WhatsApp</strong> está preenchido</li>
+              <li>Você tem <strong>lançamentos não pagos</strong> cadastrados para hoje e/ou amanhã</li>
+            </ul>
+            <button
+              type="button"
+              className="btn-send-reminders"
+              onClick={handleSendRemindersNow}
+              disabled={remindersLoading}
+            >
+              {remindersLoading ? 'Disparando...' : '🚀 Disparar Lembretes Agora'}
+            </button>
           </div>
 
           <div className="form-section">

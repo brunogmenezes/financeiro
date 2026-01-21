@@ -50,4 +50,11 @@ export const createSubcategoria = (categoriaId, data) => api.post(`/categorias/$
 export const updateSubcategoria = (id, data) => api.put(`/categorias/subcategorias/${id}`, data);
 export const deleteSubcategoria = (id) => api.delete(`/categorias/subcategorias/${id}`);
 
+// WhatsApp / Evolution
+export const getWhatsappStatus = () => api.get('/whatsapp/status');
+export const getEvolutionConfig = () => api.get('/whatsapp/config');
+export const updateEvolutionConfig = (data) => api.post('/whatsapp/config', data);
+export const sendTestMessage = (whatsapp) => api.post('/whatsapp/test-message', { whatsapp });
+export const sendRemindersNow = () => api.post('/whatsapp/send-reminders-now');
+
 export default api;

@@ -356,7 +356,7 @@ function Dashboard() {
             const value = context.parsed || 0;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-            return label + ': R$ ' + value.toFixed(2) + ' (' + percentage + '%)';
+                return `${label}: R$ ${formatarMoeda(value)} (${percentage}%)`;
           },
         },
       },
@@ -393,7 +393,7 @@ function Dashboard() {
                     <>
                       <span className="label">Saldo:</span>
                       <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
-                        R$ {parseFloat(conta.saldo_inicial).toFixed(2)}
+                        R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
                       </span>
                     </>
                   ) : (
@@ -570,7 +570,7 @@ function Dashboard() {
                         </span>
                       </td>
                       <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
-                        {mostrarValores ? `R$ ${parseFloat(lancamento.valor).toFixed(2)}` : 'R$ ••••'}
+                        {mostrarValores ? `R$ ${formatarMoeda(Number(lancamento.valor) || 0)}` : 'R$ ••••'}
                       </td>
                       <td>
                         {lancamento.tipo === 'saida' ? (

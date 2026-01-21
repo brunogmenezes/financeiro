@@ -87,6 +87,13 @@ function Lancamentos() {
     }
   };
 
+  const formatarMoeda = (valor) => {
+    return Number(valor || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   const handleFilterCategoriaChange = (e) => {
     const categId = e.target.value;
     setFilterCategoria(categId);
@@ -346,7 +353,7 @@ function Lancamentos() {
                       )}
                     </td>
                     <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
-                      R$ {parseFloat(lancamento.valor).toFixed(2)}
+                      R$ {formatarMoeda(lancamento.valor)}
                     </td>
                     <td>
                       {lancamento.tipo === 'saida' && (
