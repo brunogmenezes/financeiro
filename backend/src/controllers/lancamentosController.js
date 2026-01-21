@@ -5,7 +5,7 @@ const { registrarAuditoria } = require('./auditoriaController');
 exports.getAll = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, cat.nome as categoria_nome, subcat.nome as subcategoria_nome
+      `SELECT l.*, c.nome as conta_nome, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor
        FROM lancamentos l 
        LEFT JOIN contas c ON l.conta_id = c.id 
        LEFT JOIN categorias cat ON l.categoria_id = cat.id
@@ -26,7 +26,7 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, cat.nome as categoria_nome, subcat.nome as subcategoria_nome
+      `SELECT l.*, c.nome as conta_nome, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor
        FROM lancamentos l 
        LEFT JOIN contas c ON l.conta_id = c.id 
        LEFT JOIN categorias cat ON l.categoria_id = cat.id

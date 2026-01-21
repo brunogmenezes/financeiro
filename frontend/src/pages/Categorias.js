@@ -23,10 +23,12 @@ function Categorias() {
   const [selectedCategoria, setSelectedCategoria] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
-    tipo: 'saida'
+    tipo: 'saida',
+    cor: '#7c3aed'
   });
   const [subFormData, setSubFormData] = useState({
-    nome: ''
+    nome: '',
+    cor: '#7c3aed'
   });
   const navigate = useNavigate();
 
@@ -93,7 +95,8 @@ function Categorias() {
     setEditingCategoria(categoria);
     setFormData({
       nome: categoria.nome,
-      tipo: categoria.tipo
+      tipo: categoria.tipo,
+      cor: categoria.cor || '#7c3aed'
     });
     setShowModal(true);
   };
@@ -112,7 +115,10 @@ function Categorias() {
 
   const handleEditSub = (subcategoria) => {
     setEditingSubcategoria(subcategoria);
-    setSubFormData({ nome: subcategoria.nome });
+    setSubFormData({ 
+      nome: subcategoria.nome,
+      cor: subcategoria.cor || '#7c3aed'
+    });
     setShowSubModal(true);
   };
 
@@ -274,6 +280,19 @@ function Categorias() {
                 </select>
               </div>
 
+              <div className="form-group">
+                <label>Cor *</label>
+                <div className="color-picker-wrapper">
+                  <input
+                    type="color"
+                    value={formData.cor}
+                    onChange={(e) => setFormData({...formData, cor: e.target.value})}
+                    className="color-picker"
+                  />
+                  <span className="color-value">{formData.cor}</span>
+                </div>
+              </div>
+
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
                 <button type="submit" className="btn-primary">Salvar</button>
@@ -294,9 +313,22 @@ function Categorias() {
                 <input
                   type="text"
                   value={subFormData.nome}
-                  onChange={(e) => setSubFormData({nome: e.target.value})}
+                  onChange={(e) => setSubFormData({...subFormData, nome: e.target.value})}
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Cor *</label>
+                <div className="color-picker-wrapper">
+                  <input
+                    type="color"
+                    value={subFormData.cor}
+                    onChange={(e) => setSubFormData({...subFormData, cor: e.target.value})}
+                    className="color-picker"
+                  />
+                  <span className="color-value">{subFormData.cor}</span>
+                </div>
               </div>
 
               <div className="modal-actions">

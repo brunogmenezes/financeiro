@@ -209,16 +209,26 @@ function Lancamentos() {
                     <td>{lancamento.descricao}</td>
                     <td>{lancamento.conta_nome || '-'}</td>
                     <td>
-                      <span className="categoria-label">
-                        {lancamento.categoria_nome ? (
-                          <>
-                            <strong>{lancamento.categoria_nome}</strong>
-                            {lancamento.subcategoria_nome && (
-                              <> / {lancamento.subcategoria_nome}</>
-                            )}
-                          </>
-                        ) : '-'}
-                      </span>
+                      {lancamento.categoria_nome ? (
+                        <div className="categoria-badges">
+                          <span 
+                            className="categoria-badge"
+                            style={{ backgroundColor: lancamento.categoria_cor || '#7c3aed' }}
+                            title={lancamento.categoria_nome}
+                          >
+                            {lancamento.categoria_nome}
+                          </span>
+                          {lancamento.subcategoria_nome && (
+                            <span 
+                              className="subcategoria-badge"
+                              style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
+                              title={lancamento.subcategoria_nome}
+                            >
+                              {lancamento.subcategoria_nome}
+                            </span>
+                          )}
+                        </div>
+                      ) : '-'}
                     </td>
                     <td>
                       <span className={`badge ${lancamento.tipo}`}>

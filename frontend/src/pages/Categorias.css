@@ -265,6 +265,29 @@ tr:hover {
   color: white;
 }
 
+.color-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.color-picker {
+  width: 50px;
+  height: 40px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.color-value {
+  font-size: 0.9em;
+  color: #666;
+  font-weight: 500;
+  min-width: 80px;
+}
+
 @media (max-width: 1024px) {
   .categorias-layout {
     grid-template-columns: 1fr;

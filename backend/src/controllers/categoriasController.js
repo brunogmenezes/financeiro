@@ -18,11 +18,12 @@ exports.getAll = async (req, res) => {
 // Criar nova categoria
 exports.create = async (req, res) => {
   try {
-    const { nome, tipo } = req.body;
+    const { nome, tipo, cor } = req.body;
+    const corPadrao = cor || '#7c3aed';
 
     const result = await pool.query(
-      'INSERT INTO categorias (nome, tipo, usuario_id) VALUES ($1, $2, $3) RETURNING *',
-      [nome, tipo, req.userId]
+      'INSERT INTO categorias (nome, tipo, cor, usuario_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nome, tipo, corPadrao, req.userId]
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
@@ -46,11 +47,11 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, tipo } = req.body;
+    const { nome, tipo, cor } = req.body;
 
     const result = await pool.query(
-      'UPDATE categorias SET nome = $1, tipo = $2 WHERE id = $3 AND usuario_id = $4 RETURNING *',
-      [nome, tipo, id, req.userId]
+      'UPDATE categorias SET nome = $1, tipo = $2, cor = $3 WHERE id = $4 AND usuario_id = $5 RETURNING *',
+      [nome, tipo, cor || '#7c3aed', id, req.userId]
     );
 
     if (result.rows.length === 0) {
@@ -153,7 +154,8 @@ exports.getSubcategorias = async (req, res) => {
 exports.createSubcategoria = async (req, res) => {
   try {
     const { categoriaId } = req.params;
-    const { nome } = req.body;
+    const { nome, cor } = req.body;
+    const corPadrao = cor || '#7c3aed';
 
     // Verificar se a categoria pertence ao usuário
     const categoria = await pool.query(
@@ -166,8 +168,8 @@ exports.createSubcategoria = async (req, res) => {
     }
 
     const result = await pool.query(
-      'INSERT INTO subcategorias (nome, categoria_id) VALUES ($1, $2) RETURNING *',
-      [nome, categoriaId]
+      'INSERT INTO subcategorias (nome, cor, categoria_id) VALUES ($1, $2, $3) RETURNING *',
+      [nome, corPadrao, categoriaId]
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
@@ -191,7 +193,7 @@ exports.createSubcategoria = async (req, res) => {
 exports.updateSubcategoria = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome } = req.body;
+    const { nome, cor } = req.body;
 
     // Verificar se a subcategoria pertence a uma categoria do usuário
     const subcategoria = await pool.query(
@@ -207,8 +209,8 @@ exports.updateSubcategoria = async (req, res) => {
     }
 
     const result = await pool.query(
-      'UPDATE subcategorias SET nome = $1 WHERE id = $2 RETURNING *',
-      [nome, id]
+      'UPDATE subcategorias SET nome = $1, cor = $2 WHERE id = $3 RETURNING *',
+      [nome, cor || '#7c3aed', id]
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
