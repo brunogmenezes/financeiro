@@ -7,7 +7,8 @@ import {
   deleteLancamento, 
   getContas,
   getCategorias,
-  getSubcategorias
+  getSubcategorias,
+  togglePagoLancamento
 } from '../services/api';
 import Navbar from '../components/Navbar';
 import './Lancamentos.css';
@@ -28,7 +29,8 @@ function Lancamentos() {
     categoria_id: '',
     subcategoria_id: '',
     parcelado: false,
-    num_parcelas: 1
+    num_parcelas: 1,
+    pago: true
   });
   const navigate = useNavigate();
 
@@ -101,7 +103,8 @@ function Lancamentos() {
         categoria_id: '',
         subcategoria_id: '',
         parcelado: false,
-        num_parcelas: 1
+        num_parcelas: 1,
+        pago: true
       });
       setSubcategorias([]);
       loadLancamentos();
@@ -123,7 +126,8 @@ function Lancamentos() {
       categoria_id: lancamento.categoria_id || '',
       subcategoria_id: lancamento.subcategoria_id || '',
       parcelado: false,
-      num_parcelas: 1
+      num_parcelas: 1,
+      pago: lancamento.pago !== undefined ? lancamento.pago : true,
     });
     if (lancamento.categoria_id) {
       loadSubcategoriasPorCategoria(lancamento.categoria_id);
@@ -142,6 +146,15 @@ function Lancamentos() {
     }
   };
 
+  const handleTogglePago = async (lancamento) => {
+    try {
+      await togglePagoLancamento(lancamento.id);
+      loadLancamentos();
+    } catch (error) {
+      alert('Erro ao alterar status de pagamento');
+    }
+  };
+
   const handleNew = () => {
     setEditingLancamento(null);
     setFormData({
@@ -153,7 +166,8 @@ function Lancamentos() {
       categoria_id: '',
       subcategoria_id: '',
       parcelado: false,
-      num_parcelas: 1
+      num_parcelas: 1,
+      pago: true
     });
     setSubcategorias([]);
     setShowModal(true);
@@ -177,6 +191,7 @@ function Lancamentos() {
                 <th>Descrição</th>
                 <th>Conta</th>
                 <th>Tipo</th>
+                <th>Pago</th>
                 <th>Valor</th>
                 <th>Ações</th>
               </tr>
@@ -184,7 +199,7 @@ function Lancamentos() {
             <tbody>
               {lancamentos.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
+                  <td colSpan="7" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
                 </tr>
               ) : (
                 lancamentos.map(lancamento => (
@@ -197,10 +212,27 @@ function Lancamentos() {
                         {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
                       </span>
                     </td>
+                    <td>
+                      {lancamento.tipo === 'saida' ? (
+                        <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
+                          {lancamento.pago ? 'Pago' : 'Não pago'}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
                       R$ {parseFloat(lancamento.valor).toFixed(2)}
                     </td>
                     <td>
+                      {lancamento.tipo === 'saida' && (
+                        <button 
+                          className="btn-toggle-pago"
+                          onClick={() => handleTogglePago(lancamento)}
+                        >
+                          {lancamento.pago ? 'Marcar não pago' : 'Marcar pago'}
+                        </button>
+                      )}
                       <button className="btn-edit" onClick={() => handleEdit(lancamento)}>Editar</button>
                       <button className="btn-delete" onClick={() => handleDelete(lancamento.id)}>Excluir</button>
                     </td>
@@ -224,7 +256,7 @@ function Lancamentos() {
                   <button
                     type="button"
                     className={formData.tipo === 'entrada' ? 'active' : ''}
-                    onClick={() => setFormData({...formData, tipo: 'entrada', categoria_id: '', subcategoria_id: ''})}
+                    onClick={() => setFormData({...formData, tipo: 'entrada', categoria_id: '', subcategoria_id: '', pago: true})}
                   >
                     Entrada
                   </button>
@@ -238,7 +270,7 @@ function Lancamentos() {
                   <button
                     type="button"
                     className={formData.tipo === 'neutro' ? 'active' : ''}
-                    onClick={() => setFormData({...formData, tipo: 'neutro', categoria_id: '', subcategoria_id: ''})}
+                    onClick={() => setFormData({...formData, tipo: 'neutro', categoria_id: '', subcategoria_id: '', pago: true})}
                   >
                     Neutro
                   </button>
@@ -268,6 +300,29 @@ function Lancamentos() {
                   />
                 </div>
               </div>
+
+              {/* Pago (somente para saída) */}
+              {formData.tipo === 'saida' && (
+                <div className="form-group">
+                  <label>Pagamento</label>
+                  <div className="btn-group">
+                    <button
+                      type="button"
+                      className={formData.pago ? 'active' : ''}
+                      onClick={() => setFormData({...formData, pago: true})}
+                    >
+                      Pago
+                    </button>
+                    <button
+                      type="button"
+                      className={!formData.pago ? 'active' : ''}
+                      onClick={() => setFormData({...formData, pago: false})}
+                    >
+                      Não pago
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Descrição *</label>

@@ -34,6 +34,7 @@ export const getLancamento = (id) => api.get(`/lancamentos/${id}`);
 export const createLancamento = (data) => api.post('/lancamentos', data);
 export const updateLancamento = (id, data) => api.put(`/lancamentos/${id}`, data);
 export const deleteLancamento = (id) => api.delete(`/lancamentos/${id}`);
+export const togglePagoLancamento = (id) => api.patch(`/lancamentos/${id}/toggle-pago`);
 export const getDashboard = () => api.get('/lancamentos/dashboard');
 
 // Auditoria

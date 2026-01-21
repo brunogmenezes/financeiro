@@ -93,6 +93,40 @@
   transition: all 0.3s;
 }
 
+.badge-pago {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-pago.pago {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge-pago.pendente {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.btn-toggle-pago {
+  margin-right: 8px;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle-pago:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
 .categoria-buttons button:hover {
   border-color: #999;
 }

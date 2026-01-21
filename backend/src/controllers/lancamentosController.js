@@ -45,7 +45,8 @@ exports.getById = async (req, res) => {
 // Criar novo lançamento
 exports.create = async (req, res) => {
   try {
-    const { descricao, valor, tipo, data, conta_id, parcelado, num_parcelas } = req.body;
+    const { descricao, valor, tipo, data, conta_id, parcelado, num_parcelas, pago } = req.body;
+    const pagoStatus = pago !== undefined ? pago : true;
 
     // Se for parcelado, criar múltiplos lançamentos
     if (parcelado && num_parcelas > 1) {
@@ -59,17 +60,17 @@ exports.create = async (req, res) => {
         const descricaoParcelada = `${descricao} (${i + 1}/${num_parcelas})`;
         
         const result = await pool.query(
-          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, req.userId]
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, req.userId, pagoStatus]
         );
         
-        // Atualizar saldo da conta (exceto se for neutro)
+        // Atualizar saldo da conta (exceto se for neutro ou se for saida não paga)
         if (tipo === 'entrada') {
           await pool.query(
             'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
             [valor, conta_id]
           );
-        } else if (tipo === 'saida') {
+        } else if (tipo === 'saida' && pagoStatus) {
           await pool.query(
             'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
             [valor, conta_id]
@@ -94,23 +95,23 @@ exports.create = async (req, res) => {
 
     // Lançamento único (não parcelado)
     const result = await pool.query(
-      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [descricao, valor, tipo, data, conta_id, req.userId]
+      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [descricao, valor, tipo, data, conta_id, req.userId, pagoStatus]
     );
 
-    // Atualizar saldo da conta (exceto se for neutro)
+    // Atualizar saldo da conta (exceto se for neutro ou se for saida não paga)
     if (tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
         [valor, conta_id]
       );
-    } else if (tipo === 'saida') {
+    } else if (tipo === 'saida' && pagoStatus) {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
         [valor, conta_id]
       );
     }
-    // Se tipo === 'neutro', não altera o saldo
+    // Se tipo === 'neutro' ou saida não paga, não altera o saldo
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
@@ -133,7 +134,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { descricao, valor, tipo, data, conta_id } = req.body;
+    const { descricao, valor, tipo, data, conta_id, pago } = req.body;
+    const pagoStatus = pago !== undefined ? pago : true;
 
     // Buscar lançamento antigo
     const lancamentoAntigo = await pool.query(
@@ -147,33 +149,33 @@ exports.update = async (req, res) => {
 
     const antigo = lancamentoAntigo.rows[0];
 
-    // Reverter o valor do lançamento antigo na conta antiga (exceto se for neutro)
+    // Reverter o valor do lançamento antigo na conta antiga (exceto se for neutro ou saida não paga)
     if (antigo.tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
         [antigo.valor, antigo.conta_id]
       );
-    } else if (antigo.tipo === 'saida') {
+    } else if (antigo.tipo === 'saida' && antigo.pago) {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
         [antigo.valor, antigo.conta_id]
       );
     }
-    // Se antigo.tipo === 'neutro', não reverte nada
+    // Se antigo.tipo === 'neutro' ou saida não paga, não reverte nada
 
     // Atualizar lançamento
     const result = await pool.query(
-      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5 WHERE id = $6 AND usuario_id = $7 RETURNING *',
-      [descricao, valor, tipo, data, conta_id, id, req.userId]
+      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, pago = $6 WHERE id = $7 AND usuario_id = $8 RETURNING *',
+      [descricao, valor, tipo, data, conta_id, pagoStatus, id, req.userId]
     );
 
-    // Aplicar o novo valor na nova conta (exceto se for neutro)
+    // Aplicar o novo valor na nova conta (exceto se for neutro ou saida não paga)
     if (tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
         [valor, conta_id]
       );
-    } else if (tipo === 'saida') {
+    } else if (tipo === 'saida' && pagoStatus) {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
         [valor, conta_id]
@@ -214,13 +216,13 @@ exports.delete = async (req, res) => {
 
     const lancamento = result.rows[0];
 
-    // Reverter o valor do lançamento na conta (exceto se for neutro)
+    // Reverter o valor do lançamento na conta (exceto se for neutro ou saida não paga)
     if (lancamento.tipo === 'entrada') {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
         [lancamento.valor, lancamento.conta_id]
       );
-    } else if (lancamento.tipo === 'saida') {
+    } else if (lancamento.tipo === 'saida' && lancamento.pago) {
       await pool.query(
         'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
         [lancamento.valor, lancamento.conta_id]
@@ -264,5 +266,66 @@ exports.getDashboard = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar dados do dashboard' });
+  }
+};
+
+// Alternar status de pago
+exports.togglePago = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar lançamento atual
+    const lancamentoResult = await pool.query(
+      'SELECT * FROM lancamentos WHERE id = $1 AND usuario_id = $2',
+      [id, req.userId]
+    );
+
+    if (lancamentoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Lançamento não encontrado' });
+    }
+
+    const lancamento = lancamentoResult.rows[0];
+
+    // Só permitir alternar pago para lançamentos do tipo saida
+    if (lancamento.tipo !== 'saida') {
+      return res.status(400).json({ error: 'Apenas lançamentos de saída podem ter status de pagamento' });
+    }
+
+    const novoPago = !lancamento.pago;
+
+    // Se está marcando como pago, subtrai da conta
+    // Se está desmarcando como pago, devolve para a conta
+    if (novoPago) {
+      await pool.query(
+        'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
+        [lancamento.valor, lancamento.conta_id]
+      );
+    } else {
+      await pool.query(
+        'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
+        [lancamento.valor, lancamento.conta_id]
+      );
+    }
+
+    // Atualizar status do lançamento
+    const result = await pool.query(
+      'UPDATE lancamentos SET pago = $1 WHERE id = $2 AND usuario_id = $3 RETURNING *',
+      [novoPago, id, req.userId]
+    );
+
+    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+    await registrarAuditoria(
+      req.userId,
+      user.rows[0]?.nome || 'Usuário',
+      'EDITAR',
+      'lancamentos',
+      id,
+      `Status de pagamento alterado para ${novoPago ? 'PAGO' : 'NÃO PAGO'} - "${lancamento.descricao}"`
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao alternar status de pagamento' });
   }
 };

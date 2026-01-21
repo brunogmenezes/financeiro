@@ -12,11 +12,13 @@ const registrarAuditoria = async (usuarioId, usuarioNome, acao, tabela, registro
   }
 };
 
-// Listar todos os logs de auditoria
+// Listar todos os logs de auditoria (apenas do usuário autenticado)
 exports.getAll = async (req, res) => {
   try {
+    const usuarioId = req.userId; // ID do usuário autenticado (vem do middleware de autenticação)
     const result = await pool.query(
-      'SELECT * FROM auditoria ORDER BY created_at DESC LIMIT 500'
+      'SELECT * FROM auditoria WHERE usuario_id = $1 ORDER BY created_at DESC LIMIT 500',
+      [usuarioId]
     );
     res.json(result.rows);
   } catch (error) {

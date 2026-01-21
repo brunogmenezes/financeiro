@@ -10,6 +10,7 @@ router.get('/dashboard', lancamentosController.getDashboard);
 router.get('/:id', lancamentosController.getById);
 router.post('/', lancamentosController.create);
 router.put('/:id', lancamentosController.update);
+router.patch('/:id/toggle-pago', lancamentosController.togglePago);
 router.delete('/:id', lancamentosController.delete);
 
 module.exports = router;

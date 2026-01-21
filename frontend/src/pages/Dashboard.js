@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboard, getLancamentos, deleteLancamento, updateLancamento, getContas } from '../services/api';
+import { getDashboard, getLancamentos, deleteLancamento, updateLancamento, getContas, togglePagoLancamento } from '../services/api';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -118,6 +118,17 @@ function Dashboard() {
       loadDashboard();
     } catch (error) {
       alert('Erro ao atualizar lançamento');
+    }
+  };
+
+  const handleTogglePago = async (lancamento) => {
+    try {
+      await togglePagoLancamento(lancamento.id);
+      loadLancamentos();
+      loadDashboard();
+      loadContas();
+    } catch (error) {
+      alert('Erro ao atualizar status de pagamento');
     }
   };
 
@@ -283,6 +294,7 @@ function Dashboard() {
                     <th>Conta</th>
                     <th>Tipo</th>
                     <th>Valor</th>
+                    <th>Pago</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
@@ -299,6 +311,22 @@ function Dashboard() {
                       </td>
                       <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
                         {mostrarValores ? `R$ ${parseFloat(lancamento.valor).toFixed(2)}` : 'R$ ••••'}
+                      </td>
+                      <td>
+                        {lancamento.tipo === 'saida' ? (
+                          <>
+                            <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
+                              {lancamento.pago ? 'Pago' : 'Não pago'}
+                            </span>
+                            <button 
+                              className="btn-toggle-pago" 
+                              onClick={() => handleTogglePago(lancamento)}
+                              title={lancamento.pago ? 'Marcar como não pago' : 'Marcar como pago'}
+                            >
+                              {lancamento.pago ? '✓' : '○'}
+                            </button>
+                          </>
+                        ) : '-'}
                       </td>
                       <td>
                         <button className="btn-edit" onClick={() => handleEdit(lancamento)}>Editar</button>
