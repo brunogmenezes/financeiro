@@ -49,7 +49,7 @@ exports.getById = async (req, res) => {
 // Criar novo lançamento
 exports.create = async (req, res) => {
   try {
-    const { descricao, valor, tipo, data, conta_id, parcelado, num_parcelas, pago } = req.body;
+    const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, parcelado, num_parcelas, pago } = req.body;
     const pagoStatus = pago !== undefined ? pago : true;
 
     // Se for parcelado, criar múltiplos lançamentos
@@ -64,8 +64,8 @@ exports.create = async (req, res) => {
         const descricaoParcelada = `${descricao} (${i + 1}/${num_parcelas})`;
         
         const result = await pool.query(
-          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, req.userId, pagoStatus]
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
         );
         
         // Atualizar saldo da conta (exceto se for neutro ou se for saida não paga)
@@ -99,8 +99,8 @@ exports.create = async (req, res) => {
 
     // Lançamento único (não parcelado)
     const result = await pool.query(
-      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [descricao, valor, tipo, data, conta_id, req.userId, pagoStatus]
+      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [descricao, valor, tipo, data, conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
     );
 
     // Atualizar saldo da conta (exceto se for neutro ou se for saida não paga)
@@ -138,7 +138,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { descricao, valor, tipo, data, conta_id, pago } = req.body;
+    const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, pago } = req.body;
     const pagoStatus = pago !== undefined ? pago : true;
 
     // Buscar lançamento antigo
@@ -169,8 +169,8 @@ exports.update = async (req, res) => {
 
     // Atualizar lançamento
     const result = await pool.query(
-      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, pago = $6 WHERE id = $7 AND usuario_id = $8 RETURNING *',
-      [descricao, valor, tipo, data, conta_id, pagoStatus, id, req.userId]
+      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, categoria_id = $6, subcategoria_id = $7, pago = $8 WHERE id = $9 AND usuario_id = $10 RETURNING *',
+      [descricao, valor, tipo, data, conta_id, categoria_id || null, subcategoria_id || null, pagoStatus, id, req.userId]
     );
 
     // Aplicar o novo valor na nova conta (exceto se for neutro ou saida não paga)
