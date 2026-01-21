@@ -176,7 +176,32 @@
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   margin-bottom: 40px;
-  max-height: 300px;
+}
+
+.charts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.chart-line {
+  max-height: 350px;
+  grid-column: 1 / -1;
+}
+
+.chart-pie {
+  max-height: 350px;
+}
+
+@media (max-width: 1200px) {
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-line {
+    grid-column: 1;
+  }
 }
 
 .lancamentos-section {
@@ -282,6 +307,21 @@ th {
 .badge.neutro {
   background: #e2e3e5;
   color: #383d41;
+}
+
+.categoria-label {
+  font-size: 0.95em;
+  color: #333;
+  display: block;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoria-label strong {
+  font-weight: 600;
+  color: var(--primary-color);
 }
 
 .valor-positivo {

@@ -21,6 +21,21 @@
   color: #383d41;
 }
 
+.categoria-label {
+  font-size: 0.95em;
+  color: #333;
+  display: block;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoria-label strong {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
 .valor-positivo {
   color: #28a745;
   font-weight: 600;

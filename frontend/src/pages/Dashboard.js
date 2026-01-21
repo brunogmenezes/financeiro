@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboard, getLancamentos, deleteLancamento, updateLancamento, getContas, togglePagoLancamento } from '../services/api';
-import { Line } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,11 +11,12 @@ import {
   Title,
   Tooltip,
   Legend,
+  ArcElement,
 } from 'chart.js';
 import Navbar from '../components/Navbar';
 import './Dashboard.css';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
 
 function Dashboard() {
   const [dashboardData, setDashboardData] = useState([]);
@@ -183,6 +184,62 @@ function Dashboard() {
     },
   };
 
+  // Processar dados para o gráfico de pizza (saídas por categoria + dia)
+  const processPieChartData = () => {
+    const saidasPorCategoria = {};
+    
+    lancamentos
+      .filter(l => l.tipo === 'saida')
+      .forEach(lancamento => {
+        const data = new Date(lancamento.data).toLocaleDateString('pt-BR');
+        const categoria = lancamento.categoria_nome || 'Sem Categoria';
+        const chave = `${categoria} (${data})`;
+        if (!saidasPorCategoria[chave]) {
+          saidasPorCategoria[chave] = 0;
+        }
+        saidasPorCategoria[chave] += parseFloat(lancamento.valor);
+      });
+
+    const cores = [
+      'rgba(255, 99, 132, 0.8)',
+      'rgba(54, 162, 235, 0.8)',
+      'rgba(255, 206, 86, 0.8)',
+      'rgba(75, 192, 192, 0.8)',
+      'rgba(153, 102, 255, 0.8)',
+      'rgba(255, 159, 64, 0.8)',
+      'rgba(199, 199, 199, 0.8)',
+      'rgba(83, 102, 255, 0.8)',
+      'rgba(255, 99, 255, 0.8)',
+      'rgba(99, 255, 132, 0.8)',
+    ];
+
+    const labels = Object.keys(saidasPorCategoria);
+    return {
+      labels: labels,
+      datasets: [
+        {
+          data: Object.values(saidasPorCategoria),
+          backgroundColor: cores.slice(0, labels.length).map((_, i) => cores[i % cores.length]),
+          borderColor: cores.slice(0, labels.length).map((_, i) => cores[i % cores.length].replace('0.8', '1')),
+          borderWidth: 2,
+        },
+      ],
+    };
+  };
+
+  const pieChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'right',
+      },
+      title: {
+        display: true,
+        text: 'Distribuição de Saídas por Categoria',
+      },
+    },
+  };
+
   return (
     <div className="dashboard-container">
       <Navbar />
@@ -229,8 +286,16 @@ function Dashboard() {
         </div>
         
         {dashboardData.length > 0 ? (
-          <div className="chart-container">
-            <Line data={processChartData()} options={chartOptions} />
+          <div className="charts-container">
+            <div className="chart-container chart-line">
+              <Line data={processChartData()} options={chartOptions} />
+            </div>
+            
+            {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
+              <div className="chart-container chart-pie">
+                <Pie data={processPieChartData()} options={pieChartOptions} />
+              </div>
+            )}
           </div>
         ) : (
           <p>Nenhum dado encontrado. Cadastre lançamentos para visualizar o dashboard.</p>
@@ -292,6 +357,7 @@ function Dashboard() {
                     <th>Data</th>
                     <th>Descrição</th>
                     <th>Conta</th>
+                    <th>Categoria</th>
                     <th>Tipo</th>
                     <th>Valor</th>
                     <th>Pago</th>
@@ -304,6 +370,18 @@ function Dashboard() {
                       <td>{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
                       <td>{lancamento.descricao}</td>
                       <td>{lancamento.conta_nome || '-'}</td>
+                      <td>
+                        <span className="categoria-label">
+                          {lancamento.categoria_nome ? (
+                            <>
+                              <strong>{lancamento.categoria_nome}</strong>
+                              {lancamento.subcategoria_nome && (
+                                <> / {lancamento.subcategoria_nome}</>
+                              )}
+                            </>
+                          ) : '-'}
+                        </span>
+                      </td>
                       <td>
                         <span className={`badge ${lancamento.tipo}`}>
                           {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}

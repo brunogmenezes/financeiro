@@ -190,6 +190,7 @@ function Lancamentos() {
                 <th>Data</th>
                 <th>Descrição</th>
                 <th>Conta</th>
+                <th>Categoria</th>
                 <th>Tipo</th>
                 <th>Pago</th>
                 <th>Valor</th>
@@ -199,7 +200,7 @@ function Lancamentos() {
             <tbody>
               {lancamentos.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
+                  <td colSpan="8" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
                 </tr>
               ) : (
                 lancamentos.map(lancamento => (
@@ -207,6 +208,18 @@ function Lancamentos() {
                     <td>{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
                     <td>{lancamento.descricao}</td>
                     <td>{lancamento.conta_nome || '-'}</td>
+                    <td>
+                      <span className="categoria-label">
+                        {lancamento.categoria_nome ? (
+                          <>
+                            <strong>{lancamento.categoria_nome}</strong>
+                            {lancamento.subcategoria_nome && (
+                              <> / {lancamento.subcategoria_nome}</>
+                            )}
+                          </>
+                        ) : '-'}
+                      </span>
+                    </td>
                     <td>
                       <span className={`badge ${lancamento.tipo}`}>
                         {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
