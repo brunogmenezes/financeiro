@@ -20,6 +20,9 @@ function Lancamentos() {
   const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingLancamento, setEditingLancamento] = useState(null);
+  const [filterCategoria, setFilterCategoria] = useState('TODAS');
+  const [filterSubcategoria, setFilterSubcategoria] = useState('TODAS');
+  const [filterTipo, setFilterTipo] = useState('TODOS');
   const [formData, setFormData] = useState({
     descricao: '',
     valor: '',
@@ -82,6 +85,51 @@ function Lancamentos() {
       console.error('Erro ao carregar subcategorias:', error);
       setSubcategorias([]);
     }
+  };
+
+  const handleFilterCategoriaChange = (e) => {
+    const categId = e.target.value;
+    setFilterCategoria(categId);
+    setFilterSubcategoria('TODAS');
+    
+    if (categId === 'TODAS') {
+      setSubcategorias([]);
+    } else {
+      // Extrair subcategorias da categoria selecionada sem duplicatas
+      const subCatsMap = new Map();
+      lancamentos
+        .filter(l => l.categoria_id == categId && l.subcategoria_nome)
+        .forEach(l => {
+          if (!subCatsMap.has(l.subcategoria_id)) {
+            subCatsMap.set(l.subcategoria_id, { id: l.subcategoria_id, nome: l.subcategoria_nome });
+          }
+        });
+      setSubcategorias(Array.from(subCatsMap.values()));
+    }
+  };
+
+  const handleFilterTipoChange = (e) => {
+    setFilterTipo(e.target.value);
+    setFilterCategoria('TODAS');
+    setFilterSubcategoria('TODAS');
+    setSubcategorias([]);
+  };
+
+  const getCategoriasDisponiveis = () => {
+    let cats = lancamentos;
+    
+    if (filterTipo !== 'TODOS') {
+      cats = cats.filter(l => l.tipo === filterTipo);
+    }
+    
+    const categoriasSet = new Map();
+    cats.forEach(l => {
+      if (l.categoria_id) {
+        categoriasSet.set(l.categoria_id, { id: l.categoria_id, nome: l.categoria_nome });
+      }
+    });
+    
+    return Array.from(categoriasSet.values());
   };
 
   const handleSubmit = async (e) => {
@@ -183,6 +231,43 @@ function Lancamentos() {
           <button className="btn-new" onClick={handleNew}>+ Novo Lançamento</button>
         </div>
 
+        <div className="filters-section">
+          <select 
+            value={filterTipo} 
+            onChange={handleFilterTipoChange}
+            className="filter-select"
+          >
+            <option value="TODOS">Todos os tipos</option>
+            <option value="entrada">Entradas</option>
+            <option value="saida">Saídas</option>
+            <option value="neutro">Neutros</option>
+          </select>
+
+          <select 
+            value={filterCategoria} 
+            onChange={handleFilterCategoriaChange}
+            className="filter-select"
+          >
+            <option value="TODAS">Todas as categorias</option>
+            {getCategoriasDisponiveis().map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.nome}</option>
+            ))}
+          </select>
+
+          {filterCategoria !== 'TODAS' && subcategorias.length > 0 && (
+            <select 
+              value={filterSubcategoria} 
+              onChange={(e) => setFilterSubcategoria(e.target.value)}
+              className="filter-select"
+            >
+              <option value="TODAS">Todas as subcategorias</option>
+              {subcategorias.map(subCat => (
+                <option key={subCat.id} value={subCat.id}>{subCat.nome}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
         <div className="table-container">
           <table>
             <thead>
@@ -197,12 +282,27 @@ function Lancamentos() {
               </tr>
             </thead>
             <tbody>
-              {lancamentos.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{textAlign: 'center'}}>Nenhum lançamento cadastrado</td>
-                </tr>
-              ) : (
-                lancamentos.map(lancamento => (
+              {(() => {
+                let filtrados = lancamentos;
+
+                if (filterTipo !== 'TODOS') {
+                  filtrados = filtrados.filter(l => l.tipo === filterTipo);
+                }
+
+                if (filterCategoria !== 'TODAS') {
+                  filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+                }
+
+                if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+                  filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+                }
+
+                return filtrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{textAlign: 'center'}}>Nenhum lançamento encontrado</td>
+                  </tr>
+                ) : (
+                  filtrados.map(lancamento => (
                   <tr key={lancamento.id}>
                     <td>{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
                     <td>
@@ -261,8 +361,9 @@ function Lancamentos() {
                       <button className="btn-delete" onClick={() => handleDelete(lancamento.id)}>Excluir</button>
                     </td>
                   </tr>
-                ))
-              )}
+                  ))
+                );
+              })()}
             </tbody>
           </table>
         </div>

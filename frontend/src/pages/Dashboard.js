@@ -30,6 +30,10 @@ function Dashboard() {
   const mesAtual = new Date().toISOString().slice(0, 7);
   const [filterMes, setFilterMes] = useState(mesAtual);
   const [filterTipo, setFilterTipo] = useState('TODOS');
+  const [filterCategoria, setFilterCategoria] = useState('TODAS');
+  const [filterSubcategoria, setFilterSubcategoria] = useState('TODAS');
+  const [categorias, setCategorias] = useState([]);
+  const [subcategorias, setSubcategorias] = useState([]);
   
   const [formData, setFormData] = useState({
     descricao: '',
@@ -45,8 +49,64 @@ function Dashboard() {
     loadDashboard();
     loadLancamentos();
     loadContas();
+    loadCategorias();
     // eslint-disable-next-line
   }, []);
+
+  const loadCategorias = async () => {
+    try {
+      const response = await getLancamentos();
+      const cats = [...new Set(response.data.map(l => ({ id: l.categoria_id, nome: l.categoria_nome })).filter(c => c.nome))];
+      setCategorias(cats);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const handleFilterCategoriaChange = (e) => {
+    const categId = e.target.value;
+    setFilterCategoria(categId);
+    setFilterSubcategoria('TODAS');
+    
+    if (categId === 'TODAS') {
+      setSubcategorias([]);
+    } else {
+      // Extrair subcategorias da categoria selecionada sem duplicatas
+      const subCatsMap = new Map();
+      lancamentos
+        .filter(l => l.categoria_id == categId && l.subcategoria_nome)
+        .forEach(l => {
+          if (!subCatsMap.has(l.subcategoria_id)) {
+            subCatsMap.set(l.subcategoria_id, { id: l.subcategoria_id, nome: l.subcategoria_nome });
+          }
+        });
+      setSubcategorias(Array.from(subCatsMap.values()));
+    }
+  };
+
+  const handleFilterTipoChange = (e) => {
+    setFilterTipo(e.target.value);
+    setFilterCategoria('TODAS');
+    setFilterSubcategoria('TODAS');
+    setSubcategorias([]);
+  };
+
+  const getCategoriasDisponiveis = () => {
+    let cats = lancamentos;
+    
+    if (filterTipo !== 'TODOS') {
+      cats = cats.filter(l => l.tipo === filterTipo);
+    }
+    
+    const categoriasSet = new Map();
+    cats.forEach(l => {
+      if (l.categoria_id) {
+        categoriasSet.set(l.categoria_id, { id: l.categoria_id, nome: l.categoria_nome });
+      }
+    });
+    
+    return Array.from(categoriasSet.values());
+  };
 
   const loadDashboard = async () => {
     try {
@@ -131,6 +191,52 @@ function Dashboard() {
     } catch (error) {
       alert('Erro ao atualizar status de pagamento');
     }
+  };
+
+  const calcularTotaisFiltrados = () => {
+    let filtrados = lancamentos;
+
+    // Aplicar filtro de mês
+    if (filterMes !== 'TODOS') {
+      filtrados = filtrados.filter(l => {
+        const data = new Date(l.data);
+        const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        return mesLancamento === filterMes;
+      });
+    }
+
+    // Aplicar filtro de tipo
+    if (filterTipo !== 'TODOS') {
+      filtrados = filtrados.filter(l => l.tipo === filterTipo);
+    }
+
+    // Aplicar filtro de categoria
+    if (filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+    }
+
+    // Aplicar filtro de subcategoria
+    if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+    }
+
+    // Calcular totais
+    const totalEntradas = filtrados
+      .filter(l => l.tipo === 'entrada')
+      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+    const totalSaidas = filtrados
+      .filter(l => l.tipo === 'saida')
+      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+    return { totalEntradas, totalSaidas };
+  };
+
+  const formatarMoeda = (valor) => {
+    return valor.toLocaleString('pt-BR', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
   };
 
   // Processar dados para o gráfico
@@ -309,8 +415,24 @@ function Dashboard() {
             </div>
             
             {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
-              <div className="chart-container chart-pie">
-                <Pie data={processPieChartData()} options={pieChartOptions} />
+              <div className="chart-pie-section">
+                <div className="chart-container chart-pie">
+                  <Pie data={processPieChartData()} options={pieChartOptions} />
+                </div>
+                <div className="totals-cards">
+                  <div className="total-card total-entradas">
+                    <div className="card-label">Total de Entradas</div>
+                    <div className="card-value">
+                      {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalEntradas)}` : 'R$ ••••••'}
+                    </div>
+                  </div>
+                  <div className="total-card total-saidas">
+                    <div className="card-label">Total de Saídas</div>
+                    <div className="card-value">
+                      {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -340,7 +462,7 @@ function Dashboard() {
               
               <select 
                 value={filterTipo} 
-                onChange={(e) => setFilterTipo(e.target.value)}
+                onChange={handleFilterTipoChange}
                 className="filter-select"
               >
                 <option value="TODOS">Todos os tipos</option>
@@ -348,6 +470,30 @@ function Dashboard() {
                 <option value="saida">Saídas</option>
                 <option value="neutro">Neutros</option>
               </select>
+
+              <select 
+                value={filterCategoria} 
+                onChange={handleFilterCategoriaChange}
+                className="filter-select"
+              >
+                <option value="TODAS">Todas as categorias</option>
+                {getCategoriasDisponiveis().map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                ))}
+              </select>
+
+              {filterCategoria !== 'TODAS' && subcategorias.length > 0 && (
+                <select 
+                  value={filterSubcategoria} 
+                  onChange={(e) => setFilterSubcategoria(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="TODAS">Todas as subcategorias</option>
+                  {subcategorias.map(subCat => (
+                    <option key={subCat.id} value={subCat.id}>{subCat.nome}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
           
@@ -364,6 +510,14 @@ function Dashboard() {
             
             if (filterTipo !== 'TODOS') {
               filtrados = filtrados.filter(l => l.tipo === filterTipo);
+            }
+
+            if (filterCategoria !== 'TODAS') {
+              filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+            }
+
+            if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+              filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
             }
             
             return filtrados.length > 0 ? (
