@@ -188,6 +188,7 @@ function Dashboard() {
   const processPieChartData = () => {
     const mesAtualFormatado = new Date().toISOString().slice(0, 7);
     const saidasPorCategoria = {};
+    const coresCategoria = {}; // Mapear categoria para sua cor
     
     lancamentos
       .filter(l => l.tipo === 'saida')
@@ -197,32 +198,24 @@ function Dashboard() {
           const categoria = lancamento.categoria_nome || 'Sem Categoria';
           if (!saidasPorCategoria[categoria]) {
             saidasPorCategoria[categoria] = 0;
+            // Armazenar a cor da categoria (ou cinza padrão para "Sem Categoria")
+            coresCategoria[categoria] = lancamento.categoria_cor || '#999999';
           }
           saidasPorCategoria[categoria] += parseFloat(lancamento.valor);
         }
       });
 
-    const cores = [
-      'rgba(255, 99, 132, 0.8)',
-      'rgba(54, 162, 235, 0.8)',
-      'rgba(255, 206, 86, 0.8)',
-      'rgba(75, 192, 192, 0.8)',
-      'rgba(153, 102, 255, 0.8)',
-      'rgba(255, 159, 64, 0.8)',
-      'rgba(199, 199, 199, 0.8)',
-      'rgba(83, 102, 255, 0.8)',
-      'rgba(255, 99, 255, 0.8)',
-      'rgba(99, 255, 132, 0.8)',
-    ];
-
     const labels = Object.keys(saidasPorCategoria);
+    // Usar as cores das categorias cadastradas
+    const cores = labels.map(label => coresCategoria[label]);
+    
     return {
       labels: labels,
       datasets: [
         {
           data: Object.values(saidasPorCategoria),
-          backgroundColor: cores.slice(0, labels.length).map((_, i) => cores[i % cores.length]),
-          borderColor: cores.slice(0, labels.length).map((_, i) => cores[i % cores.length].replace('0.8', '1')),
+          backgroundColor: cores,
+          borderColor: cores.map(cor => cor), // Mesma cor para a borda
           borderWidth: 2,
         },
       ],
@@ -231,39 +224,33 @@ function Dashboard() {
 
   const pieChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'right',
+        position: 'bottom',
         labels: {
           boxWidth: 15,
-          padding: 15,
+          padding: 10,
           font: {
-            size: 12,
-          },
-          generateLabels: function(chart) {
-            const data = chart.data;
-            return data.labels.map((label, i) => ({
-              text: label.length > 20 ? label.substring(0, 17) + '...' : label,
-              fillStyle: data.datasets[0].backgroundColor[i],
-              hidden: false,
-              index: i,
-              pointStyle: 'circle',
-              strokeStyle: data.datasets[0].borderColor[i],
-              lineWidth: 2,
-            }));
+            size: 11,
           },
         },
       },
       title: {
         display: true,
         text: `Distribuição de Saídas por Categoria (${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())})`,
+        font: {
+          size: 14,
+        },
       },
       tooltip: {
         callbacks: {
           label: function(context) {
             const label = context.label || '';
             const value = context.parsed || 0;
-            return label + ': R$ ' + value.toFixed(2);
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return label + ': R$ ' + value.toFixed(2) + ' (' + percentage + '%)';
           },
         },
       },
