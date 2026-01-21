@@ -184,20 +184,22 @@ function Dashboard() {
     },
   };
 
-  // Processar dados para o gráfico de pizza (saídas por categoria + dia)
+  // Processar dados para o gráfico de pizza (saídas por categoria do mês atual)
   const processPieChartData = () => {
+    const mesAtualFormatado = new Date().toISOString().slice(0, 7);
     const saidasPorCategoria = {};
     
     lancamentos
       .filter(l => l.tipo === 'saida')
       .forEach(lancamento => {
-        const data = new Date(lancamento.data).toLocaleDateString('pt-BR');
-        const categoria = lancamento.categoria_nome || 'Sem Categoria';
-        const chave = `${categoria} (${data})`;
-        if (!saidasPorCategoria[chave]) {
-          saidasPorCategoria[chave] = 0;
+        const mesLancamento = new Date(lancamento.data).toISOString().slice(0, 7);
+        if (mesLancamento === mesAtualFormatado) {
+          const categoria = lancamento.categoria_nome || 'Sem Categoria';
+          if (!saidasPorCategoria[categoria]) {
+            saidasPorCategoria[categoria] = 0;
+          }
+          saidasPorCategoria[categoria] += parseFloat(lancamento.valor);
         }
-        saidasPorCategoria[chave] += parseFloat(lancamento.valor);
       });
 
     const cores = [
@@ -232,10 +234,38 @@ function Dashboard() {
     plugins: {
       legend: {
         position: 'right',
+        labels: {
+          boxWidth: 15,
+          padding: 15,
+          font: {
+            size: 12,
+          },
+          generateLabels: function(chart) {
+            const data = chart.data;
+            return data.labels.map((label, i) => ({
+              text: label.length > 20 ? label.substring(0, 17) + '...' : label,
+              fillStyle: data.datasets[0].backgroundColor[i],
+              hidden: false,
+              index: i,
+              pointStyle: 'circle',
+              strokeStyle: data.datasets[0].borderColor[i],
+              lineWidth: 2,
+            }));
+          },
+        },
       },
       title: {
         display: true,
-        text: 'Distribuição de Saídas por Categoria',
+        text: `Distribuição de Saídas por Categoria (${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())})`,
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            return label + ': R$ ' + value.toFixed(2);
+          },
+        },
       },
     },
   };
