@@ -183,7 +183,7 @@ function Categorias() {
                       <td>{categoria.nome}</td>
                       <td>
                         <span className={`badge ${categoria.tipo}`}>
-                          {categoria.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                          {categoria.tipo === 'entrada' ? '↑ Entrada' : categoria.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
                         </span>
                       </td>
                       <td>
@@ -277,6 +277,7 @@ function Categorias() {
                 >
                   <option value="saida">Saída</option>
                   <option value="entrada">Entrada</option>
+                  <option value="neutro">Neutro</option>
                 </select>
               </div>
 
