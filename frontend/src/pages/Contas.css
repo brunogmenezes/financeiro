@@ -161,3 +161,71 @@ th {
   color: #dc3545;
   font-weight: 600;
 }
+/* Media Queries para Mobile */
+@media (max-width: 768px) {
+  .content {
+    padding: 0 10px;
+    margin: 20px auto;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .header h2 {
+    font-size: 1.5em;
+    text-align: center;
+  }
+
+  .btn-new {
+    width: 100%;
+    padding: 14px;
+  }
+
+  table {
+    font-size: 13px;
+  }
+
+  th, td {
+    padding: 10px 5px;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  table {
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 8px 3px;
+  }
+
+  .header h2 {
+    font-size: 1.3em;
+  }
+
+  button {
+    font-size: 13px;
+  }
+}

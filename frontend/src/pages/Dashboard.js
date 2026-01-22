@@ -201,6 +201,51 @@ function Dashboard() {
     setSubcategorias([]);
   };
 
+  const gerarCalendario = () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth();
+    const primeiroDia = new Date(ano, mes, 1).getDay();
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+    
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    const dias = [];
+    
+    // Dias vazios antes do primeiro dia do mês
+    for (let i = 0; i < primeiroDia; i++) {
+      dias.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
+    }
+    
+    // Dias do mês
+    for (let dia = 1; dia <= ultimoDia; dia++) {
+      const ehHoje = dia === hoje.getDate();
+      dias.push(
+        <div key={dia} className={`calendar-day ${ehHoje ? 'hoje' : ''}`}>
+          {dia}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="calendar-widget">
+        <div className="calendar-header">
+          {meses[mes]} {ano}
+        </div>
+        <div className="calendar-weekdays">
+          {diasSemana.map(dia => (
+            <div key={dia} className="calendar-weekday">{dia}</div>
+          ))}
+        </div>
+        <div className="calendar-days">
+          {dias}
+        </div>
+      </div>
+    );
+  };
+
   const calcularTotaisFiltrados = () => {
     let filtrados = lancamentos;
 
@@ -483,19 +528,22 @@ function Dashboard() {
                 <div className="chart-container chart-pie">
                   <Pie data={processPieChartData()} options={pieChartOptions} />
                 </div>
-                <div className="totals-cards">
-                  <div className="total-card total-entradas">
-                    <div className="card-label">Total de Entradas</div>
-                    <div className="card-value">
-                      {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalEntradas)}` : 'R$ ••••••'}
+                <div className="totals-and-calendar">
+                  <div className="totals-cards">
+                    <div className="total-card total-entradas">
+                      <div className="card-label">Total de Entradas</div>
+                      <div className="card-value">
+                        {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalEntradas)}` : 'R$ ••••••'}
+                      </div>
+                    </div>
+                    <div className="total-card total-saidas">
+                      <div className="card-label">Total de Saídas</div>
+                      <div className="card-value">
+                        {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
+                      </div>
                     </div>
                   </div>
-                  <div className="total-card total-saidas">
-                    <div className="card-label">Total de Saídas</div>
-                    <div className="card-value">
-                      {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
-                    </div>
-                  </div>
+                  {gerarCalendario()}
                 </div>
               </div>
             )}

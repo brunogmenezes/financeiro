@@ -336,8 +336,8 @@ function Lancamentos() {
                 ) : (
                   filtrados.map(lancamento => (
                   <tr key={lancamento.id}>
-                    <td>{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
-                    <td>
+                    <td data-label="Data">{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
+                    <td data-label="Descrição">
                       <div>
                         <div>{lancamento.descricao}</div>
                         {lancamento.categoria_nome && (
@@ -362,13 +362,13 @@ function Lancamentos() {
                         )}
                       </div>
                     </td>
-                    <td>{lancamento.conta_nome || '-'}</td>
-                    <td>
+                    <td data-label="Conta">{lancamento.conta_nome || '-'}</td>
+                    <td data-label="Tipo">
                       <span className={`badge ${lancamento.tipo}`}>
                         {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Pago">
                       {lancamento.tipo === 'saida' ? (
                         <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
                           {lancamento.pago ? 'Pago' : 'Não pago'}
@@ -377,10 +377,10 @@ function Lancamentos() {
                         '-'
                       )}
                     </td>
-                    <td className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
+                    <td data-label="Valor" className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
                       R$ {formatarMoeda(lancamento.valor)}
                     </td>
-                    <td>
+                    <td data-label="Ações">
                       {lancamento.tipo === 'saida' && (
                         <button 
                           className="btn-toggle-pago"

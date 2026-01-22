@@ -1,61 +1,213 @@
 .navbar {
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
   color: white;
-  padding: 20px 40px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 15px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .navbar h1 {
-  font-size: 1.5em;
+  font-size: 1.4em;
   margin: 0;
+  font-weight: 700;
 }
 
-.nav-links {
+.user-greeting {
+  font-size: 0.9em;
+  font-weight: 500;
+  opacity: 0.95;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+}
+
+.menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5em;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.menu-toggle:hover {
+  background: rgba(255,255,255,0.15);
+  transform: scale(1.1);
+}
+
+.menu-toggle:active {
+  background: transparent;
+  transform: scale(0.95);
+}
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .menu-overlay {
+    display: block;
+  }
+}
+
+.nav-menu {
   display: flex;
-  gap: 15px;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-section {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
-.nav-links span {
-  margin-right: 10px;
-  font-weight: 500;
+.nav-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(255,255,255,0.3);
+  margin: 0 10px;
 }
 
-.nav-links button {
-  padding: 8px 16px;
-  background: rgba(255,255,255,0.2);
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.15);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.3s;
+  font-size: 14px;
+  transition: all 0.3s;
+  white-space: nowrap;
 }
 
-.nav-links button:hover {
-  background: rgba(255,255,255,0.3);
+.nav-item:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+}
+
+.nav-icon {
+  font-size: 1.1em;
 }
 
 .btn-logout {
-  background: rgba(255,100,100,0.3) !important;
+  background: rgba(239, 68, 68, 0.3) !important;
 }
 
 .btn-logout:hover {
-  background: rgba(255,100,100,0.5) !important;
+  background: rgba(239, 68, 68, 0.5) !important;
 }
 
-@media (max-width: 1200px) {
-  .navbar {
-    flex-direction: column;
-    gap: 15px;
+@media (max-width: 1024px) {
+  .navbar-container {
     padding: 15px 20px;
   }
 
-  .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
+  .navbar-brand {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .navbar h1 {
+    font-size: 1.2em;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav-menu {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    height: 100vh;
+    width: 280px;
+    background: linear-gradient(180deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 80px 20px 20px;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+    transition: right 0.3s ease;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .nav-menu.active {
+    right: 0;
+  }
+
+  .nav-section {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .nav-divider {
+    width: 100%;
+    height: 1px;
+    margin: 15px 0;
+  }
+
+  .nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 14px 18px;
+    font-size: 15px;
+  }
+
+  .nav-icon {
+    font-size: 1.3em;
+    width: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-container {
+    padding: 12px 15px;
+  }
+
+  .navbar h1 {
+    font-size: 1.1em;
+  }
+
+  .user-greeting {
+    font-size: 0.85em;
+    padding: 5px 10px;
+  }
+
+  .nav-menu {
+    width: 240px;
   }
 }

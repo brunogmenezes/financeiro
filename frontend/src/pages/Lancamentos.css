@@ -251,3 +251,140 @@
   background: var(--primary-color);
   color: white;
 }
+/* Media Queries para Mobile */
+@media (max-width: 768px) {
+  .filters-section {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Transformar tabela em cards no mobile */
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tr {
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+
+  td {
+    padding: 10px 0;
+    border: none;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  /* Botões de ação ocupam largura total */
+  td:last-child {
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  td:last-child::before {
+    display: none;
+  }
+
+  td:last-child button {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .btn-toggle-pago {
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+
+  /* Ocultar colunas menos importantes em mobile */
+  .categoria-label,
+  .categoria-badges {
+    max-width: 100%;
+  }
+
+  .modal-lancamento {
+    width: 95%;
+    padding: 20px;
+    max-height: 85vh;
+  }
+
+  .btn-group {
+    flex-direction: column;
+  }
+
+  .btn-group button {
+    width: 100%;
+  }
+
+  .categoria-buttons {
+    gap: 8px;
+  }
+
+  .categoria-buttons button {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  table {
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 8px 3px;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .categoria-badge,
+  .subcategoria-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+    max-width: 100px;
+  }
+
+  button {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .modal-lancamento {
+    padding: 15px;
+  }
+
+  .modal-lancamento h2 {
+    font-size: 1.3em;
+  }
+}
