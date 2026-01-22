@@ -290,9 +290,10 @@ function Dashboard() {
     },
   };
 
-  // Processar dados para o gráfico de pizza (saídas por categoria do mês atual)
+  // Processar dados para o gráfico de pizza (saídas por categoria do mês filtrado)
   const processPieChartData = () => {
-    const mesAtualFormatado = new Date().toISOString().slice(0, 7);
+    // Usar o mês filtrado, ou o mês atual se não houver filtro
+    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
     const saidasPorCategoria = {};
     const coresCategoria = {}; // Mapear categoria para sua cor
     
@@ -300,7 +301,7 @@ function Dashboard() {
       .filter(l => l.tipo === 'saida')
       .forEach(lancamento => {
         const mesLancamento = new Date(lancamento.data).toISOString().slice(0, 7);
-        if (mesLancamento === mesAtualFormatado) {
+        if (mesLancamento === mesParaGrafico) {
           const categoria = lancamento.categoria_nome || 'Sem Categoria';
           if (!saidasPorCategoria[categoria]) {
             saidasPorCategoria[categoria] = 0;
@@ -334,17 +335,55 @@ function Dashboard() {
     plugins: {
       legend: {
         position: 'bottom',
+        align: 'start',
         labels: {
           boxWidth: 15,
           padding: 10,
           font: {
             size: 11,
           },
+          generateLabels: function(chart) {
+            const data = chart.data;
+            if (data.labels.length && data.datasets.length) {
+              const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+              
+              // Criar array de objetos com label, valor, cor e índice
+              const items = data.labels.map((label, i) => ({
+                label: label,
+                value: data.datasets[0].data[i],
+                color: data.datasets[0].backgroundColor[i],
+                index: i
+              }));
+              
+              // Ordenar do maior para o menor valor
+              items.sort((a, b) => b.value - a.value);
+              
+              // Gerar labels ordenados
+              return items.map(item => {
+                const percentage = ((item.value / total) * 100).toFixed(1);
+                return {
+                  text: `${item.label}: R$ ${formatarMoeda(item.value)} (${percentage}%)`,
+                  fillStyle: item.color,
+                  hidden: false,
+                  index: item.index
+                };
+              });
+            }
+            return [];
+          }
         },
       },
       title: {
         display: true,
-        text: `Distribuição de Saídas por Categoria (${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())})`,
+        text: (() => {
+          if (filterMes !== 'TODOS') {
+            const [ano, mes] = filterMes.split('-');
+            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            return `Distribuição de Saídas por Categoria (${meses[parseInt(mes) - 1]} ${ano})`;
+          }
+          return `Distribuição de Saídas por Categoria (${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())})`;
+        })(),
         font: {
           size: 14,
         },
