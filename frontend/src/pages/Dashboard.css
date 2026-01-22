@@ -588,3 +588,155 @@ th {
   color: white;
   border-color: var(--primary-color);
 }
+/* Estilos para agrupamento por dia */
+.lancamentos-by-date {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.day-group {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.day-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.day-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.day-date {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.day-balance {
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.day-balance.positivo {
+  background: rgba(75, 192, 192, 0.3);
+}
+
+.day-balance.negativo {
+  background: rgba(255, 99, 132, 0.3);
+}
+
+.day-totals {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.day-totals .entrada {
+  color: #4bc0a0;
+}
+
+.day-totals .saida {
+  color: #ff6384;
+}
+
+.day-items {
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lancamento-item {
+  display: grid;
+  grid-template-columns: 100px 1fr 120px 120px auto;
+  gap: 15px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  background: #fafafa;
+  transition: background 0.3s;
+}
+
+.lancamento-item:hover {
+  background: #f5f5f5;
+}
+
+.item-tipo {
+  flex-shrink: 0;
+}
+
+.item-descricao {
+  min-width: 0;
+}
+
+.descricao-text {
+  font-weight: 500;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.item-conta {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.item-valor {
+  font-weight: 600;
+  text-align: right;
+}
+
+.item-valor.valor-positivo {
+  color: #4bc0a0;
+}
+
+.item-valor.valor-negativo {
+  color: #ff6384;
+}
+
+.item-pago {
+  text-align: center;
+}
+
+@media (max-width: 1024px) {
+  .lancamento-item {
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+  }
+
+  .item-conta,
+  .item-valor,
+  .item-pago {
+    grid-column: 2;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  .day-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .day-totals {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

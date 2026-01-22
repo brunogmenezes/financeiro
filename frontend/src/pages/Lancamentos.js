@@ -20,6 +20,7 @@ function Lancamentos() {
   const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingLancamento, setEditingLancamento] = useState(null);
+  const [filterMes, setFilterMes] = useState('TODOS');
   const [filterCategoria, setFilterCategoria] = useState('TODAS');
   const [filterSubcategoria, setFilterSubcategoria] = useState('TODAS');
   const [filterTipo, setFilterTipo] = useState('TODOS');
@@ -240,6 +241,22 @@ function Lancamentos() {
 
         <div className="filters-section">
           <select 
+            value={filterMes} 
+            onChange={(e) => setFilterMes(e.target.value)}
+            className="filter-select"
+          >
+            <option value="TODOS">Todos os meses</option>
+            {[...new Set(lancamentos.map(l => {
+              const data = new Date(l.data);
+              return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+            }))].sort().reverse().map(mes => {
+              const [ano, mesNum] = mes.split('-');
+              const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+              return <option key={mes} value={mes}>{meses[parseInt(mesNum) - 1]}/{ano}</option>;
+            })}
+          </select>
+
+          <select 
             value={filterTipo} 
             onChange={handleFilterTipoChange}
             className="filter-select"
@@ -291,6 +308,14 @@ function Lancamentos() {
             <tbody>
               {(() => {
                 let filtrados = lancamentos;
+
+                if (filterMes !== 'TODOS') {
+                  filtrados = filtrados.filter(l => {
+                    const data = new Date(l.data);
+                    const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+                    return mesLancamento === filterMes;
+                  });
+                }
 
                 if (filterTipo !== 'TODOS') {
                   filtrados = filtrados.filter(l => l.tipo === filterTipo);
