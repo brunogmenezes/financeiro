@@ -193,6 +193,14 @@ function Dashboard() {
     }
   };
 
+  const handleLimparFiltros = () => {
+    setFilterMes(mesAtual);
+    setFilterTipo('TODOS');
+    setFilterCategoria('TODAS');
+    setFilterSubcategoria('TODAS');
+    setSubcategorias([]);
+  };
+
   const calcularTotaisFiltrados = () => {
     let filtrados = lancamentos;
 
@@ -533,6 +541,14 @@ function Dashboard() {
                   ))}
                 </select>
               )}
+
+              <button 
+                onClick={handleLimparFiltros}
+                className="btn-limpar-filtros"
+                title="Limpar todos os filtros"
+              >
+                ✕ Limpar filtros
+              </button>
             </div>
           </div>
           

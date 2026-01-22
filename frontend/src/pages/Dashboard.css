@@ -307,6 +307,7 @@
   display: flex;
   gap: 15px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .filter-group {
@@ -334,6 +335,28 @@
 .filter-select:focus {
   outline: none;
   border-color: var(--primary-color);
+}
+
+.btn-limpar-filtros {
+  padding: 8px 15px;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.3s, transform 0.2s;
+  white-space: nowrap;
+}
+
+.btn-limpar-filtros:hover {
+  background: #ee5a52;
+  transform: scale(1.05);
+}
+
+.btn-limpar-filtros:active {
+  transform: scale(0.98);
 }
 
 table {
