@@ -354,32 +354,49 @@ function Dashboard() {
             const data = chart.data;
             if (data.labels.length && data.datasets.length) {
               const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+              const dataset = chart.data.datasets[0];
+              const meta = chart.getDatasetMeta(0);
               
               // Criar array de objetos com label, valor, cor e índice
-              const items = data.labels.map((label, i) => ({
-                label: label,
-                value: data.datasets[0].data[i],
-                color: data.datasets[0].backgroundColor[i],
-                index: i
-              }));
+              const items = data.labels.map((label, i) => {
+                const arc = meta.data[i];
+                return {
+                  label: label,
+                  value: dataset.data[i],
+                  color: dataset.backgroundColor[i],
+                  index: i,
+                  hidden: arc ? arc.hidden : false
+                };
+              });
               
               // Ordenar do maior para o menor valor
               items.sort((a, b) => b.value - a.value);
               
-              // Gerar labels ordenados
+              // Gerar labels ordenados com comportamento padrão de strikethrough
               return items.map(item => {
                 const percentage = ((item.value / total) * 100).toFixed(1);
                 return {
                   text: `${item.label}: R$ ${formatarMoeda(item.value)} (${percentage}%)`,
                   fillStyle: item.color,
-                  hidden: false,
-                  index: item.index
+                  strokeStyle: item.color,
+                  hidden: item.hidden,
+                  index: item.index,
+                  datasetIndex: 0
                 };
               });
             }
             return [];
           }
         },
+        onClick: function(e, legendItem, legend) {
+          const index = legendItem.index;
+          const chart = legend.chart;
+          const meta = chart.getDatasetMeta(0);
+          
+          // Toggle visibility
+          meta.data[index].hidden = !meta.data[index].hidden;
+          chart.update();
+        }
       },
       title: {
         display: true,
