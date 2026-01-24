@@ -5,22 +5,40 @@ Sistema completo de controle financeiro com Node.js, Express, PostgreSQL e React
 ## 📋 Funcionalidades
 
 - ✅ **Autenticação de usuários** (Login/Registro com JWT)
-- ✅ **Dashboard** com gráficos de fluxo financeiro mensal
+- ✅ **Dashboard moderno** com gráficos e visualizações intuitivas
+  - Gráfico de linha para fluxo financeiro mensal
+  - Gráfico de pizza para distribuição de saídas por categoria
+  - Cards de totais de entradas e saídas com filtros
+  - Barras horizontais agrupadas por categoria e subcategoria
+  - Layout responsivo e otimizado
 - ✅ **Visualização de contas** com saldos e opção de ocultar valores
 - ✅ **CRUD de Contas** (Criar, Visualizar, Editar, Excluir)
 - ✅ **CRUD de Lançamentos** financeiros (Entrada/Saída/Neutro)
-- ✅ **Categorias e Subcategorias** para organização dos lançamentos
+- ✅ **Categorias e Subcategorias** com cores personalizadas
 - ✅ **Lançamentos Parcelados** com criação automática de parcelas
 - ✅ **Controle de Pagamento** - lançamentos de saída podem ser marcados como pago/não pago
 - ✅ **Auditoria** completa de todas as ações (criação, edição, exclusão)
 - ✅ **Personalização de Tema** - 6 cores diferentes (Roxo, Azul, Verde, Laranja, Rosa, Vermelho)
-- ✅ **Filtros** por mês e tipo de lançamento
+- ✅ **Filtros avançados** por mês, tipo, categoria e subcategoria
 - ✅ **Privacidade** - opção de ocultar valores sensíveis
+- ✅ **Interface moderna** com glassmorphism e animações suaves
 - ✨ **WhatsApp Integration** - Lembretes automáticos de pagamentos via Evolution API
   - Avisos D-1 (um dia antes) e D0 (no dia do vencimento)
   - Horário configurável (padrão 09:00 em São Paulo)
   - Teste manual de lembretes
   - Mensagem de teste para validar configuração
+
+## 🎨 Melhorias Visuais Recentes
+
+### Dashboard Aprimorado
+- **Navbar moderna** com efeito glassmorphism
+- **Logo tipográfica** com iniciais "CF"
+- **Indicadores de página ativa** com animações
+- **Dropdown de perfil** com avatar e informações do usuário
+- **Gráficos otimizados** com melhor proporção e responsividade
+- **Barras de categoria** com layout em grid responsivo
+- **Visualização hierárquica** de categorias e subcategorias
+- **Animações suaves** e micro-interações em toda interface
 
 ## 🚀 Tecnologias
 

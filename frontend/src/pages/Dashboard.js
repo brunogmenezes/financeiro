@@ -292,6 +292,75 @@ function Dashboard() {
     });
   };
 
+  // Calcular valores por categoria e subcategoria com base no filtro
+  const calcularValoresPorCategoria = () => {
+    let filtrados = lancamentos;
+
+    // Aplicar filtro de mês
+    if (filterMes !== 'TODOS') {
+      filtrados = filtrados.filter(l => {
+        const data = new Date(l.data);
+        const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        return mesLancamento === filterMes;
+      });
+    }
+
+    // Aplicar filtro de tipo
+    if (filterTipo !== 'TODOS') {
+      filtrados = filtrados.filter(l => l.tipo === filterTipo);
+    }
+
+    // Aplicar filtro de categoria
+    if (filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+    }
+
+    // Aplicar filtro de subcategoria
+    if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+    }
+
+    // Agrupar por categoria e subcategoria
+    const grupos = {};
+
+    filtrados.forEach(lancamento => {
+      const categoriaNome = lancamento.categoria_nome || 'Sem Categoria';
+      const categoriaId = lancamento.categoria_id || 'sem-categoria';
+      const categoriaCor = lancamento.categoria_cor || '#999999';
+      const subcategoriaNome = lancamento.subcategoria_nome || 'Sem Subcategoria';
+      const subcategoriaId = lancamento.subcategoria_id || 'sem-subcategoria';
+
+      if (!grupos[categoriaId]) {
+        grupos[categoriaId] = {
+          nome: categoriaNome,
+          cor: categoriaCor,
+          total: 0,
+          subcategorias: {}
+        };
+      }
+
+      grupos[categoriaId].total += parseFloat(lancamento.valor);
+
+      if (!grupos[categoriaId].subcategorias[subcategoriaId]) {
+        grupos[categoriaId].subcategorias[subcategoriaId] = {
+          nome: subcategoriaNome,
+          total: 0
+        };
+      }
+
+      grupos[categoriaId].subcategorias[subcategoriaId].total += parseFloat(lancamento.valor);
+    });
+
+    // Converter para array e ordenar por valor total
+    return Object.values(grupos)
+      .sort((a, b) => b.total - a.total)
+      .map(categoria => ({
+        ...categoria,
+        subcategorias: Object.values(categoria.subcategorias)
+          .sort((a, b) => b.total - a.total)
+      }));
+  };
+
   // Processar dados para o gráfico
   const processChartData = () => {
     const meses = [...new Set(dashboardData.map(item => item.mes))].sort();
@@ -524,28 +593,103 @@ function Dashboard() {
             </div>
             
             {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
-              <div className="chart-pie-section">
-                <div className="chart-container chart-pie">
-                  <Pie data={processPieChartData()} options={pieChartOptions} />
-                </div>
-                <div className="totals-and-calendar">
-                  <div className="totals-cards">
-                    <div className="total-card total-entradas">
-                      <div className="card-label">Total de Entradas</div>
-                      <div className="card-value">
-                        {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalEntradas)}` : 'R$ ••••••'}
+              <>
+                <div className="chart-pie-section">
+                  <div className="chart-container chart-pie">
+                    <Pie data={processPieChartData()} options={pieChartOptions} />
+                  </div>
+                  
+                  <div className="right-section">
+                    <div className="totals-cards">
+                      <div className="total-card total-entradas">
+                        <div className="card-label">Total de Entradas</div>
+                        <div className="card-value">
+                          {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalEntradas)}` : 'R$ ••••••'}
+                        </div>
                       </div>
-                    </div>
-                    <div className="total-card total-saidas">
-                      <div className="card-label">Total de Saídas</div>
-                      <div className="card-value">
-                        {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
+                      <div className="total-card total-saidas">
+                        <div className="card-label">Total de Saídas</div>
+                        <div className="card-value">
+                          {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  {gerarCalendario()}
                 </div>
-              </div>
+
+                {/* Barras horizontais por categoria e subcategoria */}
+                <div className="category-bars-section">
+                  <h3>📊 Valores por Categoria</h3>
+                  <div className="category-bars-container">{calcularValoresPorCategoria().length > 0 ? (
+                      calcularValoresPorCategoria().map((categoria, idx) => {
+                          const maxValor = Math.max(...calcularValoresPorCategoria().map(c => c.total));
+                          const percentual = (categoria.total / maxValor) * 100;
+                          
+                          return (
+                            <div key={idx} className="category-bar-group">
+                              <div className="category-bar-main">
+                                <div className="bar-label">
+                                  <span className="bar-categoria" style={{ color: categoria.cor }}>
+                                    ● {categoria.nome}
+                                  </span>
+                                  <span className="bar-valor">
+                                    {mostrarValores ? `R$ ${formatarMoeda(categoria.total)}` : 'R$ ••••••'}
+                                  </span>
+                                </div>
+                                <div className="bar-container">
+                                  <div 
+                                    className="bar-fill" 
+                                    style={{ 
+                                      width: `${percentual}%`,
+                                      background: categoria.cor
+                                    }}
+                                  >
+                                    <span className="bar-percentage">{percentual.toFixed(1)}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Subcategorias */}
+                              {categoria.subcategorias.length > 0 && (
+                                <div className="subcategory-bars">
+                                  {categoria.subcategorias.map((subcategoria, subIdx) => {
+                                    const subPercentual = (subcategoria.total / categoria.total) * 100;
+                                    
+                                    return (
+                                      <div key={subIdx} className="subcategory-bar">
+                                        <div className="bar-label subcategory-label">
+                                          <span className="bar-subcategoria">
+                                            └─ {subcategoria.nome}
+                                          </span>
+                                          <span className="bar-valor">
+                                            {mostrarValores ? `R$ ${formatarMoeda(subcategoria.total)}` : 'R$ ••••••'}
+                                          </span>
+                                        </div>
+                                        <div className="bar-container subcategory-container">
+                                          <div 
+                                            className="bar-fill subcategory-fill" 
+                                            style={{ 
+                                              width: `${subPercentual}%`,
+                                              background: `${categoria.cor}cc`
+                                            }}
+                                          >
+                                            <span className="bar-percentage">{subPercentual.toFixed(1)}%</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="no-data">Nenhum dado disponível para os filtros selecionados</p>
+                      )}
+                    </div>
+                  </div>
+              </>
             )}
           </div>
         ) : (
