@@ -6,6 +6,7 @@ async function ensureOptionalColumns() {
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(30)');
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS evolution_instance_name VARCHAR(100)');
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS evolution_instance_token VARCHAR(255)');
+    await pool.query('ALTER TABLE contas ADD COLUMN IF NOT EXISTS tipo VARCHAR(50) DEFAULT \'Conta Corrente\'');
   } catch (error) {
     console.error('Erro ao garantir colunas opcionais:', error.message);
   }

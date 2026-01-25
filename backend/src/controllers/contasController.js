@@ -38,11 +38,11 @@ exports.getById = async (req, res) => {
 // Criar nova conta
 exports.create = async (req, res) => {
   try {
-    const { nome, descricao, saldo_inicial } = req.body;
+    const { nome, descricao, saldo_inicial, tipo } = req.body;
 
     const result = await pool.query(
-      'INSERT INTO contas (nome, descricao, saldo_inicial, usuario_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nome, descricao || null, saldo_inicial || 0, req.userId]
+      'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nome, descricao || null, saldo_inicial || 0, tipo || 'Conta Corrente', req.userId]
     );
 
     // Buscar nome do usuário
@@ -67,12 +67,12 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, descricao } = req.body;
+    const { nome, descricao, tipo } = req.body;
 
     // Não permitir alteração de saldo_inicial
     const result = await pool.query(
-      'UPDATE contas SET nome = $1, descricao = $2 WHERE id = $3 AND usuario_id = $4 RETURNING *',
-      [nome, descricao, id, req.userId]
+      'UPDATE contas SET nome = $1, descricao = $2, tipo = $3 WHERE id = $4 AND usuario_id = $5 RETURNING *',
+      [nome, descricao, tipo || 'Conta Corrente', id, req.userId]
     );
 
     if (result.rows.length === 0) {
