@@ -567,26 +567,22 @@ function Dashboard() {
       <Navbar />
 
       <div className="dashboard-content">
-        <div className="dashboard-header">
-          <h2>Dashboard</h2>
-          <button 
-            className="btn-toggle-valores"
-            onClick={() => setMostrarValores(!mostrarValores)}
-            title={mostrarValores ? 'Ocultar valores' : 'Mostrar valores'}
-          >
-            {mostrarValores ? '👁️ Ocultar valores' : '🙈 Mostrar valores'}
-          </button>
-        </div>
-
         {/* Seção de Contas */}
         <div className="contas-section">
-          <h3>💳 Minhas Contas</h3>
-          
           {/* Card de Saldo Total */}
           <div className="saldo-total-card">
             <div className="saldo-total-icon">💰</div>
             <div className="saldo-total-content">
-              <span className="saldo-total-label">Saldo Total de Todas as Contas</span>
+              <div className="saldo-total-header">
+                <span className="saldo-total-label">Saldo Total de Todas as Contas</span>
+                <button 
+                  className="btn-toggle-valores-card"
+                  onClick={() => setMostrarValores(!mostrarValores)}
+                  title={mostrarValores ? 'Ocultar valores' : 'Mostrar valores'}
+                >
+                  {mostrarValores ? '👁️' : '🙈'}
+                </button>
+              </div>
               {mostrarValores ? (
                 <>
                   <span className={`saldo-total-valor ${calcularSaldoTotal() >= 0 ? 'positivo' : 'negativo'}`}>
