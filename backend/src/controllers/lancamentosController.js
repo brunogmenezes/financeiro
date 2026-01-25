@@ -50,7 +50,7 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, parcelado, num_parcelas, pago } = req.body;
-    const pagoStatus = pago !== undefined ? pago : true;
+    const pagoStatus = pago !== undefined ? pago : false;
 
     // Se for parcelado, criar múltiplos lançamentos
     if (parcelado && num_parcelas > 1) {

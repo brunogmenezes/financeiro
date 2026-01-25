@@ -11,7 +11,8 @@ function Contas() {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
-    saldo_inicial: 0
+    saldo_inicial: 0,
+    tipo: 'Conta Corrente'
   });
   const navigate = useNavigate();
 
@@ -45,14 +46,15 @@ function Contas() {
         // Na edição, não enviar saldo_inicial
         await updateConta(editingConta.id, {
           nome: formData.nome,
-          descricao: formData.descricao
+          descricao: formData.descricao,
+          tipo: formData.tipo
         });
       } else {
         await createConta(formData);
       }
       setShowModal(false);
       setEditingConta(null);
-      setFormData({ nome: '', descricao: '', saldo_inicial: 0 });
+      setFormData({ nome: '', descricao: '', saldo_inicial: 0, tipo: 'Conta Corrente' });
       loadContas();
     } catch (error) {
       alert('Erro ao salvar conta');
@@ -64,7 +66,8 @@ function Contas() {
     setFormData({
       nome: conta.nome,
       descricao: conta.descricao || '',
-      saldo_inicial: conta.saldo_inicial
+      saldo_inicial: conta.saldo_inicial,
+      tipo: conta.tipo || 'Conta Corrente'
     });
     setShowModal(true);
   };
@@ -83,7 +86,7 @@ function Contas() {
 
   const handleNew = () => {
     setEditingConta(null);
-    setFormData({ nome: '', descricao: '', saldo_inicial: 0 });
+    setFormData({ nome: '', descricao: '', saldo_inicial: 0, tipo: 'Conta Corrente' });
     setShowModal(true);
   };
 
@@ -102,6 +105,7 @@ function Contas() {
             <thead>
               <tr>
                 <th>Nome</th>
+                <th>Tipo</th>
                 <th>Descrição</th>
                 <th>Saldo Atual</th>
                 <th>Ações</th>
@@ -110,12 +114,17 @@ function Contas() {
             <tbody>
               {contas.length === 0 ? (
                 <tr>
-                  <td colSpan="4" style={{textAlign: 'center'}}>Nenhuma conta cadastrada</td>
+                  <td colSpan="5" style={{textAlign: 'center'}}>Nenhuma conta cadastrada</td>
                 </tr>
               ) : (
                 contas.map(conta => (
                   <tr key={conta.id}>
                     <td>{conta.nome}</td>
+                    <td>
+                      <span className={`badge badge-tipo badge-${conta.tipo?.toLowerCase().replace(' ', '-') || 'corrente'}`}>
+                        {conta.tipo || 'Conta Corrente'}
+                      </span>
+                    </td>
                     <td>{conta.descricao || '-'}</td>
                     <td className={parseFloat(conta.saldo_inicial) >= 0 ? 'valor-positivo' : 'valor-negativo'}>
                       R$ {formatarMoeda(conta.saldo_inicial)}
@@ -145,6 +154,19 @@ function Contas() {
                   onChange={(e) => setFormData({...formData, nome: e.target.value})}
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Tipo *</label>
+                <select
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                  required
+                >
+                  <option value="Conta Corrente">Conta Corrente</option>
+                  <option value="Conta Poupança">Conta Poupança</option>
+                  <option value="Conta Investimento">Conta Investimento</option>
+                </select>
               </div>
 
               <div className="form-group">

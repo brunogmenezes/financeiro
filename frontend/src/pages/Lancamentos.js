@@ -34,7 +34,7 @@ function Lancamentos() {
     subcategoria_id: '',
     parcelado: false,
     num_parcelas: 1,
-    pago: true
+    pago: false
   });
   const navigate = useNavigate();
 
@@ -160,7 +160,7 @@ function Lancamentos() {
         subcategoria_id: '',
         parcelado: false,
         num_parcelas: 1,
-        pago: true
+        pago: false
       });
       setSubcategorias([]);
       loadLancamentos();
@@ -173,6 +173,14 @@ function Lancamentos() {
 
   const handleEdit = (lancamento) => {
     setEditingLancamento(lancamento);
+    
+    // Carregar subcategorias antes de setar o formData
+    if (lancamento.categoria_id) {
+      loadSubcategoriasPorCategoria(lancamento.categoria_id);
+    } else {
+      setSubcategorias([]);
+    }
+    
     setFormData({
       descricao: lancamento.descricao,
       valor: lancamento.valor,
@@ -183,11 +191,9 @@ function Lancamentos() {
       subcategoria_id: lancamento.subcategoria_id || '',
       parcelado: false,
       num_parcelas: 1,
-      pago: lancamento.pago !== undefined ? lancamento.pago : true,
+      pago: lancamento.pago !== undefined ? lancamento.pago : false,
     });
-    if (lancamento.categoria_id) {
-      loadSubcategoriasPorCategoria(lancamento.categoria_id);
-    }
+    
     setShowModal(true);
   };
 
@@ -223,7 +229,7 @@ function Lancamentos() {
       subcategoria_id: '',
       parcelado: false,
       num_parcelas: 1,
-      pago: true
+      pago: false
     });
     setSubcategorias([]);
     setShowModal(true);
@@ -413,7 +419,7 @@ function Lancamentos() {
                   <button
                     type="button"
                     className={formData.tipo === 'entrada' ? 'active' : ''}
-                    onClick={() => setFormData({...formData, tipo: 'entrada', categoria_id: '', subcategoria_id: '', pago: true})}
+                    onClick={() => setFormData({...formData, tipo: 'entrada', categoria_id: '', subcategoria_id: '', pago: false})}
                   >
                     Entrada
                   </button>
@@ -427,7 +433,7 @@ function Lancamentos() {
                   <button
                     type="button"
                     className={formData.tipo === 'neutro' ? 'active' : ''}
-                    onClick={() => setFormData({...formData, tipo: 'neutro', categoria_id: '', subcategoria_id: '', pago: true})}
+                    onClick={() => setFormData({...formData, tipo: 'neutro', categoria_id: '', subcategoria_id: '', pago: false})}
                   >
                     Neutro
                   </button>
@@ -552,7 +558,7 @@ function Lancamentos() {
                       <button
                         key={categoria.id}
                         type="button"
-                        className={formData.categoria_id === categoria.id.toString() ? 'active' : ''}
+                        className={String(formData.categoria_id) === String(categoria.id) ? 'active' : ''}
                         onClick={() => {
                           setFormData({...formData, categoria_id: categoria.id.toString(), subcategoria_id: ''});
                           loadSubcategoriasPorCategoria(categoria.id);

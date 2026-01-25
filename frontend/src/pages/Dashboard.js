@@ -201,6 +201,27 @@ function Dashboard() {
     setSubcategorias([]);
   };
 
+  const calcularSaldoTotal = () => {
+    return contas.reduce((total, conta) => {
+      return total + (Number(conta.saldo_inicial) || 0);
+    }, 0);
+  };
+
+  const calcularSaldosPorTipo = () => {
+    const tipos = {
+      'Conta Corrente': 0,
+      'Conta Poupança': 0,
+      'Conta Investimento': 0
+    };
+
+    contas.forEach(conta => {
+      const tipo = conta.tipo || 'Conta Corrente';
+      tipos[tipo] = (tipos[tipo] || 0) + (Number(conta.saldo_inicial) || 0);
+    });
+
+    return tipos;
+  };
+
   const gerarCalendario = () => {
     const hoje = new Date();
     const ano = hoje.getFullYear();
@@ -560,11 +581,47 @@ function Dashboard() {
         {/* Seção de Contas */}
         <div className="contas-section">
           <h3>💳 Minhas Contas</h3>
+          
+          {/* Card de Saldo Total */}
+          <div className="saldo-total-card">
+            <div className="saldo-total-icon">💰</div>
+            <div className="saldo-total-content">
+              <span className="saldo-total-label">Saldo Total de Todas as Contas</span>
+              {mostrarValores ? (
+                <>
+                  <span className={`saldo-total-valor ${calcularSaldoTotal() >= 0 ? 'positivo' : 'negativo'}`}>
+                    R$ {formatarMoeda(calcularSaldoTotal())}
+                  </span>
+                  
+                  <div className="saldo-por-tipo">
+                    {Object.entries(calcularSaldosPorTipo()).map(([tipo, valor]) => (
+                      <div key={tipo} className="tipo-item">
+                        <span className={`tipo-badge badge-${tipo.toLowerCase().replace(' ', '-')}`}>
+                          {tipo}
+                        </span>
+                        <span className={`tipo-valor ${valor >= 0 ? 'positivo' : 'negativo'}`}>
+                          R$ {formatarMoeda(valor)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <span className="saldo-total-valor-oculto">R$ ••••••</span>
+              )}
+            </div>
+          </div>
+          
           <div className="contas-grid">
             {contas.map(conta => (
               <div key={conta.id} className="conta-card">
                 <div className="conta-header">
                   <span className="conta-nome">{conta.nome}</span>
+                  {conta.tipo && (
+                    <span className={`conta-tipo-badge badge-${conta.tipo.toLowerCase().replace(' ', '-')}`}>
+                      {conta.tipo}
+                    </span>
+                  )}
                 </div>
                 <div className="conta-saldo">
                   {mostrarValores ? (

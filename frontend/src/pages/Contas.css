@@ -161,6 +161,30 @@ th {
   color: #dc3545;
   font-weight: 600;
 }
+
+.badge-tipo {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-conta-corrente {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.badge-conta-poupança {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.badge-conta-investimento {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
 /* Media Queries para Mobile */
 @media (max-width: 768px) {
   .content {
