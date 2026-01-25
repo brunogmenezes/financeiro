@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "create-db": "node src/config/createDb.js",
     "init-db": "node src/config/initDb.js",
-    "setup": "npm run create-db && npm run init-db"
+    "migrate": "node src/config/addTipoConta.js",
+    "setup": "npm run create-db && npm run init-db && npm run migrate"
   },
   "keywords": [
     "financeiro",
