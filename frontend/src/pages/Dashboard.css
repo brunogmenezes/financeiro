@@ -436,6 +436,10 @@
   border-top-color: #dc3545;
 }
 
+.total-card.total-atraso {
+  border-top-color: #f59e0b;
+}
+
 .card-label {
   font-size: 0.9em;
   color: #666;
@@ -455,6 +459,21 @@
 
 .total-saidas .card-value {
   color: #dc3545;
+}
+
+.total-atraso .card-value {
+  color: #f59e0b;
+}
+
+.total-atraso .card-label {
+  color: #f59e0b;
+}
+
+.total-atraso .card-count {
+  font-size: 0.85em;
+  color: #666;
+  font-weight: 500;
+  margin: 8px 0;
 }
 
 /* Calendário Widget */
@@ -890,6 +909,33 @@
 }
 
 .btn-limpar-filtros:active {
+  transform: scale(0.98);
+}
+
+.btn-filter-atraso {
+  padding: 8px 15px;
+  background: #fff;
+  color: #f59e0b;
+  border: 2px solid #f59e0b;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-filter-atraso:hover {
+  background: #fef3c7;
+  transform: scale(1.05);
+}
+
+.btn-filter-atraso.active {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-filter-atraso:active {
   transform: scale(0.98);
 }
 

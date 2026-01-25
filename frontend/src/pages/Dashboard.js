@@ -32,6 +32,7 @@ function Dashboard() {
   const [filterTipo, setFilterTipo] = useState('TODOS');
   const [filterCategoria, setFilterCategoria] = useState('TODAS');
   const [filterSubcategoria, setFilterSubcategoria] = useState('TODAS');
+  const [filterAtraso, setFilterAtraso] = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
   
@@ -198,6 +199,7 @@ function Dashboard() {
     setFilterTipo('TODOS');
     setFilterCategoria('TODAS');
     setFilterSubcategoria('TODAS');
+    setFilterAtraso(false);
     setSubcategorias([]);
   };
 
@@ -304,6 +306,30 @@ function Dashboard() {
       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
 
     return { totalEntradas, totalSaidas };
+  };
+
+  const calcularEmAtraso = () => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    let filtrados = lancamentos.filter(l => {
+      const dataLancamento = new Date(l.data);
+      return l.tipo === 'saida' && !l.pago && dataLancamento < hoje;
+    });
+
+    // Aplicar filtro de mês se não for "TODOS"
+    if (filterMes !== 'TODOS') {
+      filtrados = filtrados.filter(l => {
+        const data = new Date(l.data);
+        const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        return mesLancamento === filterMes;
+      });
+    }
+
+    const quantidade = filtrados.length;
+    const valorTotal = filtrados.reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+    return { quantidade, valorTotal };
   };
 
   const formatarMoeda = (valor) => {
@@ -666,6 +692,13 @@ function Dashboard() {
                           {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
                         </div>
                       </div>
+                      <div className="total-card total-atraso">
+                        <div className="card-label">⚠️ Em Atraso</div>
+                        <div className="card-count">{calcularEmAtraso().quantidade} lançamento{calcularEmAtraso().quantidade !== 1 ? 's' : ''}</div>
+                        <div className="card-value">
+                          {mostrarValores ? `R$ ${formatarMoeda(calcularEmAtraso().valorTotal)}` : 'R$ ••••••'}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -805,6 +838,14 @@ function Dashboard() {
               )}
 
               <button 
+                className={`btn-filter-atraso ${filterAtraso ? 'active' : ''}`}
+                onClick={() => setFilterAtraso(!filterAtraso)}
+                title="Filtrar lançamentos em atraso"
+              >
+                ⚠️ {filterAtraso ? 'Exibindo em atraso' : 'Mostrar em atraso'}
+              </button>
+
+              <button 
                 onClick={handleLimparFiltros}
                 className="btn-limpar-filtros"
                 title="Limpar todos os filtros"
@@ -835,6 +876,16 @@ function Dashboard() {
 
             if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
               filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+            }
+
+            if (filterAtraso) {
+              const hoje = new Date();
+              hoje.setHours(0, 0, 0, 0);
+              filtrados = filtrados.filter(l => {
+                if (l.tipo !== 'saida' || l.pago) return false;
+                const dataLancamento = new Date(l.data);
+                return dataLancamento < hoje;
+              });
             }
 
             // Agrupar por data
