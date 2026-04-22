@@ -12,6 +12,7 @@ function Contas() {
     nome: '',
     descricao: '',
     saldo_inicial: 0,
+    limite_total: 0,
     tipo: 'Conta Corrente'
   });
   const navigate = useNavigate();
@@ -47,14 +48,15 @@ function Contas() {
         await updateConta(editingConta.id, {
           nome: formData.nome,
           descricao: formData.descricao,
-          tipo: formData.tipo
+          tipo: formData.tipo,
+          limite_total: formData.limite_total
         });
       } else {
         await createConta(formData);
       }
       setShowModal(false);
       setEditingConta(null);
-      setFormData({ nome: '', descricao: '', saldo_inicial: 0, tipo: 'Conta Corrente' });
+      setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, tipo: 'Conta Corrente' });
       loadContas();
     } catch (error) {
       alert('Erro ao salvar conta');
@@ -67,6 +69,7 @@ function Contas() {
       nome: conta.nome,
       descricao: conta.descricao || '',
       saldo_inicial: conta.saldo_inicial,
+      limite_total: conta.limite_total || 0,
       tipo: conta.tipo || 'Conta Corrente'
     });
     setShowModal(true);
@@ -86,7 +89,7 @@ function Contas() {
 
   const handleNew = () => {
     setEditingConta(null);
-    setFormData({ nome: '', descricao: '', saldo_inicial: 0, tipo: 'Conta Corrente' });
+    setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, tipo: 'Conta Corrente' });
     setShowModal(true);
   };
 
@@ -166,6 +169,8 @@ function Contas() {
                   <option value="Conta Corrente">Conta Corrente</option>
                   <option value="Conta Poupança">Conta Poupança</option>
                   <option value="Conta Investimento">Conta Investimento</option>
+                  <option value="Cartão de Crédito">Cartão de Crédito</option>
+                  <option value="Dinheiro">Dinheiro</option>
                 </select>
               </div>
 
@@ -179,7 +184,7 @@ function Contas() {
               </div>
 
               <div className="form-group">
-                <label>Saldo Inicial {editingConta && '(não editável)'}</label>
+                <label>{formData.tipo === 'Cartão de Crédito' ? 'Fatura Atual' : 'Saldo Inicial'} {editingConta && '(não editável)'}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -189,6 +194,19 @@ function Contas() {
                   style={editingConta ? {backgroundColor: '#f0f0f0', cursor: 'not-allowed'} : {}}
                 />
               </div>
+
+              {formData.tipo === 'Cartão de Crédito' && (
+                <div className="form-group">
+                  <label>Limite Total *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.limite_total}
+                    onChange={(e) => setFormData({...formData, limite_total: e.target.value})}
+                    required
+                  />
+                </div>
+              )}
 
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>

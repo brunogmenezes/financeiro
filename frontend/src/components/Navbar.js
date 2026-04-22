@@ -80,14 +80,6 @@ function Navbar() {
               {isActive('/dashboard') && <span className="active-indicator"></span>}
             </button>
             <button 
-              onClick={() => handleNavigate('/lancamentos')} 
-              className={`nav-item ${isActive('/lancamentos') ? 'active' : ''}`}
-            >
-              <span className="nav-icon">💸</span>
-              <span>Lançamentos</span>
-              {isActive('/lancamentos') && <span className="active-indicator"></span>}
-            </button>
-            <button 
               onClick={() => handleNavigate('/contas')} 
               className={`nav-item ${isActive('/contas') ? 'active' : ''}`}
             >

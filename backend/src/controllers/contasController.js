@@ -38,11 +38,11 @@ exports.getById = async (req, res) => {
 // Criar nova conta
 exports.create = async (req, res) => {
   try {
-    const { nome, descricao, saldo_inicial, tipo } = req.body;
+    const { nome, descricao, saldo_inicial, tipo, limite_total } = req.body;
 
     const result = await pool.query(
-      'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [nome, descricao || null, saldo_inicial || 0, tipo || 'Conta Corrente', req.userId]
+      'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, limite_total, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [nome, descricao || null, saldo_inicial || 0, tipo || 'Conta Corrente', limite_total || 0, req.userId]
     );
 
     // Buscar nome do usuário
@@ -67,12 +67,12 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, descricao, tipo } = req.body;
+    const { nome, descricao, tipo, limite_total } = req.body;
 
     // Não permitir alteração de saldo_inicial
     const result = await pool.query(
-      'UPDATE contas SET nome = $1, descricao = $2, tipo = $3 WHERE id = $4 AND usuario_id = $5 RETURNING *',
-      [nome, descricao, tipo || 'Conta Corrente', id, req.userId]
+      'UPDATE contas SET nome = $1, descricao = $2, tipo = $3, limite_total = $4 WHERE id = $5 AND usuario_id = $6 RETURNING *',
+      [nome, descricao, tipo || 'Conta Corrente', limite_total || 0, id, req.userId]
     );
 
     if (result.rows.length === 0) {

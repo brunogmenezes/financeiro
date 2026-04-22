@@ -5,7 +5,7 @@ const { registrarAuditoria } = require('./auditoriaController');
 exports.getAll = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor
+      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor
        FROM lancamentos l 
        LEFT JOIN contas c ON l.conta_id = c.id 
        LEFT JOIN categorias cat ON l.categoria_id = cat.id
@@ -26,7 +26,7 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor
+      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor
        FROM lancamentos l 
        LEFT JOIN contas c ON l.conta_id = c.id 
        LEFT JOIN categorias cat ON l.categoria_id = cat.id
@@ -68,17 +68,18 @@ exports.create = async (req, res) => {
           [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
         );
         
-        // Atualizar saldo da conta (exceto se for neutro ou se for saida não paga)
+        // Atualizar saldo da conta (com a nova lógica de Cartão)
+        const contaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
+        const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
+
         if (tipo === 'entrada') {
-          await pool.query(
-            'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
-            [valor, conta_id]
-          );
-        } else if (tipo === 'saida' && pagoStatus) {
-          await pool.query(
-            'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
-            [valor, conta_id]
-          );
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+        } else if (tipo === 'saida') {
+          if (isCartao) {
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+          } else if (pagoStatus) {
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+          }
         }
         
         lancamentosCriados.push(result.rows[0]);
@@ -99,23 +100,35 @@ exports.create = async (req, res) => {
 
     // Lançamento único (não parcelado)
     const result = await pool.query(
-      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [descricao, valor, tipo, data, conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
+      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, conta_destino_id, categoria_id, subcategoria_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
     );
 
-    // Atualizar saldo da conta (exceto se for neutro ou se for saida não paga)
+    // Atualizar saldo da conta
+    const contaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
+    const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
+
     if (tipo === 'entrada') {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
-        [valor, conta_id]
-      );
-    } else if (tipo === 'saida' && pagoStatus) {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
-        [valor, conta_id]
-      );
+      // Entrada em qualquer conta (incluindo cartão) soma ao saldo
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+    } else if (tipo === 'saida') {
+      if (isCartao) {
+        // Compra no cartão subtrai do saldo (fica negativo) mesmo se não marcado como pago
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      } else if (pagoStatus) {
+        // Para outras contas, só desconta se estiver pago
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      }
+    } else if (tipo === 'transferencia') {
+      const { conta_destino_id } = req.body;
+      if (!conta_destino_id) return res.status(400).json({ error: 'Conta de destino é obrigatória' });
+      
+      // Origem: sempre subtrai
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      
+      // Destino: sempre soma
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
     }
-    // Se tipo === 'neutro' ou saida não paga, não altera o saldo
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
@@ -153,39 +166,84 @@ exports.update = async (req, res) => {
 
     const antigo = lancamentoAntigo.rows[0];
 
-    // Reverter o valor do lançamento antigo na conta antiga (exceto se for neutro ou saida não paga)
+    // Reverter o valor do lançamento antigo
+    const contaAntigaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [antigo.conta_id]);
+    const isCartaoAntigo = contaAntigaResult.rows[0]?.tipo === 'Cartão de Crédito';
+
     if (antigo.tipo === 'entrada') {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
-        [antigo.valor, antigo.conta_id]
-      );
-    } else if (antigo.tipo === 'saida' && antigo.pago) {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
-        [antigo.valor, antigo.conta_id]
-      );
+      if (isCartaoAntigo) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      } else {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      }
+    } else if (antigo.tipo === 'saida') {
+      if (isCartaoAntigo) {
+        // Reverte aumento da fatura
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      } else if (antigo.pago) {
+        // Reverte desconto do saldo
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      }
+    } else if (antigo.tipo === 'transferencia') {
+      // Devolve para a origem
+      if (isCartaoAntigo) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      } else {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      }
+      // Retira do destino
+      if (antigo.conta_destino_id) {
+        const contaDestinoAntigaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [antigo.conta_destino_id]);
+        const isCartaoDestinoAntigo = contaDestinoAntigaResult.rows[0]?.tipo === 'Cartão de Crédito';
+        if (isCartaoDestinoAntigo) {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
+        } else {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
+        }
+      }
     }
-    // Se antigo.tipo === 'neutro' ou saida não paga, não reverte nada
 
     // Atualizar lançamento
     const result = await pool.query(
-      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, categoria_id = $6, subcategoria_id = $7, pago = $8 WHERE id = $9 AND usuario_id = $10 RETURNING *',
-      [descricao, valor, tipo, data, conta_id, categoria_id || null, subcategoria_id || null, pagoStatus, id, req.userId]
+      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, conta_destino_id = $6, categoria_id = $7, subcategoria_id = $8, pago = $9 WHERE id = $10 AND usuario_id = $11 RETURNING *',
+      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, id, req.userId]
     );
 
-    // Aplicar o novo valor na nova conta (exceto se for neutro ou saida não paga)
+    // Aplicar o novo valor
+    const contaNovaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
+    const isCartaoNovo = contaNovaResult.rows[0]?.tipo === 'Cartão de Crédito';
+
     if (tipo === 'entrada') {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
-        [valor, conta_id]
-      );
-    } else if (tipo === 'saida' && pagoStatus) {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
-        [valor, conta_id]
-      );
+      if (isCartaoNovo) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      } else {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+      }
+    } else if (tipo === 'saida') {
+      if (isCartaoNovo) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+      } else if (pagoStatus) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      }
+    } else if (tipo === 'transferencia') {
+      const { conta_destino_id } = req.body;
+      // Retira da origem
+      if (isCartaoNovo) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+      } else {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      }
+      // Adiciona no destino
+      if (conta_destino_id) {
+        const contaDestinoNovaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_destino_id]);
+        const isCartaoDestinoNovo = contaDestinoNovaResult.rows[0]?.tipo === 'Cartão de Crédito';
+        if (isCartaoDestinoNovo) {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
+        } else {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
+        }
+      }
     }
-    // Se tipo === 'neutro', não aplica alteração
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
@@ -220,19 +278,42 @@ exports.delete = async (req, res) => {
 
     const lancamento = result.rows[0];
 
-    // Reverter o valor do lançamento na conta (exceto se for neutro ou saida não paga)
+    // Reverter o valor do lançamento na conta
+    const contaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [lancamento.conta_id]);
+    const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
+
     if (lancamento.tipo === 'entrada') {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2',
-        [lancamento.valor, lancamento.conta_id]
-      );
-    } else if (lancamento.tipo === 'saida' && lancamento.pago) {
-      await pool.query(
-        'UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2',
-        [lancamento.valor, lancamento.conta_id]
-      );
+      if (isCartao) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      } else {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      }
+    } else if (lancamento.tipo === 'saida') {
+      if (isCartao) {
+        // Reverte aumento da fatura
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      } else if (lancamento.pago) {
+        // Reverte desconto do saldo
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      }
+    } else if (lancamento.tipo === 'transferencia') {
+      // Devolve para a origem
+      if (isCartao) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      } else {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      }
+      // Retira do destino
+      if (lancamento.conta_destino_id) {
+        const contaDestinoResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [lancamento.conta_destino_id]);
+        const isCartaoDestino = contaDestinoResult.rows[0]?.tipo === 'Cartão de Crédito';
+        if (isCartaoDestino) {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_destino_id]);
+        } else {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_destino_id]);
+        }
+      }
     }
-    // Se lancamento.tipo === 'neutro', não reverte nada
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(

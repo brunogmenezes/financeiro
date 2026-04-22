@@ -1,13 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboard, getLancamentos, deleteLancamento, updateLancamento, getContas, togglePagoLancamento } from '../services/api';
-import { Line, Pie } from 'react-chartjs-2';
+import { 
+  getDashboard, 
+  getLancamentos, 
+  deleteLancamento, 
+  updateLancamento, 
+  createLancamento, 
+  getContas, 
+  togglePagoLancamento,
+  getCategorias,
+  getSubcategorias
+} from '../services/api';
+import { Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  Filler,
   Title,
   Tooltip,
   Legend,
@@ -16,7 +28,18 @@ import {
 import Navbar from '../components/Navbar';
 import './Dashboard.css';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Filler,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 function Dashboard() {
   const [dashboardData, setDashboardData] = useState([]);
@@ -32,6 +55,7 @@ function Dashboard() {
   const [filterTipo, setFilterTipo] = useState('TODOS');
   const [filterCategoria, setFilterCategoria] = useState('TODAS');
   const [filterSubcategoria, setFilterSubcategoria] = useState('TODAS');
+  const [filterConta, setFilterConta] = useState('TODAS');
   const [filterAtraso, setFilterAtraso] = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
@@ -41,8 +65,15 @@ function Dashboard() {
     valor: '',
     tipo: 'saida',
     data: new Date().toISOString().split('T')[0],
-    conta_id: ''
+    conta_id: '',
+    conta_destino_id: '',
+    categoria_id: '',
+    subcategoria_id: '',
+    pago: false,
+    parcelado: false,
+    num_parcelas: 1
   });
+  const [quickAddType, setQuickAddType] = useState(null); // 'entrada' ou 'saida'
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -54,15 +85,6 @@ function Dashboard() {
     // eslint-disable-next-line
   }, []);
 
-  const loadCategorias = async () => {
-    try {
-      const response = await getLancamentos();
-      const cats = [...new Set(response.data.map(l => ({ id: l.categoria_id, nome: l.categoria_nome })).filter(c => c.nome))];
-      setCategorias(cats);
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-    }
-  };
 
   const handleFilterCategoriaChange = (e) => {
     const categId = e.target.value;
@@ -109,6 +131,29 @@ function Dashboard() {
     return Array.from(categoriasSet.values());
   };
 
+  const loadCategorias = async () => {
+    try {
+      const response = await getCategorias();
+      setCategorias(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const loadSubcategoriasPorCategoria = async (categoriaId) => {
+    if (!categoriaId) {
+      setSubcategorias([]);
+      return;
+    }
+    try {
+      const response = await getSubcategorias(categoriaId);
+      setSubcategorias(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar subcategorias:', error);
+      setSubcategorias([]);
+    }
+  };
+
   const loadDashboard = async () => {
     try {
       const response = await getDashboard();
@@ -141,12 +186,22 @@ function Dashboard() {
 
   const handleEdit = (lancamento) => {
     setEditingLancamento(lancamento);
+    
+    if (lancamento.categoria_id) {
+      loadSubcategoriasPorCategoria(lancamento.categoria_id);
+    } else {
+      setSubcategorias([]);
+    }
+
     setFormData({
       descricao: lancamento.descricao,
       valor: lancamento.valor,
       tipo: lancamento.tipo,
-      data: lancamento.data.split('T')[0], // Pega apenas a parte da data (YYYY-MM-DD)
-      conta_id: lancamento.conta_id
+      data: lancamento.data.split('T')[0],
+      conta_id: lancamento.conta_id,
+      conta_destino_id: lancamento.conta_destino_id || '',
+      categoria_id: lancamento.categoria_id || '',
+      subcategoria_id: lancamento.subcategoria_id || ''
     });
     setShowModal(true);
   };
@@ -163,26 +218,6 @@ function Dashboard() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await updateLancamento(editingLancamento.id, formData);
-      setShowModal(false);
-      setEditingLancamento(null);
-      setFormData({
-        descricao: '',
-        valor: '',
-        tipo: 'saida',
-        data: new Date().toISOString().split('T')[0],
-        conta_id: ''
-      });
-      loadLancamentos();
-      loadDashboard();
-    } catch (error) {
-      alert('Erro ao atualizar lançamento');
-    }
-  };
-
   const handleTogglePago = async (lancamento) => {
     try {
       await togglePagoLancamento(lancamento.id);
@@ -190,21 +225,74 @@ function Dashboard() {
       loadDashboard();
       loadContas();
     } catch (error) {
-      alert('Erro ao atualizar status de pagamento');
+      alert('Erro ao alterar status de pagamento');
     }
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingLancamento) {
+        await updateLancamento(editingLancamento.id, formData);
+      } else {
+        await createLancamento(formData);
+      }
+      
+      setShowModal(false);
+      setEditingLancamento(null);
+      setFormData({
+        descricao: '',
+        valor: '',
+        tipo: 'saida',
+        data: new Date().toISOString().split('T')[0],
+        conta_id: '',
+        conta_destino_id: '',
+        categoria_id: '',
+        subcategoria_id: ''
+      });
+      loadLancamentos();
+      loadDashboard();
+      loadContas();
+    } catch (error) {
+      console.error(error);
+      alert(editingLancamento ? 'Erro ao atualizar lançamento' : 'Erro ao criar lançamento');
+    }
+  };
+
 
   const handleLimparFiltros = () => {
     setFilterMes(mesAtual);
     setFilterTipo('TODOS');
     setFilterCategoria('TODAS');
     setFilterSubcategoria('TODAS');
+    setFilterConta('TODAS');
     setFilterAtraso(false);
     setSubcategorias([]);
   };
 
+  const calcularFaturaMes = (contaId) => {
+    const mesParaFiltro = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    return lancamentos
+      .filter(l => l.conta_id === contaId)
+      .filter(l => {
+        const data = new Date(l.data);
+        const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        return mesLancamento === mesParaFiltro;
+      })
+      .reduce((total, l) => {
+        // Agora somamos o valor absoluto das saídas (gastos) no mês
+        if (l.tipo === 'saida') return total + parseFloat(l.valor);
+        if (l.tipo === 'entrada') return total - parseFloat(l.valor);
+        return total;
+      }, 0);
+  };
+
   const calcularSaldoTotal = () => {
     return contas.reduce((total, conta) => {
+      // Cartão de crédito é passivo/dívida, não entra no cálculo de patrimônio líquido/disponível neste dashboard
+      if (conta.tipo === 'Cartão de Crédito') {
+        return total;
+      }
       return total + (Number(conta.saldo_inicial) || 0);
     }, 0);
   };
@@ -213,12 +301,18 @@ function Dashboard() {
     const tipos = {
       'Conta Corrente': 0,
       'Conta Poupança': 0,
-      'Conta Investimento': 0
+      'Conta Investimento': 0,
+      'Cartão de Crédito': 0,
+      'Dinheiro': 0
     };
 
     contas.forEach(conta => {
       const tipo = conta.tipo || 'Conta Corrente';
-      tipos[tipo] = (tipos[tipo] || 0) + (Number(conta.saldo_inicial) || 0);
+      if (tipo === 'Cartão de Crédito') {
+        tipos[tipo] = (tipos[tipo] || 0) + (Number(conta.saldo_inicial) || 0);
+      } else {
+        tipos[tipo] = (tipos[tipo] || 0) + (Number(conta.saldo_inicial) || 0);
+      }
     });
 
     return tipos;
@@ -355,6 +449,9 @@ function Dashboard() {
     // Aplicar filtro de tipo
     if (filterTipo !== 'TODOS') {
       filtrados = filtrados.filter(l => l.tipo === filterTipo);
+    } else {
+      // Excluir transferências e neutros por padrão (são neutros)
+      filtrados = filtrados.filter(l => l.tipo !== 'transferencia' && l.tipo !== 'neutro');
     }
 
     // Aplicar filtro de categoria
@@ -422,25 +519,45 @@ function Dashboard() {
       return item ? parseFloat(item.total) : 0;
     });
 
+    const balanco = meses.map((mes, i) => entradas[i] - saidas[i]);
+
     return {
       labels: meses.map(mes => {
         const [ano, mesNum] = mes.split('-');
-        return `${mesNum}/${ano}`;
+        const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        return `${mesesNomes[parseInt(mesNum)-1]}/${ano.slice(2)}`;
       }),
       datasets: [
         {
-          label: 'Entradas',
-          data: entradas,
-          borderColor: 'rgba(75, 192, 192, 1)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.3,
+          type: 'line',
+          label: 'Saldo do Mês',
+          data: balanco,
+          borderColor: '#6366f1',
+          borderWidth: 3,
+          pointBackgroundColor: '#6366f1',
+          pointRadius: 4,
+          tension: 0.4,
+          fill: true,
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          order: 1
         },
         {
+          type: 'bar',
+          label: 'Entradas',
+          data: entradas,
+          backgroundColor: 'rgba(34, 197, 94, 0.7)',
+          borderRadius: 6,
+          barThickness: 25,
+          order: 2
+        },
+        {
+          type: 'bar',
           label: 'Saídas',
           data: saidas,
-          borderColor: 'rgba(255, 99, 132, 1)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          tension: 0.3,
+          backgroundColor: 'rgba(239, 68, 68, 0.7)',
+          borderRadius: 6,
+          barThickness: 25,
+          order: 2
         },
       ],
     };
@@ -448,23 +565,56 @@ function Dashboard() {
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: { size: 12, weight: '600' }
+        }
       },
-      title: {
-        display: true,
-        text: 'Fluxo Financeiro Mensal',
-      },
+      tooltip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#1f2937',
+        bodyColor: '#1f2937',
+        borderColor: '#e5e7eb',
+        borderWidth: 1,
+        padding: 12,
+        boxPadding: 6,
+        usePointStyle: true,
+        callbacks: {
+          label: function(context) {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+              label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+            }
+            return label;
+          }
+        }
+      }
     },
+    scales: {
+      x: {
+        grid: { display: false }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+        ticks: {
+          callback: value => 'R$ ' + value.toLocaleString('pt-BR')
+        }
+      }
+    }
   };
 
   // Processar dados para o gráfico de pizza (saídas por categoria do mês filtrado)
   const processPieChartData = () => {
-    // Usar o mês filtrado, ou o mês atual se não houver filtro
     const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
     const saidasPorCategoria = {};
-    const coresCategoria = {}; // Mapear categoria para sua cor
+    const coresCategoria = {};
     
     lancamentos
       .filter(l => l.tipo === 'saida')
@@ -474,25 +624,27 @@ function Dashboard() {
           const categoria = lancamento.categoria_nome || 'Sem Categoria';
           if (!saidasPorCategoria[categoria]) {
             saidasPorCategoria[categoria] = 0;
-            // Armazenar a cor da categoria (ou cinza padrão para "Sem Categoria")
             coresCategoria[categoria] = lancamento.categoria_cor || '#999999';
           }
           saidasPorCategoria[categoria] += parseFloat(lancamento.valor);
         }
       });
 
-    const labels = Object.keys(saidasPorCategoria);
-    // Usar as cores das categorias cadastradas
-    const cores = labels.map(label => coresCategoria[label]);
+    // Ordenar categorias por valor (do maior para o menor)
+    const sortedCategories = Object.keys(saidasPorCategoria).sort((a, b) => saidasPorCategoria[b] - saidasPorCategoria[a]);
+    const sortedData = sortedCategories.map(cat => saidasPorCategoria[cat]);
+    const sortedColors = sortedCategories.map(cat => coresCategoria[cat]);
     
     return {
-      labels: labels,
+      labels: sortedCategories,
       datasets: [
         {
-          data: Object.values(saidasPorCategoria),
-          backgroundColor: cores,
-          borderColor: cores.map(cor => cor), // Mesma cor para a borda
-          borderWidth: 2,
+          data: sortedData,
+          backgroundColor: sortedColors,
+          borderColor: 'white',
+          borderWidth: 3,
+          hoverOffset: 15,
+          spacing: 5,
         },
       ],
     };
@@ -501,91 +653,31 @@ function Dashboard() {
   const pieChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: '65%',
     plugins: {
       legend: {
-        position: 'bottom',
-        align: 'start',
-        labels: {
-          boxWidth: 15,
-          padding: 10,
-          font: {
-            size: 11,
-          },
-          generateLabels: function(chart) {
-            const data = chart.data;
-            if (data.labels.length && data.datasets.length) {
-              const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-              const dataset = chart.data.datasets[0];
-              const meta = chart.getDatasetMeta(0);
-              
-              // Criar array de objetos com label, valor, cor e índice
-              const items = data.labels.map((label, i) => {
-                const arc = meta.data[i];
-                return {
-                  label: label,
-                  value: dataset.data[i],
-                  color: dataset.backgroundColor[i],
-                  index: i,
-                  hidden: arc ? arc.hidden : false
-                };
-              });
-              
-              // Ordenar do maior para o menor valor
-              items.sort((a, b) => b.value - a.value);
-              
-              // Gerar labels ordenados com comportamento padrão de strikethrough
-              return items.map(item => {
-                const percentage = ((item.value / total) * 100).toFixed(1);
-                return {
-                  text: `${item.label}: R$ ${formatarMoeda(item.value)} (${percentage}%)`,
-                  fillStyle: item.color,
-                  strokeStyle: item.color,
-                  hidden: item.hidden,
-                  index: item.index,
-                  datasetIndex: 0
-                };
-              });
-            }
-            return [];
-          }
-        },
-        onClick: function(e, legendItem, legend) {
-          const index = legendItem.index;
-          const chart = legend.chart;
-          const meta = chart.getDatasetMeta(0);
-          
-          // Toggle visibility
-          meta.data[index].hidden = !meta.data[index].hidden;
-          chart.update();
-        }
-      },
-      title: {
-        display: true,
-        text: (() => {
-          if (filterMes !== 'TODOS') {
-            const [ano, mes] = filterMes.split('-');
-            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-            return `Distribuição de Saídas por Categoria (${meses[parseInt(mes) - 1]} ${ano})`;
-          }
-          return `Distribuição de Saídas por Categoria (${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())})`;
-        })(),
-        font: {
-          size: 14,
-        },
+        display: false // Vamos usar as barras laterais para legenda
       },
       tooltip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#1f2937',
+        bodyColor: '#1f2937',
+        borderColor: '#e5e7eb',
+        borderWidth: 1,
+        padding: 12,
+        boxPadding: 6,
+        usePointStyle: true,
         callbacks: {
           label: function(context) {
             const label = context.label || '';
-            const value = context.parsed || 0;
+            const value = context.parsed;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-                return `${label}: R$ ${formatarMoeda(value)} (${percentage}%)`;
-          },
-        },
-      },
-    },
+            return `${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
+          }
+        }
+      }
+    }
   };
 
   return (
@@ -593,14 +685,29 @@ function Dashboard() {
       <Navbar />
 
       <div className="dashboard-content">
+        <div className="dashboard-welcome">
+          <div className="welcome-text">
+            <h2>Olá, {user.nome}! 👋</h2>
+            <p>Aqui está o resumo da sua vida financeira hoje.</p>
+          </div>
+          <div className="quick-actions-btns">
+            <button className="btn-quick btn-primary-action" onClick={() => { setQuickAddType(null); setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''}); setShowModal(true); }}>
+              <span>+</span> Adicionar Lançamento
+            </button>
+          </div>
+        </div>
+
         {/* Seção de Contas */}
         <div className="contas-section">
           {/* Card de Saldo Total */}
           <div className="saldo-total-card">
             <div className="saldo-total-icon">💰</div>
             <div className="saldo-total-content">
-              <div className="saldo-total-header">
-                <span className="saldo-total-label">Saldo Total de Todas as Contas</span>
+            <div className="saldo-total-header">
+                <div className="saldo-label-group">
+                  <span className="saldo-total-label">Patrimônio Total</span>
+                  <span className="saldo-total-subtitle">Soma de todas as suas contas</span>
+                </div>
                 <button 
                   className="btn-toggle-valores-card"
                   onClick={() => setMostrarValores(!mostrarValores)}
@@ -636,9 +743,11 @@ function Dashboard() {
           
           <div className="contas-grid">
             {contas.map(conta => (
-              <div key={conta.id} className="conta-card">
+              <div key={conta.id} className="conta-card" data-tipo={conta.tipo}>
                 <div className="conta-header">
-                  <span className="conta-nome">{conta.nome}</span>
+                  <div className="conta-info">
+                    <h4>{conta.nome}</h4>
+                  </div>
                   {conta.tipo && (
                     <span className={`conta-tipo-badge badge-${conta.tipo.toLowerCase().replace(' ', '-')}`}>
                       {conta.tipo}
@@ -648,10 +757,28 @@ function Dashboard() {
                 <div className="conta-saldo">
                   {mostrarValores ? (
                     <>
-                      <span className="label">Saldo:</span>
-                      <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
-                        R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
+                      <span className="label">{conta.tipo === 'Cartão de Crédito' ? 'Fatura do Mês:' : 'Saldo:'}</span>
+                      <span className={`valor ${conta.tipo === 'Cartão de Crédito' ? 'valor-fatura' : (parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo')}`}>
+                        R$ {formatarMoeda(conta.tipo === 'Cartão de Crédito' ? Math.abs(calcularFaturaMes(conta.id)) : (Number(conta.saldo_inicial) || 0))}
                       </span>
+                      
+                      {conta.tipo === 'Cartão de Crédito' && (
+                        <div className="limite-container">
+                          <div className="limite-info">
+                            <span>Limite: R$ {formatarMoeda(conta.limite_total)}</span>
+                            <span>{((Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="limite-bar-bg">
+                            <div 
+                              className="limite-bar-fill" 
+                              style={{ 
+                                width: `${Math.min(100, (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100)}%`,
+                                backgroundColor: (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) > 0.8 ? '#ef4444' : '#3b82f6'
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <span className="valor-oculto">R$ ••••••</span>
@@ -668,14 +795,25 @@ function Dashboard() {
         {dashboardData.length > 0 ? (
           <div className="charts-container">
             <div className="chart-container chart-line">
-              <Line data={processChartData()} options={chartOptions} />
+              <Bar data={processChartData()} options={chartOptions} />
             </div>
             
             {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
               <>
                 <div className="chart-pie-section">
                   <div className="chart-container chart-pie">
-                    <Pie data={processPieChartData()} options={pieChartOptions} />
+                    <div className="chart-header-compact">
+                      <h4>Distribuição de Gastos</h4>
+                    </div>
+                    <div className="chart-content-pie">
+                      <Pie data={processPieChartData()} options={pieChartOptions} />
+                      {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
+                        <div className="chart-center-info">
+                          <span className="center-label">Total Gasto</span>
+                          <span className="center-value">R$ {formatarMoeda(calcularTotaisFiltrados().totalSaidas)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="right-section">
@@ -720,6 +858,9 @@ function Dashboard() {
                                   </span>
                                   <span className="bar-valor">
                                     {mostrarValores ? `R$ ${formatarMoeda(categoria.total)}` : 'R$ ••••••'}
+                                    <span className="percentage-pill" style={{ backgroundColor: `${categoria.cor}22`, color: categoria.cor }}>
+                                      {percentual.toFixed(1)}%
+                                    </span>
                                   </span>
                                 </div>
                                 <div className="bar-container">
@@ -730,7 +871,6 @@ function Dashboard() {
                                       background: categoria.cor
                                     }}
                                   >
-                                    <span className="bar-percentage">{percentual.toFixed(1)}%</span>
                                   </div>
                                 </div>
                               </div>
@@ -749,6 +889,9 @@ function Dashboard() {
                                           </span>
                                           <span className="bar-valor">
                                             {mostrarValores ? `R$ ${formatarMoeda(subcategoria.total)}` : 'R$ ••••••'}
+                                            <span className="percentage-pill small">
+                                              {subPercentual.toFixed(1)}%
+                                            </span>
                                           </span>
                                         </div>
                                         <div className="bar-container subcategory-container">
@@ -759,7 +902,6 @@ function Dashboard() {
                                               background: `${categoria.cor}cc`
                                             }}
                                           >
-                                            <span className="bar-percentage">{subPercentual.toFixed(1)}%</span>
                                           </div>
                                         </div>
                                       </div>
@@ -810,7 +952,19 @@ function Dashboard() {
                 <option value="TODOS">Todos os tipos</option>
                 <option value="entrada">Entradas</option>
                 <option value="saida">Saídas</option>
+                <option value="transferencia">Transferências</option>
                 <option value="neutro">Neutros</option>
+              </select>
+
+              <select 
+                value={filterConta} 
+                onChange={(e) => setFilterConta(e.target.value)}
+                className="filter-select"
+              >
+                <option value="TODAS">Todas as contas</option>
+                {contas.map(conta => (
+                  <option key={conta.id} value={conta.id}>{conta.nome}</option>
+                ))}
               </select>
 
               <select 
@@ -878,6 +1032,10 @@ function Dashboard() {
               filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
             }
 
+            if (filterConta !== 'TODAS') {
+              filtrados = filtrados.filter(l => l.conta_id == filterConta || l.conta_destino_id == filterConta);
+            }
+
             if (filterAtraso) {
               const hoje = new Date();
               hoje.setHours(0, 0, 0, 0);
@@ -936,11 +1094,20 @@ function Dashboard() {
                           <div key={lancamento.id} className={`lancamento-item ${lancamento.tipo}`}>
                             <div className="item-tipo">
                               <span className={`badge ${lancamento.tipo}`}>
-                                {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
+                                {lancamento.tipo === 'entrada' ? '↑ Entrada' : 
+                                 lancamento.tipo === 'saida' ? '↓ Saída' : 
+                                 lancamento.tipo === 'transferencia' ? '⇄ Transfer' : '⊝ Neutro'}
                               </span>
                             </div>
                             <div className="item-descricao">
-                              <div className="descricao-text">{lancamento.descricao}</div>
+                              <div className="descricao-text">
+                                {lancamento.descricao}
+                                {lancamento.tipo === 'transferencia' && (
+                                  <span className="transfer-info-small">
+                                    ({lancamento.conta_nome} → {contas.find(c => c.id === lancamento.conta_destino_id)?.nome || 'Conta Destino'})
+                                  </span>
+                                )}
+                              </div>
                               {lancamento.categoria_nome && (
                                 <div className="categoria-badges-inline">
                                   <span 
@@ -968,13 +1135,28 @@ function Dashboard() {
                             <div className={`item-valor ${lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
                               {mostrarValores ? `R$ ${formatarMoeda(Number(lancamento.valor) || 0)}` : 'R$ ••••'}
                             </div>
-                            {lancamento.tipo === 'saida' && (
-                              <div className="item-pago">
-                                <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
-                                  {lancamento.pago ? '✓ Pago' : '○ Não pago'}
+                            <div className="item-pago">
+                              {lancamento.tipo === 'saida' && lancamento.conta_tipo !== 'Cartão de Crédito' && (
+                                <button 
+                                  className={`btn-toggle-pago-item ${lancamento.pago ? 'pago' : 'pendente'}`}
+                                  onClick={() => handleTogglePago(lancamento)}
+                                  title={lancamento.pago ? 'Marcar como não pago' : 'Marcar como pago'}
+                                >
+                                  <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
+                                    {lancamento.pago ? '✓ Pago' : '○ Não pago'}
+                                  </span>
+                                </button>
+                              )}
+                              {lancamento.conta_tipo === 'Cartão de Crédito' && (
+                                <span className="badge-pago card-cc-badge">
+                                  💳 Cartão
                                 </span>
-                              </div>
-                            )}
+                              )}
+                            </div>
+                            <div className="item-actions">
+                              <button className="btn-action-edit" onClick={() => handleEdit(lancamento)} title="Editar">✏️</button>
+                              <button className="btn-action-delete" onClick={() => handleDelete(lancamento.id)} title="Excluir">🗑️</button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -991,27 +1173,65 @@ function Dashboard() {
 
       {showModal && (
         <div className="modal">
-          <div className="modal-content">
-            <h3>Editar Lançamento</h3>
+          <div className="modal-content modal-lancamento premium-card">
+            <h3>{editingLancamento ? 'Editar Lançamento' : `Nov${formData.tipo === 'entrada' ? 'a Receita' : formData.tipo === 'saida' ? 'a Despesa' : formData.tipo === 'transferencia' ? 'a Transferência' : 'o Lançamento'}`}</h3>
             <form onSubmit={handleSubmit}>
+              
               <div className="form-group">
-                <label>Descrição *</label>
-                <input
-                  type="text"
-                  value={formData.descricao}
-                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                  required
-                />
+                <label>Direção do lançamento *</label>
+                <div className="btn-group">
+                  <button
+                    type="button"
+                    className={formData.tipo === 'entrada' ? 'active' : ''}
+                    onClick={() => {
+                      setFormData({...formData, tipo: 'entrada', categoria_id: '', subcategoria_id: '', conta_destino_id: '', pago: false});
+                      setQuickAddType(null);
+                    }}
+                  >
+                    Entrada
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'saida' ? 'active' : ''}
+                    onClick={() => {
+                      setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''});
+                      setQuickAddType(null);
+                    }}
+                  >
+                    Saída
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'transferencia' ? 'active' : ''}
+                    onClick={() => {
+                      setFormData({...formData, tipo: 'transferencia', categoria_id: '', subcategoria_id: '', pago: false});
+                      setQuickAddType(null);
+                    }}
+                  >
+                    Transfer
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'neutro' ? 'active' : ''}
+                    onClick={() => {
+                      setFormData({...formData, tipo: 'neutro', categoria_id: '', subcategoria_id: '', conta_destino_id: '', pago: false});
+                      setQuickAddType(null);
+                    }}
+                  >
+                    Neutro
+                  </button>
+                </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Valor *</label>
+                  <label>Valor (R$) *</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.valor}
                     onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                    placeholder="0,00"
                     required
                   />
                 </div>
@@ -1027,20 +1247,80 @@ function Dashboard() {
                 </div>
               </div>
 
+              {formData.tipo === 'saida' && (
+                <div className="form-group">
+                  <label>Status de Pagamento</label>
+                  <div className="btn-group">
+                    <button
+                      type="button"
+                      className={formData.pago ? 'active' : ''}
+                      onClick={() => setFormData({...formData, pago: true})}
+                    >
+                      Pago
+                    </button>
+                    <button
+                      type="button"
+                      className={!formData.pago ? 'active' : ''}
+                      onClick={() => setFormData({...formData, pago: false})}
+                    >
+                      Não pago
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {formData.tipo === 'saida' && (
+                <div className="form-group">
+                  <label>Forma de Pagamento</label>
+                  <div className="btn-group">
+                    <button
+                      type="button"
+                      className={!formData.parcelado ? 'active' : ''}
+                      onClick={() => setFormData({...formData, parcelado: false, num_parcelas: 1})}
+                    >
+                      À Vista
+                    </button>
+                    <button
+                      type="button"
+                      className={formData.parcelado ? 'active' : ''}
+                      onClick={() => setFormData({...formData, parcelado: true})}
+                    >
+                      Parcelado
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {formData.tipo === 'saida' && formData.parcelado && (
+                <div className="form-group">
+                  <label>Número de Parcelas *</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="99"
+                    value={formData.num_parcelas}
+                    onChange={(e) => setFormData({...formData, num_parcelas: parseInt(e.target.value)})}
+                    required
+                  />
+                  <small className="help-text" style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                    O valor informado (R$ {formData.valor || '0,00'}) será o valor de CADA parcela.
+                  </small>
+                </div>
+              )}
+
               <div className="form-group">
-                <label>Tipo *</label>
-                <select
-                  value={formData.tipo}
-                  onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                <label>Descrição *</label>
+                <input
+                  type="text"
+                  value={formData.descricao}
+                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                  placeholder="Ex: Aluguel, Salário..."
                   required
-                >
-                  <option value="entrada">Entrada</option>
-                  <option value="saida">Saída</option>
-                </select>
+                />
               </div>
 
               <div className="form-group">
-                <label>Conta *</label>
+                <label>{formData.tipo === 'transferencia' ? 'Conta de Origem *' : 'Conta *'}</label>
                 <select
                   value={formData.conta_id}
                   onChange={(e) => setFormData({...formData, conta_id: e.target.value})}
@@ -1048,14 +1328,72 @@ function Dashboard() {
                 >
                   <option value="">Selecione uma conta</option>
                   {contas.map(conta => (
-                    <option key={conta.id} value={conta.id}>{conta.nome}</option>
+                    <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
                   ))}
                 </select>
               </div>
 
+              {formData.tipo === 'transferencia' && (
+                <div className="form-group">
+                  <label>Conta de Destino *</label>
+                  <select
+                    value={formData.conta_destino_id}
+                    onChange={(e) => setFormData({...formData, conta_destino_id: e.target.value})}
+                    required
+                  >
+                    <option value="">Selecione a conta de destino</option>
+                    {contas.filter(c => c.id.toString() !== formData.conta_id.toString()).map(conta => (
+                      <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {formData.tipo !== 'transferencia' && (
+                <>
+                  <div className="form-group">
+                    <label>Classificação</label>
+                    <div className="categoria-buttons">
+                      {categorias
+                        .filter(cat => cat.tipo === formData.tipo)
+                        .map(categoria => (
+                          <button
+                            key={categoria.id}
+                            type="button"
+                            className={String(formData.categoria_id) === String(categoria.id) ? 'active' : ''}
+                            onClick={() => {
+                              setFormData({...formData, categoria_id: categoria.id.toString(), subcategoria_id: ''});
+                              loadSubcategoriasPorCategoria(categoria.id);
+                            }}
+                          >
+                            {categoria.nome}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {formData.categoria_id && subcategorias.length > 0 && (
+                    <div className="form-group">
+                      <label>Subcategoria</label>
+                      <select
+                        value={formData.subcategoria_id}
+                        onChange={(e) => setFormData({...formData, subcategoria_id: e.target.value})}
+                      >
+                        <option value="">Nenhuma</option>
+                        {subcategorias.map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
+                <button type="button" className="btn-cancel" onClick={() => { setShowModal(false); setEditingLancamento(null); setQuickAddType(null); }}>Cancelar</button>
+                <button type="submit" className="btn-primary">
+                  {editingLancamento ? 'Salvar Alterações' : 'Confirmar Lançamento'}
+                </button>
               </div>
             </form>
           </div>
