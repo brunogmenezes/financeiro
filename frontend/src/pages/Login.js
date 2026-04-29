@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, register } from '../services/api';
+import { login, register, googleLogin } from '../services/api';
+import { GoogleLogin } from '@react-oauth/google';
 import './Login.css';
 
 function Login() {
@@ -17,6 +18,17 @@ function Login() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleAuthSuccess = (response) => {
+    localStorage.setItem('token', response.data.token);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+    
+    // Aplicar tema do usuário
+    const tema = response.data.user.cor_tema || 'roxo';
+    document.documentElement.setAttribute('data-theme', tema);
+    
+    navigate('/dashboard');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -29,27 +41,45 @@ function Login() {
         setFormData({ nome: '', email: '', senha: '' });
       } else {
         const response = await login(formData.email, formData.senha);
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        // Aplicar tema do usuário
-        const tema = response.data.user.cor_tema || 'roxo';
-        document.documentElement.setAttribute('data-theme', tema);
-        
-        navigate('/dashboard');
+        handleAuthSuccess(response);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao processar requisição');
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const response = await googleLogin(credentialResponse.credential);
+      handleAuthSuccess(response);
+    } catch (err) {
+      setError('Erro ao autenticar com Google');
+    }
+  };
+
   return (
     <div className="login-container">
       <div className="login-box">
-        <h1>💰 Controle Financeiro</h1>
+        <h1>Controle Financeiro</h1>
         <h2>{isRegister ? 'Criar Conta' : 'Login'}</h2>
 
         {error && <div className="error-message">{error}</div>}
+
+        <div className="social-login">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Falha no login com Google')}
+            useOneTap
+            theme="filled_blue"
+            shape="pill"
+            text={isRegister ? 'signup_with' : 'signin_with'}
+            width="100%"
+          />
+        </div>
+
+        <div className="divider">
+          <span>ou</span>
+        </div>
 
         <form onSubmit={handleSubmit}>
           {isRegister && (
@@ -60,6 +90,7 @@ function Login() {
                 name="nome"
                 value={formData.nome}
                 onChange={handleChange}
+                placeholder="Seu nome completo"
                 required
               />
             </div>
@@ -72,6 +103,7 @@ function Login() {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              placeholder="exemplo@email.com"
               required
             />
           </div>
@@ -83,19 +115,20 @@ function Login() {
               name="senha"
               value={formData.senha}
               onChange={handleChange}
+              placeholder="Sua senha secreta"
               required
             />
           </div>
 
           <button type="submit" className="btn-primary">
-            {isRegister ? 'Registrar' : 'Entrar'}
+            {isRegister ? 'Registrar Agora' : 'Entrar na Conta'}
           </button>
         </form>
 
         <p className="toggle-mode">
-          {isRegister ? 'Já tem conta?' : 'Não tem conta?'}
+          {isRegister ? 'Já possui uma conta?' : 'Ainda não tem conta?'}
           <button onClick={() => setIsRegister(!isRegister)}>
-            {isRegister ? 'Fazer Login' : 'Registrar'}
+            {isRegister ? 'Fazer Login' : 'Cadastre-se grátis'}
           </button>
         </p>
       </div>

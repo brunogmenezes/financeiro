@@ -2,6 +2,68 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const { registrarAuditoria } = require('./auditoriaController');
+const { OAuth2Client } = require('google-auth-library');
+const crypto = require('crypto');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Login com Google
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token: idToken } = req.body;
+    
+    // Verificar token do Google
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    const { email, name: nome } = payload;
+    
+    // Buscar usuário por email
+    let userResult = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    let user;
+    
+    if (userResult.rows.length === 0) {
+      // Criar novo usuário se não existir
+      // Gerar uma senha aleatória segura
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      
+      const insertResult = await pool.query(
+        'INSERT INTO usuarios (nome, email, senha) VALUES ($1, $2, $3) RETURNING id, nome, email',
+        [nome, email, hashedPassword]
+      );
+      user = insertResult.rows[0];
+      
+      // Registrar auditoria
+      await registrarAuditoria(user.id, user.nome, 'CRIAR', 'usuarios', user.id, `Novo usuário via Google: ${email}`);
+    } else {
+      user = userResult.rows[0];
+    }
+    
+    // Gerar token JWT
+    const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    
+    // Registrar auditoria de login
+    await registrarAuditoria(user.id, user.nome, 'LOGIN', 'usuarios', user.id, `Login via Google: ${email}`);
+    
+    res.json({
+      token: jwtToken,
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        cor_tema: user.cor_tema || 'roxo',
+        whatsapp: user.whatsapp || ''
+      }
+    });
+  } catch (error) {
+    console.error('Erro no Google Login:', error);
+    res.status(401).json({ error: 'Falha na autenticação com o Google' });
+  }
+};
 
 // Registrar usuário
 exports.register = async (req, res) => {

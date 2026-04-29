@@ -18,6 +18,7 @@ api.interceptors.request.use((config) => {
 // Auth
 export const login = (email, senha) => api.post('/auth/login', { email, senha });
 export const register = (nome, email, senha) => api.post('/auth/register', { nome, email, senha });
+export const googleLogin = (token) => api.post('/auth/google', { token });
 export const getPerfil = () => api.get('/auth/perfil');
 export const updatePerfil = (data) => api.put('/auth/perfil', data);
 
