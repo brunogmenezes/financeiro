@@ -9,7 +9,12 @@ import {
   getContas, 
   togglePagoLancamento,
   getCategorias,
-  getSubcategorias
+  getSubcategorias,
+  getEntradasProjetivas,
+  createEntradaProjetiva,
+  createEntradasProjetivasBulk,
+  updateEntradaProjetiva,
+  deleteEntradaProjetiva
 } from '../services/api';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
@@ -48,6 +53,10 @@ function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editingLancamento, setEditingLancamento] = useState(null);
   const [mostrarValores, setMostrarValores] = useState(true);
+  const [entradasProjetivas, setEntradasProjetivas] = useState([]);
+  const [showModalProjetivas, setShowModalProjetivas] = useState(false);
+  const [modoGraficoProjetivo, setModoGraficoProjetivo] = useState(false);
+  const [projetivasList, setProjetivasList] = useState([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
   
   // Define o mês atual como filtro padrão (YYYY-MM)
   const mesAtual = new Date().toISOString().slice(0, 7);
@@ -82,8 +91,18 @@ function Dashboard() {
     loadLancamentos();
     loadContas();
     loadCategorias();
+    loadEntradasProjetivas();
     // eslint-disable-next-line
   }, []);
+
+  const loadEntradasProjetivas = async () => {
+    try {
+      const response = await getEntradasProjetivas();
+      setEntradasProjetivas(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar entradas projetivas:', error);
+    }
+  };
 
 
   const handleFilterCategoriaChange = (e) => {
@@ -256,6 +275,48 @@ function Dashboard() {
     } catch (error) {
       console.error(error);
       alert(editingLancamento ? 'Erro ao atualizar lançamento' : 'Erro ao criar lançamento');
+    }
+  };
+
+  // Handlers para Entradas Projetivas
+  const handleAddProjetivaRow = () => {
+    setProjetivasList([...projetivasList, { data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
+  };
+  
+  const handleRemoveProjetivaRow = (index) => {
+    const list = [...projetivasList];
+    list.splice(index, 1);
+    setProjetivasList(list);
+  };
+
+  const handleProjetivaChange = (index, field, value) => {
+    const list = [...projetivasList];
+    list[index][field] = value;
+    setProjetivasList(list);
+  };
+  
+  const handleSaveProjetivas = async () => {
+    try {
+      const validItems = projetivasList.filter(item => item.descricao && item.valor && item.data);
+      if (validItems.length > 0) {
+        await createEntradasProjetivasBulk(validItems);
+        loadEntradasProjetivas();
+      }
+      setShowModalProjetivas(false);
+      setProjetivasList([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
+    } catch (e) {
+      alert('Erro ao salvar entradas projetivas');
+    }
+  };
+
+  const handleDeleteProjetivaDb = async (id) => {
+    if (window.confirm('Deseja realmente excluir esta entrada projetiva?')) {
+      try {
+        await deleteEntradaProjetiva(id);
+        loadEntradasProjetivas();
+      } catch (e) {
+        alert('Erro ao excluir entrada projetiva');
+      }
     }
   };
 
@@ -765,6 +826,9 @@ function Dashboard() {
         return dataLanc === mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida');
     });
 
+    // Para as projetivas, não filtramos por mês/ano, pois elas valem para qualquer mês (apenas o dia importa)
+    const entradasProjetivasGlobais = entradasProjetivas;
+
     for (let dia = 1; dia <= diasNoMes; dia++) {
       labels.push(`${dia}/${mes}`);
       
@@ -772,9 +836,22 @@ function Dashboard() {
       
       const lancamentosDoDia = lancamentosDoMes.filter(l => l.data.startsWith(diaFormatado));
       
-      const entradasDia = lancamentosDoDia
-        .filter(l => l.tipo === 'entrada')
-        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+      let entradasDia = 0;
+      
+      if (modoGraficoProjetivo) {
+        // Filtra projetivas que coincidem com o dia do mês atual (independente de ano/mês do cadastro)
+        const projetivasDoDia = entradasProjetivasGlobais.filter(l => {
+          const dataProj = new Date(l.data);
+          // Usamos getUTCDate ou split para pegar o dia exato da string YYYY-MM-DD
+          const diaProj = parseInt(l.data.split('-')[2].substring(0, 2));
+          return diaProj === dia;
+        });
+        entradasDia = projetivasDoDia.reduce((sum, l) => sum + parseFloat(l.valor), 0);
+      } else {
+        entradasDia = lancamentosDoDia
+          .filter(l => l.tipo === 'entrada')
+          .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+      }
         
       const saidasDia = lancamentosDoDia
         .filter(l => l.tipo === 'saida')
@@ -789,13 +866,13 @@ function Dashboard() {
       datasets: [
         {
           fill: true,
-          label: 'Fluxo de Caixa',
+          label: modoGraficoProjetivo ? 'Fluxo de Caixa (Projetivo)' : 'Fluxo de Caixa',
           data: saldosAcumulados,
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderColor: modoGraficoProjetivo ? '#8b5cf6' : '#10b981',
+          backgroundColor: modoGraficoProjetivo ? 'rgba(139, 92, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
           tension: 0.4,
           pointRadius: 2,
-          pointBackgroundColor: '#10b981',
+          pointBackgroundColor: modoGraficoProjetivo ? '#8b5cf6' : '#10b981',
           borderWidth: 3
         }
       ]
@@ -853,6 +930,9 @@ function Dashboard() {
             <p>Aqui está o resumo da sua vida financeira hoje.</p>
           </div>
           <div className="quick-actions-btns">
+            <button className="btn-quick btn-secondary-action" onClick={() => setShowModalProjetivas(true)} style={{ backgroundColor: '#8b5cf6', color: 'white' }}>
+              <span>+</span> Cadastrar Entrada Projetiva
+            </button>
             <button className="btn-quick btn-primary-action" onClick={() => { setQuickAddType(null); setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''}); setShowModal(true); }}>
               <span>+</span> Adicionar Lançamento
             </button>
@@ -962,8 +1042,57 @@ function Dashboard() {
             
             {lancamentos.length > 0 && (
               <div className="chart-container chart-area">
-                <div className="chart-header-compact">
+                <div className="chart-header-compact" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h4>Evolução Diária do Fluxo de Caixa {filterMes === 'TODOS' && '(Mês Atual)'}</h4>
+                  <div 
+                    className="toggle-projetivo-container" 
+                    onClick={() => setModoGraficoProjetivo(!modoGraficoProjetivo)}
+                    style={{ 
+                      display: 'flex', 
+                      background: '#f3f4f6', 
+                      borderRadius: '20px', 
+                      padding: '3px', 
+                      cursor: 'pointer', 
+                      position: 'relative', 
+                      width: '160px',
+                      height: '32px',
+                      alignItems: 'center',
+                      userSelect: 'none',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <div 
+                      className="toggle-slider" 
+                      style={{ 
+                        position: 'absolute', 
+                        width: '78px', 
+                        height: '26px', 
+                        background: modoGraficoProjetivo ? '#8b5cf6' : '#10b981', 
+                        borderRadius: '18px', 
+                        left: modoGraficoProjetivo ? '79px' : '3px', 
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                    ></div>
+                    <span style={{ 
+                      flex: 1, 
+                      textAlign: 'center', 
+                      zIndex: 1, 
+                      fontSize: '0.75rem', 
+                      fontWeight: 'bold', 
+                      color: !modoGraficoProjetivo ? 'white' : '#6b7280',
+                      transition: 'color 0.3s'
+                    }}>Real</span>
+                    <span style={{ 
+                      flex: 1, 
+                      textAlign: 'center', 
+                      zIndex: 1, 
+                      fontSize: '0.75rem', 
+                      fontWeight: 'bold', 
+                      color: modoGraficoProjetivo ? 'white' : '#6b7280',
+                      transition: 'color 0.3s'
+                    }}>Projetivo</span>
+                  </div>
                 </div>
                 <div className="chart-content-area" style={{ height: '350px' }}>
                   <Line data={processAreaChartData()} options={areaChartOptions} />
@@ -1624,6 +1753,108 @@ function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {showModalProjetivas && (
+        <div className="modal">
+          <div className="modal-content modal-projetivas premium-card" style={{ maxWidth: '800px', width: '90%' }}>
+            <h3>Gerenciar Entradas Projetivas</h3>
+            <p style={{ marginBottom: '20px', color: '#666', fontSize: '0.9rem' }}>
+              Cadastre previsões de entradas. <strong>Apenas o dia será considerado</strong> (independente de mês ou ano), aparecendo em todos os meses no gráfico de Evolução Diária.
+            </p>
+            
+            {entradasProjetivas.length > 0 && (
+              <div className="projetivas-existentes" style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto' }}>
+                <h4>Projeções Salvas</h4>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Dia</th>
+                      <th style={{ padding: '8px' }}>Descrição</th>
+                      <th style={{ padding: '8px' }}>Valor</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entradasProjetivas.map(proj => (
+                      <tr key={proj.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '8px' }}>Dia {parseInt(proj.data.split('-')[2].substring(0, 2))}</td>
+                        <td style={{ padding: '8px' }}>{proj.descricao}</td>
+                        <td style={{ padding: '8px', color: '#10b981', fontWeight: 'bold' }}>R$ {parseFloat(proj.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          <button 
+                            type="button" 
+                            onClick={() => handleDeleteProjetivaDb(proj.id)}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                            title="Excluir projeção"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="projetivas-novas" style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h4 style={{ margin: 0 }}>Adicionar Novas Projeções</h4>
+                <button type="button" className="btn-secondary" onClick={handleAddProjetivaRow} style={{ padding: '5px 10px', fontSize: '0.8rem' }}>
+                  + Adicionar Linha
+                </button>
+              </div>
+
+              {projetivasList.map((item, index) => (
+                <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <input
+                      type="date"
+                      value={item.data}
+                      onChange={(e) => handleProjetivaChange(index, 'data', e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </div>
+                  <div style={{ flex: 2 }}>
+                    <input
+                      type="text"
+                      placeholder="Descrição (ex: Bônus de fim de ano)"
+                      value={item.descricao}
+                      onChange={(e) => handleProjetivaChange(index, 'descricao', e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Valor (R$)"
+                      value={item.valor}
+                      onChange={(e) => handleProjetivaChange(index, 'valor', e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                  </div>
+                  {projetivasList.length > 1 && (
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveProjetivaRow(index)}
+                      style={{ padding: '8px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '20px' }}>
+              <button type="button" className="btn-cancel" onClick={() => setShowModalProjetivas(false)}>Fechar</button>
+              <button type="button" className="btn-primary" onClick={handleSaveProjetivas} style={{ backgroundColor: '#8b5cf6' }}>
+                Salvar Projeções
+              </button>
+            </div>
           </div>
         </div>
       )}

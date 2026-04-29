@@ -57,6 +57,13 @@ export const updateEvolutionConfig = (data) => api.post('/whatsapp/config', data
 export const sendTestMessage = (whatsapp) => api.post('/whatsapp/test-message', { whatsapp });
 export const sendRemindersNow = () => api.post('/whatsapp/send-reminders-now');
 
+// Entradas Projetivas
+export const getEntradasProjetivas = () => api.get('/entradas-projetivas');
+export const createEntradaProjetiva = (data) => api.post('/entradas-projetivas', data);
+export const createEntradasProjetivasBulk = (data) => api.post('/entradas-projetivas/bulk', data);
+export const updateEntradaProjetiva = (id, data) => api.put(`/entradas-projetivas/${id}`, data);
+export const deleteEntradaProjetiva = (id) => api.delete(`/entradas-projetivas/${id}`);
+
 
 
 export default api;

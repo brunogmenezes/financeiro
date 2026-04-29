@@ -9,6 +9,7 @@ const lancamentosRoutes = require('./routes/lancamentos');
 const auditoriaRoutes = require('./routes/auditoria');
 const categoriasRoutes = require('./routes/categorias');
 const whatsappRoutes = require('./routes/whatsapp');
+const entradasProjetivasRoutes = require('./routes/entradasProjetivas');
 const { ensureOptionalColumns } = require('./config/migrations');
 const { startReminderScheduler } = require('./services/reminderScheduler');
 
@@ -25,6 +26,7 @@ app.use('/api/lancamentos', lancamentosRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
 app.use('/api/categorias', categoriasRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/entradas-projetivas', entradasProjetivasRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {
