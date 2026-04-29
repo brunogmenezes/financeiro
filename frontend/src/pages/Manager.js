@@ -5,7 +5,6 @@ import './Manager.css';
 
 function Manager() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -29,10 +28,8 @@ function Manager() {
     try {
       const response = await adminGetUsers();
       setUsers(response.data);
-      setLoading(false);
     } catch (err) {
       setError('Erro ao carregar usuários. Verifique se você tem permissão.');
-      setLoading(false);
     }
   };
 

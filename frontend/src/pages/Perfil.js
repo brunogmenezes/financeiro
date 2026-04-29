@@ -9,7 +9,6 @@ function Perfil() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [waStatus, setWaStatus] = useState({ state: 'desconhecido', message: '' });
-  const [waLoading, setWaLoading] = useState(false);
   const [evolutionConfig, setEvolutionConfig] = useState({
     url: '',
     instancia: '',
@@ -32,6 +31,7 @@ function Perfil() {
     fetchPerfil();
     fetchWhatsappStatus();
     fetchEvolutionConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPerfil = async () => {
@@ -290,9 +290,8 @@ function Perfil() {
                 type="button"
                 className="btn-wa-connect"
                 onClick={fetchWhatsappStatus}
-                disabled={waLoading}
               >
-                {waLoading ? 'Verificando...' : 'Atualizar status'}
+                Atualizar status
               </button>
             </div>
             <button
