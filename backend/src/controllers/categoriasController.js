@@ -18,12 +18,13 @@ exports.getAll = async (req, res) => {
 // Criar nova categoria
 exports.create = async (req, res) => {
   try {
-    const { nome, tipo, cor } = req.body;
+    const { nome, tipo, cor, meta_mensal } = req.body;
     const corPadrao = cor || '#7c3aed';
+    const meta = meta_mensal && tipo === 'saida' ? parseFloat(meta_mensal) : null;
 
     const result = await pool.query(
-      'INSERT INTO categorias (nome, tipo, cor, usuario_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nome, tipo, corPadrao, req.userId]
+      'INSERT INTO categorias (nome, tipo, cor, meta_mensal, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nome, tipo, corPadrao, meta, req.userId]
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
@@ -47,11 +48,12 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, tipo, cor } = req.body;
+    const { nome, tipo, cor, meta_mensal } = req.body;
+    const meta = meta_mensal && tipo === 'saida' ? parseFloat(meta_mensal) : null;
 
     const result = await pool.query(
-      'UPDATE categorias SET nome = $1, tipo = $2, cor = $3 WHERE id = $4 AND usuario_id = $5 RETURNING *',
-      [nome, tipo, cor || '#7c3aed', id, req.userId]
+      'UPDATE categorias SET nome = $1, tipo = $2, cor = $3, meta_mensal = $4 WHERE id = $5 AND usuario_id = $6 RETURNING *',
+      [nome, tipo, cor || '#7c3aed', meta, id, req.userId]
     );
 
     if (result.rows.length === 0) {
@@ -154,7 +156,7 @@ exports.getSubcategorias = async (req, res) => {
 exports.createSubcategoria = async (req, res) => {
   try {
     const { categoriaId } = req.params;
-    const { nome, cor } = req.body;
+    const { nome, cor, meta_mensal } = req.body;
     const corPadrao = cor || '#7c3aed';
 
     // Verificar se a categoria pertence ao usuário
@@ -167,9 +169,29 @@ exports.createSubcategoria = async (req, res) => {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
 
+    let finalMeta = null;
+    if (meta_mensal !== undefined && meta_mensal !== null && meta_mensal !== '') {
+      const catMeta = categoria.rows[0].meta_mensal;
+      if (!catMeta) {
+        return res.status(400).json({ error: 'Para definir uma meta na subcategoria, a categoria pai precisa ter uma meta definida.' });
+      }
+
+      const subsQuery = await pool.query(
+        'SELECT SUM(meta_mensal) as total FROM subcategorias WHERE categoria_id = $1',
+        [categoriaId]
+      );
+      const totalAtual = subsQuery.rows[0].total ? parseFloat(subsQuery.rows[0].total) : 0;
+      const novoTotal = totalAtual + parseFloat(meta_mensal);
+
+      if (novoTotal > parseFloat(catMeta)) {
+        return res.status(400).json({ error: `A soma das metas das subcategorias (R$ ${novoTotal.toFixed(2)}) ultrapassa a meta da categoria pai (R$ ${parseFloat(catMeta).toFixed(2)}).` });
+      }
+      finalMeta = parseFloat(meta_mensal);
+    }
+
     const result = await pool.query(
-      'INSERT INTO subcategorias (nome, cor, categoria_id) VALUES ($1, $2, $3) RETURNING *',
-      [nome, corPadrao, categoriaId]
+      'INSERT INTO subcategorias (nome, cor, categoria_id, meta_mensal) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nome, corPadrao, categoriaId, finalMeta]
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
@@ -193,11 +215,11 @@ exports.createSubcategoria = async (req, res) => {
 exports.updateSubcategoria = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, cor } = req.body;
+    const { nome, cor, meta_mensal } = req.body;
 
     // Verificar se a subcategoria pertence a uma categoria do usuário
     const subcategoria = await pool.query(
-      `SELECT s.*, c.usuario_id 
+      `SELECT s.*, c.usuario_id, c.meta_mensal as cat_meta 
        FROM subcategorias s 
        JOIN categorias c ON s.categoria_id = c.id 
        WHERE s.id = $1 AND c.usuario_id = $2`,
@@ -208,9 +230,31 @@ exports.updateSubcategoria = async (req, res) => {
       return res.status(404).json({ error: 'Subcategoria não encontrada' });
     }
 
+    const catMeta = subcategoria.rows[0].cat_meta;
+    const categoriaId = subcategoria.rows[0].categoria_id;
+
+    let finalMeta = null;
+    if (meta_mensal !== undefined && meta_mensal !== null && meta_mensal !== '') {
+      if (!catMeta) {
+        return res.status(400).json({ error: 'Para definir uma meta na subcategoria, a categoria pai precisa ter uma meta definida.' });
+      }
+
+      const subsQuery = await pool.query(
+        'SELECT SUM(meta_mensal) as total FROM subcategorias WHERE categoria_id = $1 AND id != $2',
+        [categoriaId, id]
+      );
+      const totalOutras = subsQuery.rows[0].total ? parseFloat(subsQuery.rows[0].total) : 0;
+      const novoTotal = totalOutras + parseFloat(meta_mensal);
+
+      if (novoTotal > parseFloat(catMeta)) {
+        return res.status(400).json({ error: `A soma das metas das subcategorias (R$ ${novoTotal.toFixed(2)}) ultrapassa a meta da categoria pai (R$ ${parseFloat(catMeta).toFixed(2)}).` });
+      }
+      finalMeta = parseFloat(meta_mensal);
+    }
+
     const result = await pool.query(
-      'UPDATE subcategorias SET nome = $1, cor = $2 WHERE id = $3 RETURNING *',
-      [nome, cor || '#7c3aed', id]
+      'UPDATE subcategorias SET nome = $1, cor = $2, meta_mensal = $3 WHERE id = $4 RETURNING *',
+      [nome, cor || '#7c3aed', finalMeta, id]
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);

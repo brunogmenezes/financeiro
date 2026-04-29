@@ -11,7 +11,7 @@ import {
   getCategorias,
   getSubcategorias
 } from '../services/api';
-import { Bar, Pie } from 'react-chartjs-2';
+import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -475,10 +475,12 @@ function Dashboard() {
       const subcategoriaId = lancamento.subcategoria_id || 'sem-subcategoria';
 
       if (!grupos[categoriaId]) {
+        const catOriginal = categorias.find(c => c.id == categoriaId);
         grupos[categoriaId] = {
           nome: categoriaNome,
           cor: categoriaCor,
           total: 0,
+          meta: catOriginal ? catOriginal.meta_mensal : null,
           subcategorias: {}
         };
       }
@@ -488,7 +490,8 @@ function Dashboard() {
       if (!grupos[categoriaId].subcategorias[subcategoriaId]) {
         grupos[categoriaId].subcategorias[subcategoriaId] = {
           nome: subcategoriaNome,
-          total: 0
+          total: 0,
+          meta: lancamento.subcategoria_meta || null
         };
       }
 
@@ -616,19 +619,29 @@ function Dashboard() {
     const saidasPorCategoria = {};
     const coresCategoria = {};
     
-    lancamentos
-      .filter(l => l.tipo === 'saida')
-      .forEach(lancamento => {
-        const mesLancamento = new Date(lancamento.data).toISOString().slice(0, 7);
-        if (mesLancamento === mesParaGrafico) {
-          const categoria = lancamento.categoria_nome || 'Sem Categoria';
-          if (!saidasPorCategoria[categoria]) {
-            saidasPorCategoria[categoria] = 0;
-            coresCategoria[categoria] = lancamento.categoria_cor || '#999999';
-          }
-          saidasPorCategoria[categoria] += parseFloat(lancamento.valor);
+    let filtrados = lancamentos.filter(l => l.tipo === 'saida');
+
+    if (filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+    }
+    if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+    }
+    if (filterConta !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.conta_id == filterConta);
+    }
+    
+    filtrados.forEach(lancamento => {
+      const mesLancamento = new Date(lancamento.data).toISOString().slice(0, 7);
+      if (mesLancamento === mesParaGrafico) {
+        const categoria = lancamento.categoria_nome || 'Sem Categoria';
+        if (!saidasPorCategoria[categoria]) {
+          saidasPorCategoria[categoria] = 0;
+          coresCategoria[categoria] = lancamento.categoria_cor || '#999999';
         }
-      });
+        saidasPorCategoria[categoria] += parseFloat(lancamento.valor);
+      }
+    });
 
     // Ordenar categorias por valor (do maior para o menor)
     const sortedCategories = Object.keys(saidasPorCategoria).sort((a, b) => saidasPorCategoria[b] - saidasPorCategoria[a]);
@@ -675,6 +688,155 @@ function Dashboard() {
             const percentage = ((value / total) * 100).toFixed(1);
             return `${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
           }
+        }
+      }
+    }
+  };
+
+  // Processar dados para o gráfico de pizza (saídas por conta do mês filtrado)
+  const processPieChartDataPorConta = () => {
+    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    const saidasPorConta = {};
+    
+    // Cores para as contas (já que não possuem cor definida no banco)
+    const coresDisponiveis = ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9'];
+    const coresConta = {};
+    let colorIndex = 0;
+
+    let filtrados = lancamentos.filter(l => l.tipo === 'saida');
+
+    if (filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+    }
+    if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+    }
+    if (filterConta !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.conta_id == filterConta);
+    }
+
+    filtrados.forEach(lancamento => {
+      const mesLancamento = new Date(lancamento.data).toISOString().slice(0, 7);
+      if (mesLancamento === mesParaGrafico) {
+        const contaNome = lancamento.conta_nome || 'Sem Conta';
+        if (!saidasPorConta[contaNome]) {
+          saidasPorConta[contaNome] = 0;
+          coresConta[contaNome] = coresDisponiveis[colorIndex % coresDisponiveis.length];
+          colorIndex++;
+        }
+        saidasPorConta[contaNome] += parseFloat(lancamento.valor);
+      }
+    });
+
+    const sortedContas = Object.keys(saidasPorConta).sort((a, b) => saidasPorConta[b] - saidasPorConta[a]);
+    const sortedData = sortedContas.map(conta => saidasPorConta[conta]);
+    const sortedColors = sortedContas.map(conta => coresConta[conta]);
+    
+    return {
+      labels: sortedContas,
+      datasets: [
+        {
+          data: sortedData,
+          backgroundColor: sortedColors,
+          borderColor: 'white',
+          borderWidth: 3,
+          hoverOffset: 15,
+          spacing: 5,
+        },
+      ],
+    };
+  };
+
+  // Processar dados para o gráfico de Área (Evolução Diária)
+  const processAreaChartData = () => {
+    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    const [ano, mes] = mesParaGrafico.split('-');
+    
+    // Obter número de dias no mês
+    const diasNoMes = new Date(ano, mes, 0).getDate();
+    
+    const labels = [];
+    const saldosAcumulados = [];
+    
+    let saldoAtual = 0;
+    
+    const lancamentosDoMes = lancamentos.filter(l => {
+        const dataLanc = new Date(l.data).toISOString().slice(0, 7);
+        return dataLanc === mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida');
+    });
+
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+      labels.push(`${dia}/${mes}`);
+      
+      const diaFormatado = `${ano}-${mes}-${String(dia).padStart(2, '0')}`;
+      
+      const lancamentosDoDia = lancamentosDoMes.filter(l => l.data.startsWith(diaFormatado));
+      
+      const entradasDia = lancamentosDoDia
+        .filter(l => l.tipo === 'entrada')
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+        
+      const saidasDia = lancamentosDoDia
+        .filter(l => l.tipo === 'saida')
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+        
+      saldoAtual += (entradasDia - saidasDia);
+      saldosAcumulados.push(saldoAtual);
+    }
+
+    return {
+      labels,
+      datasets: [
+        {
+          fill: true,
+          label: 'Fluxo de Caixa',
+          data: saldosAcumulados,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          tension: 0.4,
+          pointRadius: 2,
+          pointBackgroundColor: '#10b981',
+          borderWidth: 3
+        }
+      ]
+    };
+  };
+
+  const areaChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#1f2937',
+        bodyColor: '#1f2937',
+        borderColor: '#e5e7eb',
+        borderWidth: 1,
+        padding: 12,
+        usePointStyle: true,
+        callbacks: {
+          label: function(context) {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+              label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+            }
+            return label;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false }
+      },
+      y: {
+        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+        ticks: {
+          callback: value => 'R$ ' + value.toLocaleString('pt-BR')
         }
       }
     }
@@ -798,6 +960,17 @@ function Dashboard() {
               <Bar data={processChartData()} options={chartOptions} />
             </div>
             
+            {lancamentos.length > 0 && (
+              <div className="chart-container chart-area">
+                <div className="chart-header-compact">
+                  <h4>Evolução Diária do Fluxo de Caixa {filterMes === 'TODOS' && '(Mês Atual)'}</h4>
+                </div>
+                <div className="chart-content-area" style={{ height: '350px' }}>
+                  <Line data={processAreaChartData()} options={areaChartOptions} />
+                </div>
+              </div>
+            )}
+
             {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
               <>
                 <div className="chart-pie-section">
@@ -816,6 +989,21 @@ function Dashboard() {
                     </div>
                   </div>
                   
+                  <div className="chart-container chart-pie">
+                    <div className="chart-header-compact">
+                      <h4>Gastos por Conta</h4>
+                    </div>
+                    <div className="chart-content-pie">
+                      <Pie data={processPieChartDataPorConta()} options={pieChartOptions} />
+                      {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
+                        <div className="chart-center-info">
+                          <span className="center-label">Total Gasto</span>
+                          <span className="center-value">R$ {formatarMoeda(calcularTotaisFiltrados().totalSaidas)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="right-section">
                     <div className="totals-cards">
                       <div className="total-card total-entradas">
@@ -844,79 +1032,119 @@ function Dashboard() {
                 {/* Barras horizontais por categoria e subcategoria */}
                 <div className="category-bars-section">
                   <h3>📊 Valores por Categoria</h3>
-                  <div className="category-bars-container">{calcularValoresPorCategoria().length > 0 ? (
+                  <div className="category-bars-container">
+                    {calcularValoresPorCategoria().length > 0 ? (
                       calcularValoresPorCategoria().map((categoria, idx) => {
-                          const maxValor = Math.max(...calcularValoresPorCategoria().map(c => c.total));
-                          const percentual = (categoria.total / maxValor) * 100;
-                          
-                          return (
-                            <div key={idx} className="category-bar-group">
-                              <div className="category-bar-main">
-                                <div className="bar-label">
-                                  <span className="bar-categoria" style={{ color: categoria.cor }}>
-                                    ● {categoria.nome}
-                                  </span>
-                                  <span className="bar-valor">
-                                    {mostrarValores ? `R$ ${formatarMoeda(categoria.total)}` : 'R$ ••••••'}
-                                    <span className="percentage-pill" style={{ backgroundColor: `${categoria.cor}22`, color: categoria.cor }}>
-                                      {percentual.toFixed(1)}%
+                        const maxValor = Math.max(...calcularValoresPorCategoria().map(c => c.total));
+                        
+                        let percentual = 0;
+                        let isOverBudget = false;
+                        
+                        if (categoria.meta) {
+                          percentual = (categoria.total / categoria.meta) * 100;
+                          if (percentual > 100) {
+                            isOverBudget = true;
+                            percentual = 100;
+                          }
+                        } else {
+                          percentual = (categoria.total / maxValor) * 100;
+                        }
+                        
+                        return (
+                          <div key={idx} className="category-bar-group">
+                            <div className="category-bar-main">
+                              <div className="bar-label">
+                                <span className="bar-categoria" style={{ color: categoria.cor }}>
+                                  ● {categoria.nome}
+                                  {categoria.meta && (
+                                    <span title="Meta Mensal Definida" style={{ marginLeft: '6px', fontSize: '0.85rem' }}>🎯</span>
+                                  )}
+                                </span>
+                                <span className="bar-valor">
+                                  {mostrarValores ? `R$ ${formatarMoeda(categoria.total)}` : 'R$ ••••••'}
+                                  {categoria.meta && mostrarValores && (
+                                    <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '4px' }}>
+                                      / R$ {formatarMoeda(Number(categoria.meta))}
                                     </span>
+                                  )}
+                                  <span className="percentage-pill" style={{ backgroundColor: isOverBudget ? '#fef2f2' : `${categoria.cor}22`, color: isOverBudget ? '#ef4444' : categoria.cor }}>
+                                    {((categoria.meta ? (categoria.total / categoria.meta) * 100 : (categoria.total / maxValor) * 100)).toFixed(1)}%
                                   </span>
-                                </div>
-                                <div className="bar-container">
-                                  <div 
-                                    className="bar-fill" 
-                                    style={{ 
-                                      width: `${percentual}%`,
-                                      background: categoria.cor
-                                    }}
-                                  >
-                                  </div>
+                                </span>
+                              </div>
+                              <div className="bar-container">
+                                <div 
+                                  className="bar-fill" 
+                                  style={{ 
+                                    width: `${percentual}%`,
+                                    background: isOverBudget ? '#ef4444' : categoria.cor
+                                  }}
+                                >
                                 </div>
                               </div>
-                              
-                              {/* Subcategorias */}
-                              {categoria.subcategorias.length > 0 && (
-                                <div className="subcategory-bars">
-                                  {categoria.subcategorias.map((subcategoria, subIdx) => {
-                                    const subPercentual = (subcategoria.total / categoria.total) * 100;
-                                    
-                                    return (
-                                      <div key={subIdx} className="subcategory-bar">
-                                        <div className="bar-label subcategory-label">
-                                          <span className="bar-subcategoria">
-                                            └─ {subcategoria.nome}
-                                          </span>
-                                          <span className="bar-valor">
-                                            {mostrarValores ? `R$ ${formatarMoeda(subcategoria.total)}` : 'R$ ••••••'}
-                                            <span className="percentage-pill small">
-                                              {subPercentual.toFixed(1)}%
+                            </div>
+                            
+                            {/* Subcategorias */}
+                            {categoria.subcategorias.length > 0 && (
+                              <div className="subcategory-bars">
+                                {categoria.subcategorias.map((subcategoria, subIdx) => {
+                                  let subPercentual = 0;
+                                  let isSubOverBudget = false;
+                                  
+                                  if (subcategoria.meta) {
+                                    subPercentual = (subcategoria.total / subcategoria.meta) * 100;
+                                    if (subPercentual > 100) {
+                                      isSubOverBudget = true;
+                                      subPercentual = 100;
+                                    }
+                                  } else {
+                                    subPercentual = (subcategoria.total / categoria.total) * 100;
+                                  }
+                                  
+                                  return (
+                                    <div key={subIdx} className="subcategory-bar">
+                                      <div className="bar-label subcategory-label">
+                                        <span className="bar-subcategoria">
+                                          └─ {subcategoria.nome}
+                                          {subcategoria.meta && (
+                                            <span title="Meta Mensal Definida" style={{ marginLeft: '4px', fontSize: '0.75rem' }}>🎯</span>
+                                          )}
+                                        </span>
+                                        <span className="bar-valor">
+                                          {mostrarValores ? `R$ ${formatarMoeda(subcategoria.total)}` : 'R$ ••••••'}
+                                          {subcategoria.meta && mostrarValores && (
+                                            <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '4px' }}>
+                                              / R$ {formatarMoeda(Number(subcategoria.meta))}
                                             </span>
+                                          )}
+                                          <span className="percentage-pill small" style={{ backgroundColor: isSubOverBudget ? '#fef2f2' : `${categoria.cor}22`, color: isSubOverBudget ? '#ef4444' : categoria.cor }}>
+                                            {((subcategoria.meta ? (subcategoria.total / subcategoria.meta) * 100 : (subcategoria.total / categoria.total) * 100)).toFixed(1)}%
                                           </span>
-                                        </div>
-                                        <div className="bar-container subcategory-container">
-                                          <div 
-                                            className="bar-fill subcategory-fill" 
-                                            style={{ 
-                                              width: `${subPercentual}%`,
-                                              background: `${categoria.cor}cc`
-                                            }}
-                                          >
-                                          </div>
+                                        </span>
+                                      </div>
+                                      <div className="bar-container subcategory-container">
+                                        <div 
+                                          className="bar-fill subcategory-fill" 
+                                          style={{ 
+                                            width: `${subPercentual}%`,
+                                            background: isSubOverBudget ? '#ef4444' : `${categoria.cor}cc`
+                                          }}
+                                        >
                                         </div>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="no-data">Nenhum dado disponível para os filtros selecionados</p>
-                      )}
-                    </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="no-data">Nenhum dado disponível para os filtros selecionados</p>
+                    )}
                   </div>
+                </div>
               </>
             )}
           </div>

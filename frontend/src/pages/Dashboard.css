@@ -436,7 +436,7 @@
 
 .chart-pie-section {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 32px;
 }
 
@@ -1036,8 +1036,28 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-container {
-    padding: 20px 16px;
+  .dashboard-content {
+    padding: 16px 12px;
+  }
+
+  .chart-container {
+    padding: 24px 16px;
+  }
+
+  .category-bars-section {
+    padding: 24px 16px;
+  }
+
+  .lancamentos-section {
+    padding: 24px 16px;
+  }
+
+  .category-bars-container {
+    grid-template-columns: 1fr;
+  }
+
+  .contas-grid {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-welcome {

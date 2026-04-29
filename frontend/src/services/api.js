@@ -57,4 +57,6 @@ export const updateEvolutionConfig = (data) => api.post('/whatsapp/config', data
 export const sendTestMessage = (whatsapp) => api.post('/whatsapp/test-message', { whatsapp });
 export const sendRemindersNow = () => api.post('/whatsapp/send-reminders-now');
 
+
+
 export default api;

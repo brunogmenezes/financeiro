@@ -95,6 +95,7 @@ function Navbar() {
               <span>Categorias</span>
               {isActive('/categorias') && <span className="active-indicator"></span>}
             </button>
+
             <button 
               onClick={() => handleNavigate('/auditoria')} 
               className={`nav-item ${isActive('/auditoria') ? 'active' : ''}`}

@@ -24,7 +24,8 @@ function Categorias() {
   const [formData, setFormData] = useState({
     nome: '',
     tipo: 'saida',
-    cor: '#7c3aed'
+    cor: '#7c3aed',
+    meta_mensal: ''
   });
   const [subFormData, setSubFormData] = useState({
     nome: '',
@@ -67,7 +68,7 @@ function Categorias() {
       }
       setShowModal(false);
       setEditingCategoria(null);
-      setFormData({ nome: '', tipo: 'saida' });
+      setFormData({ nome: '', tipo: 'saida', cor: '#7c3aed', meta_mensal: '' });
       loadCategorias();
     } catch (error) {
       alert('Erro ao salvar categoria');
@@ -96,7 +97,8 @@ function Categorias() {
     setFormData({
       nome: categoria.nome,
       tipo: categoria.tipo,
-      cor: categoria.cor || '#7c3aed'
+      cor: categoria.cor || '#7c3aed',
+      meta_mensal: categoria.meta_mensal || ''
     });
     setShowModal(true);
   };
@@ -117,7 +119,8 @@ function Categorias() {
     setEditingSubcategoria(subcategoria);
     setSubFormData({ 
       nome: subcategoria.nome,
-      cor: subcategoria.cor || '#7c3aed'
+      cor: subcategoria.cor || '#7c3aed',
+      meta_mensal: subcategoria.meta_mensal || ''
     });
     setShowSubModal(true);
   };
@@ -140,14 +143,23 @@ function Categorias() {
 
   const handleNew = () => {
     setEditingCategoria(null);
-    setFormData({ nome: '', tipo: 'saida' });
+    setFormData({ nome: '', tipo: 'saida', cor: '#7c3aed', meta_mensal: '' });
     setShowModal(true);
   };
 
   const handleNewSub = () => {
     setEditingSubcategoria(null);
-    setSubFormData({ nome: '' });
+    setSubFormData({ nome: '', cor: '#7c3aed', meta_mensal: '' });
     setShowSubModal(true);
+  };
+
+  const calculateAvailableMeta = () => {
+    if (!selectedCategoria || !selectedCategoria.meta_mensal) return null;
+    const catMeta = parseFloat(selectedCategoria.meta_mensal);
+    const sumOthers = subcategorias
+      .filter(s => s.id !== editingSubcategoria?.id)
+      .reduce((sum, s) => sum + (s.meta_mensal ? parseFloat(s.meta_mensal) : 0), 0);
+    return catMeta - sumOthers;
   };
 
   return (
@@ -181,12 +193,17 @@ function Categorias() {
                       style={{cursor: 'pointer'}}
                     >
                       <td>{categoria.nome}</td>
-                      <td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
                         <span className={`badge ${categoria.tipo}`}>
                           {categoria.tipo === 'entrada' ? '↑ Entrada' : categoria.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
                         </span>
+                        {categoria.meta_mensal && categoria.tipo === 'saida' && (
+                          <span className="badge-meta" style={{display: 'inline-block', marginLeft: '8px', fontSize: '0.75rem', background: '#fef3c7', color: '#b45309', padding: '4px 8px', borderRadius: '8px', fontWeight: 'bold', whiteSpace: 'nowrap'}}>
+                            🎯 R$ {Number(categoria.meta_mensal).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                          </span>
+                        )}
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
                         <button className="btn-edit" onClick={(e) => {
                           e.stopPropagation();
                           handleEdit(categoria);
@@ -230,7 +247,14 @@ function Categorias() {
                   <tbody>
                     {subcategorias.map(sub => (
                       <tr key={sub.id}>
-                        <td>{sub.nome}</td>
+                        <td>
+                          {sub.nome}
+                          {sub.meta_mensal && (
+                            <span className="badge-meta" style={{display: 'inline-block', marginLeft: '8px', fontSize: '0.75rem', background: '#fef3c7', color: '#b45309', padding: '4px 8px', borderRadius: '8px', fontWeight: 'bold', whiteSpace: 'nowrap'}}>
+                              🎯 R$ {Number(sub.meta_mensal).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <button className="btn-edit" onClick={() => handleEditSub(sub)}>Editar</button>
                           <button className="btn-delete" onClick={() => handleDeleteSub(sub.id)}>Excluir</button>
@@ -281,6 +305,21 @@ function Categorias() {
                 </select>
               </div>
 
+              {formData.tipo === 'saida' && (
+                <div className="form-group">
+                  <label>Meta Mensal (R$) - Opcional</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 500.00"
+                    value={formData.meta_mensal}
+                    onChange={(e) => setFormData({...formData, meta_mensal: e.target.value})}
+                  />
+                  <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>Defina um limite de gastos para esta categoria. Deixe em branco se não houver.</small>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Cor *</label>
                 <div className="color-picker-wrapper">
@@ -318,6 +357,24 @@ function Categorias() {
                   required
                 />
               </div>
+
+              {selectedCategoria && selectedCategoria.meta_mensal && selectedCategoria.tipo === 'saida' && (
+                <div className="form-group">
+                  <label>Meta Mensal Alocada (R$) - Opcional</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={calculateAvailableMeta() !== null ? calculateAvailableMeta() + (subFormData.meta_mensal ? parseFloat(subFormData.meta_mensal) : 0) : ''}
+                    placeholder="Ex: 200.00"
+                    value={subFormData.meta_mensal || ''}
+                    onChange={(e) => setSubFormData({...subFormData, meta_mensal: e.target.value})}
+                  />
+                  <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
+                    <strong>Disponível para alocar:</strong> R$ {calculateAvailableMeta()?.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                  </small>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Cor *</label>
