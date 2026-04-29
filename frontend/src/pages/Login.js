@@ -73,7 +73,7 @@ function Login() {
             theme="filled_blue"
             shape="pill"
             text={isRegister ? 'signup_with' : 'signin_with'}
-            width="100%"
+            width="350"
           />
         </div>
 
