@@ -7,14 +7,28 @@ import Lancamentos from './pages/Lancamentos';
 import Auditoria from './pages/Auditoria';
 import Perfil from './pages/Perfil';
 import Categorias from './pages/Categorias';
+import Manager from './pages/Manager';
 
 function App() {
   const isAuthenticated = () => {
     return localStorage.getItem('token') !== null;
   };
 
+  const isAdmin = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.is_admin === true;
+  };
+
   const PrivateRoute = ({ children }) => {
     return isAuthenticated() ? children : <Navigate to="/" />;
+  };
+
+  const AdminRoute = ({ children }) => {
+    return isAuthenticated() && isAdmin() ? children : <Navigate to="/dashboard" />;
+  };
+
+  const UserRoute = ({ children }) => {
+    return isAuthenticated() && !isAdmin() ? children : <Navigate to="/manager" />;
   };
 
   return (
@@ -22,19 +36,19 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/dashboard" element={
-          <PrivateRoute>
+          <UserRoute>
             <Dashboard />
-          </PrivateRoute>
+          </UserRoute>
         } />
         <Route path="/contas" element={
-          <PrivateRoute>
+          <UserRoute>
             <Contas />
-          </PrivateRoute>
+          </UserRoute>
         } />
         <Route path="/lancamentos" element={
-          <PrivateRoute>
+          <UserRoute>
             <Lancamentos />
-          </PrivateRoute>
+          </UserRoute>
         } />
         <Route path="/auditoria" element={
           <PrivateRoute>
@@ -50,6 +64,11 @@ function App() {
           <PrivateRoute>
             <Categorias />
           </PrivateRoute>
+        } />
+        <Route path="/manager" element={
+          <AdminRoute>
+            <Manager />
+          </AdminRoute>
         } />
       </Routes>
     </Router>

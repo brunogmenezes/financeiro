@@ -50,6 +50,8 @@ export const getSubcategorias = (categoriaId) => api.get(`/categorias/${categori
 export const createSubcategoria = (categoriaId, data) => api.post(`/categorias/${categoriaId}/subcategorias`, data);
 export const updateSubcategoria = (id, data) => api.put(`/categorias/subcategorias/${id}`, data);
 export const deleteSubcategoria = (id) => api.delete(`/categorias/subcategorias/${id}`);
+export const saveLimiteCategoria = (id, valor_limite) => api.post(`/categorias/${id}/limite`, { valor_limite });
+export const saveLimiteSubcategoria = (id, valor_limite) => api.post(`/categorias/subcategorias/${id}/limite`, { valor_limite });
 
 // WhatsApp / Evolution
 export const getWhatsappStatus = () => api.get('/whatsapp/status');
@@ -66,5 +68,10 @@ export const updateEntradaProjetiva = (id, data) => api.put(`/entradas-projetiva
 export const deleteEntradaProjetiva = (id) => api.delete(`/entradas-projetivas/${id}`);
 
 
+// Admin
+export const adminGetUsers = () => api.get('/admin/users');
+export const adminResetPassword = (id, novaSenha) => api.post(`/admin/users/${id}/reset-password`, { novaSenha });
+export const adminToggleAdmin = (id, isAdmin) => api.patch(`/admin/users/${id}/toggle-admin`, { isAdmin });
+export const adminDeleteUser = (id) => api.delete(`/admin/users/${id}`);
 
 export default api;

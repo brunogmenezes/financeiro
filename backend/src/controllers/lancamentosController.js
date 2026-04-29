@@ -5,11 +5,15 @@ const { registrarAuditoria } = require('./auditoriaController');
 exports.getAll = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor, subcat.meta_mensal as subcategoria_meta
+      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, 
+              cat.nome as categoria_nome, cat.cor as categoria_cor, 
+              subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor, 
+              lim.valor_limite as subcategoria_meta
        FROM lancamentos l 
        LEFT JOIN contas c ON l.conta_id = c.id 
        LEFT JOIN categorias cat ON l.categoria_id = cat.id
        LEFT JOIN subcategorias subcat ON l.subcategoria_id = subcat.id
+       LEFT JOIN limites_usuarios lim ON subcat.id = lim.subcategoria_id AND lim.usuario_id = l.usuario_id
        WHERE l.usuario_id = $1 
        ORDER BY l.data DESC, l.created_at DESC`,
       [req.userId]
@@ -26,11 +30,15 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, cat.nome as categoria_nome, cat.cor as categoria_cor, subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor, subcat.meta_mensal as subcategoria_meta
+      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, 
+              cat.nome as categoria_nome, cat.cor as categoria_cor, 
+              subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor, 
+              lim.valor_limite as subcategoria_meta
        FROM lancamentos l 
        LEFT JOIN contas c ON l.conta_id = c.id 
        LEFT JOIN categorias cat ON l.categoria_id = cat.id
        LEFT JOIN subcategorias subcat ON l.subcategoria_id = subcat.id
+       LEFT JOIN limites_usuarios lim ON subcat.id = lim.subcategoria_id AND lim.usuario_id = l.usuario_id
        WHERE l.id = $1 AND l.usuario_id = $2`,
       [id, req.userId]
     );

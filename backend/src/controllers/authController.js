@@ -56,9 +56,13 @@ exports.googleLogin = async (req, res) => {
         nome: user.nome,
         email: user.email,
         cor_tema: user.cor_tema || 'roxo',
-        whatsapp: user.whatsapp || ''
+        whatsapp: user.whatsapp || '',
+        is_admin: user.is_admin
       }
     });
+
+    // Atualizar atividade em background
+    pool.query('UPDATE usuarios SET ultimo_login = NOW(), ultima_atividade = NOW() WHERE id = $1', [user.id]);
   } catch (error) {
     console.error('Erro no Google Login:', error);
     res.status(401).json({ error: 'Falha na autenticação com o Google' });
@@ -107,8 +111,8 @@ exports.login = async (req, res) => {
   try {
     const { email, senha } = req.body;
 
-    // Buscar usuário
-    const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    // Buscar usuário por email ou username
+    const result = await pool.query('SELECT * FROM usuarios WHERE email = $1 OR username = $1', [email]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
@@ -141,9 +145,13 @@ exports.login = async (req, res) => {
         nome: user.nome,
         email: user.email,
         cor_tema: user.cor_tema || 'roxo',
-        whatsapp: user.whatsapp || ''
+        whatsapp: user.whatsapp || '',
+        is_admin: user.is_admin
       }
     });
+
+    // Atualizar atividade em background
+    pool.query('UPDATE usuarios SET ultimo_login = NOW(), ultima_atividade = NOW() WHERE id = $1', [user.id]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao fazer login' });

@@ -97,13 +97,13 @@ function Login() {
           )}
 
           <div className="form-group">
-            <label>Email</label>
+            <label>{isRegister ? 'E-mail' : 'E-mail ou Usuário'}</label>
             <input
-              type="email"
+              type={isRegister ? 'email' : 'text'}
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="exemplo@email.com"
+              placeholder={isRegister ? 'exemplo@email.com' : 'E-mail ou usuário admin'}
               required
             />
           </div>

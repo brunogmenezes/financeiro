@@ -8,7 +8,9 @@ import {
   getSubcategorias,
   createSubcategoria,
   updateSubcategoria,
-  deleteSubcategoria
+  deleteSubcategoria,
+  saveLimiteCategoria,
+  saveLimiteSubcategoria
 } from '../services/api';
 import Navbar from '../components/Navbar';
 import './Categorias.css';
@@ -18,20 +20,36 @@ function Categorias() {
   const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteSubModal, setShowDeleteSubModal] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingCategoria, setEditingCategoria] = useState(null);
   const [editingSubcategoria, setEditingSubcategoria] = useState(null);
   const [selectedCategoria, setSelectedCategoria] = useState(null);
+  const [targetForLimit, setTargetForLimit] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.is_admin === true;
+
   const [formData, setFormData] = useState({
     nome: '',
     tipo: 'saida',
-    cor: '#7c3aed',
-    meta_mensal: ''
+    cor: '#7c3aed'
   });
   const [subFormData, setSubFormData] = useState({
     nome: '',
     cor: '#7c3aed'
   });
+  const [limitValue, setLimitValue] = useState('');
+
   const navigate = useNavigate();
+
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   useEffect(() => {
     loadCategorias();
@@ -60,35 +78,98 @@ function Categorias() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     try {
       if (editingCategoria) {
         await updateCategoria(editingCategoria.id, formData);
+        triggerToast('Categoria atualizada com sucesso!');
       } else {
         await createCategoria(formData);
+        triggerToast('Categoria criada com sucesso!');
       }
       setShowModal(false);
       setEditingCategoria(null);
-      setFormData({ nome: '', tipo: 'saida', cor: '#7c3aed', meta_mensal: '' });
+      setFormData({ nome: '', tipo: 'saida', cor: '#7c3aed' });
       loadCategorias();
     } catch (error) {
-      alert('Erro ao salvar categoria');
+      triggerToast('Erro ao salvar categoria', 'error');
     }
   };
 
   const handleSubSubmit = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     try {
       if (editingSubcategoria) {
         await updateSubcategoria(editingSubcategoria.id, subFormData);
+        triggerToast('Subcategoria atualizada com sucesso!');
       } else {
         await createSubcategoria(selectedCategoria.id, subFormData);
+        triggerToast('Subcategoria criada com sucesso!');
       }
       setShowSubModal(false);
       setEditingSubcategoria(null);
-      setSubFormData({ nome: '' });
+      setSubFormData({ nome: '', cor: '#7c3aed' });
       loadSubcategorias(selectedCategoria.id);
     } catch (error) {
-      alert('Erro ao salvar subcategoria');
+      triggerToast('Erro ao salvar subcategoria', 'error');
+    }
+  };
+
+  const handleSaveLimit = async (e) => {
+    e.preventDefault();
+    try {
+      if (targetForLimit.type === 'cat') {
+        await saveLimiteCategoria(targetForLimit.item.id, limitValue);
+      } else {
+        await saveLimiteSubcategoria(targetForLimit.item.id, limitValue);
+        loadSubcategorias(selectedCategoria.id);
+      }
+      triggerToast('Limite atualizado com sucesso! 🎯');
+      loadCategorias();
+      setShowLimitModal(false);
+      setLimitValue('');
+    } catch (error) {
+      triggerToast('Erro ao salvar limite', 'error');
+    }
+  };
+
+  const handleDelete = (categoria) => {
+    setItemToDelete(categoria);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteCategoria(itemToDelete.id);
+      triggerToast('Categoria removida com sucesso');
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      if (selectedCategoria?.id === itemToDelete.id) setSelectedCategoria(null);
+      loadCategorias();
+    } catch (error) {
+      const mensagem = error.response?.data?.error || 'Erro ao excluir categoria';
+      triggerToast(mensagem, 'error');
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handleDeleteSub = (sub) => {
+    setItemToDelete(sub);
+    setShowDeleteSubModal(true);
+  };
+
+  const confirmDeleteSub = async () => {
+    try {
+      await deleteSubcategoria(itemToDelete.id);
+      triggerToast('Subcategoria removida com sucesso');
+      setShowDeleteSubModal(false);
+      setItemToDelete(null);
+      loadSubcategorias(selectedCategoria.id);
+    } catch (error) {
+      const mensagem = error.response?.data?.error || 'Erro ao excluir subcategoria';
+      triggerToast(mensagem, 'error');
+      setShowDeleteSubModal(false);
     }
   };
 
@@ -97,43 +178,24 @@ function Categorias() {
     setFormData({
       nome: categoria.nome,
       tipo: categoria.tipo,
-      cor: categoria.cor || '#7c3aed',
-      meta_mensal: categoria.meta_mensal || ''
+      cor: categoria.cor || '#7c3aed'
     });
     setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Deseja realmente excluir esta categoria?')) {
-      try {
-        await deleteCategoria(id);
-        loadCategorias();
-      } catch (error) {
-        const mensagem = error.response?.data?.error || 'Erro ao excluir categoria';
-        alert(mensagem);
-      }
-    }
   };
 
   const handleEditSub = (subcategoria) => {
     setEditingSubcategoria(subcategoria);
     setSubFormData({ 
       nome: subcategoria.nome,
-      cor: subcategoria.cor || '#7c3aed',
-      meta_mensal: subcategoria.meta_mensal || ''
+      cor: subcategoria.cor || '#7c3aed'
     });
     setShowSubModal(true);
   };
 
-  const handleDeleteSub = async (id) => {
-    if (window.confirm('Deseja realmente excluir esta subcategoria?')) {
-      try {
-        await deleteSubcategoria(id);
-        loadSubcategorias(selectedCategoria.id);
-      } catch (error) {
-        alert('Erro ao excluir subcategoria');
-      }
-    }
+  const handleOpenLimitModal = (type, item) => {
+    setTargetForLimit({ type, item });
+    setLimitValue(item.meta_mensal || '');
+    setShowLimitModal(true);
   };
 
   const handleViewSubs = (categoria) => {
@@ -143,23 +205,14 @@ function Categorias() {
 
   const handleNew = () => {
     setEditingCategoria(null);
-    setFormData({ nome: '', tipo: 'saida', cor: '#7c3aed', meta_mensal: '' });
+    setFormData({ nome: '', tipo: 'saida', cor: '#7c3aed' });
     setShowModal(true);
   };
 
   const handleNewSub = () => {
     setEditingSubcategoria(null);
-    setSubFormData({ nome: '', cor: '#7c3aed', meta_mensal: '' });
+    setSubFormData({ nome: '', cor: '#7c3aed' });
     setShowSubModal(true);
-  };
-
-  const calculateAvailableMeta = () => {
-    if (!selectedCategoria || !selectedCategoria.meta_mensal) return null;
-    const catMeta = parseFloat(selectedCategoria.meta_mensal);
-    const sumOthers = subcategorias
-      .filter(s => s.id !== editingSubcategoria?.id)
-      .reduce((sum, s) => sum + (s.meta_mensal ? parseFloat(s.meta_mensal) : 0), 0);
-    return catMeta - sumOthers;
   };
 
   return (
@@ -172,7 +225,9 @@ function Categorias() {
           <div className="categorias-col">
             <div className="header">
               <h2>Categorias</h2>
-              <button className="btn-new" onClick={handleNew}>+ Nova Categoria</button>
+              {isAdmin && (
+                <button className="btn-new" onClick={handleNew}>+ Nova Categoria</button>
+              )}
             </div>
 
             <div className="table-container">
@@ -204,14 +259,25 @@ function Categorias() {
                         )}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        <button className="btn-edit" onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(categoria);
-                        }}>Editar</button>
-                        <button className="btn-delete" onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(categoria.id);
-                        }}>Excluir</button>
+                        {isAdmin ? (
+                          <div className="action-buttons">
+                            <button className="btn-edit" onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(categoria);
+                            }} title="Editar Categoria">✏️</button>
+                            <button className="btn-delete" onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(categoria);
+                            }} title="Excluir Categoria">🗑️</button>
+                          </div>
+                        ) : (
+                          categoria.tipo === 'saida' && (
+                            <button className="btn-limit" onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenLimitModal('cat', categoria);
+                            }}>🎯 Limite</button>
+                          )
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -227,7 +293,7 @@ function Categorias() {
           <div className="subcategorias-col">
             <div className="header">
               <h2>Subcategorias</h2>
-              {selectedCategoria && (
+              {selectedCategoria && isAdmin && (
                 <button className="btn-new" onClick={handleNewSub}>+ Nova Subcategoria</button>
               )}
             </div>
@@ -256,8 +322,16 @@ function Categorias() {
                           )}
                         </td>
                         <td>
-                          <button className="btn-edit" onClick={() => handleEditSub(sub)}>Editar</button>
-                          <button className="btn-delete" onClick={() => handleDeleteSub(sub.id)}>Excluir</button>
+                          {isAdmin ? (
+                            <div className="action-buttons">
+                              <button className="btn-edit" onClick={() => handleEditSub(sub)} title="Editar Subcategoria">✏️</button>
+                              <button className="btn-delete" onClick={() => handleDeleteSub(sub)} title="Excluir Subcategoria">🗑️</button>
+                            </div>
+                          ) : (
+                            selectedCategoria.tipo === 'saida' && (
+                              <button className="btn-limit" onClick={() => handleOpenLimitModal('sub', sub)}>🎯 Limite</button>
+                            )
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -276,8 +350,8 @@ function Categorias() {
         </div>
       </div>
 
-      {/* Modal de Categoria */}
-      {showModal && (
+      {/* Modal de Categoria (Apenas Admin) */}
+      {showModal && isAdmin && (
         <div className="modal">
           <div className="modal-content">
             <h3>{editingCategoria ? 'Editar Categoria' : 'Nova Categoria'}</h3>
@@ -305,21 +379,6 @@ function Categorias() {
                 </select>
               </div>
 
-              {formData.tipo === 'saida' && (
-                <div className="form-group">
-                  <label>Meta Mensal (R$) - Opcional</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Ex: 500.00"
-                    value={formData.meta_mensal}
-                    onChange={(e) => setFormData({...formData, meta_mensal: e.target.value})}
-                  />
-                  <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>Defina um limite de gastos para esta categoria. Deixe em branco se não houver.</small>
-                </div>
-              )}
-
               <div className="form-group">
                 <label>Cor *</label>
                 <div className="color-picker-wrapper">
@@ -335,15 +394,15 @@ function Categorias() {
 
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
+                <button type="submit" className="btn-primary">Salvar Categoria</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal de Subcategoria */}
-      {showSubModal && (
+      {/* Modal de Subcategoria (Apenas Admin) */}
+      {showSubModal && isAdmin && (
         <div className="modal">
           <div className="modal-content">
             <h3>{editingSubcategoria ? 'Editar Subcategoria' : 'Nova Subcategoria'}</h3>
@@ -357,24 +416,6 @@ function Categorias() {
                   required
                 />
               </div>
-
-              {selectedCategoria && selectedCategoria.meta_mensal && selectedCategoria.tipo === 'saida' && (
-                <div className="form-group">
-                  <label>Meta Mensal Alocada (R$) - Opcional</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max={calculateAvailableMeta() !== null ? calculateAvailableMeta() + (subFormData.meta_mensal ? parseFloat(subFormData.meta_mensal) : 0) : ''}
-                    placeholder="Ex: 200.00"
-                    value={subFormData.meta_mensal || ''}
-                    onChange={(e) => setSubFormData({...subFormData, meta_mensal: e.target.value})}
-                  />
-                  <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
-                    <strong>Disponível para alocar:</strong> R$ {calculateAvailableMeta()?.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                  </small>
-                </div>
-              )}
 
               <div className="form-group">
                 <label>Cor *</label>
@@ -391,10 +432,86 @@ function Categorias() {
 
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowSubModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
+                <button type="submit" className="btn-primary">Salvar Subcategoria</button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Definição de Limite (Para Usuário) */}
+      {showLimitModal && (
+        <div className="modal">
+          <div className="modal-content premium-card">
+            <div className="modal-icon">🎯</div>
+            <h3>Definir Limite Mensal</h3>
+            <p>Defina seu limite de gastos para: <strong>{targetForLimit.item.nome}</strong></p>
+            
+            <form onSubmit={handleSaveLimit}>
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Valor do Limite (R$)</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  value={limitValue} 
+                  onChange={(e) => setLimitValue(e.target.value)} 
+                  placeholder="Ex: 500.00"
+                  autoFocus
+                />
+                <small style={{ color: '#64748b', marginTop: '8px', display: 'block' }}>
+                  Este limite é individual e servirá para controlar seus gastos nesta categoria.
+                </small>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setShowLimitModal(false)}>Cancelar</button>
+                <button type="submit" className="btn-save">Salvar Limite</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal de Exclusão Categoria */}
+      {showDeleteModal && (
+        <div className="modal">
+          <div className="modal-content premium-card delete-modal">
+            <div className="modal-icon warning">⚠️</div>
+            <h3>Excluir Categoria?</h3>
+            <p>Você está prestes a excluir permanentemente a categoria <strong>{itemToDelete?.nome}</strong>.</p>
+            <div className="warning-box">
+              Isso removerá a estrutura global desta categoria. Certifique-se de que não haja subcategorias vinculadas antes de prosseguir.
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
+              <button className="btn-delete-confirm" onClick={confirmDelete}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão Subcategoria */}
+      {showDeleteSubModal && (
+        <div className="modal">
+          <div className="modal-content premium-card delete-modal">
+            <div className="modal-icon warning">⚠️</div>
+            <h3>Excluir Subcategoria?</h3>
+            <p>Deseja realmente excluir a subcategoria <strong>{itemToDelete?.nome}</strong>?</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowDeleteSubModal(false)}>Cancelar</button>
+              <button className="btn-delete-confirm" onClick={confirmDeleteSub}>Excluir Agora</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-content">
+            <span className="toast-icon">{toast.type === 'success' ? '✅' : '❌'}</span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+          <div className="toast-progress"></div>
         </div>
       )}
     </div>

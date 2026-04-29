@@ -145,35 +145,54 @@ tr:hover {
   color: #721c24;
 }
 
-.btn-edit, .btn-delete {
-  padding: 8px 16px;
-  margin-right: 8px;
-  border: none;
-  border-radius: 8px;
+.btn-edit, .btn-delete, .btn-limit {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
   transition: all 0.2s ease;
-}
-
-.btn-edit {
-  background: #dcfce7;
-  color: #166534;
+  background: white;
+  margin-right: 8px;
 }
 
 .btn-edit:hover {
-  background: #bbf7d0;
-  transform: translateY(-1px);
-}
-
-.btn-delete {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #f0fdf4;
+  border-color: #4ade80;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .btn-delete:hover {
-  background: #fecaca;
-  transform: translateY(-1px);
+  background: #fef2f2;
+  border-color: #f87171;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-limit {
+  width: auto;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+}
+
+.btn-limit:hover {
+  background: #ede9fe;
+  border-color: #8b5cf6;
+  transform: translateY(-2px);
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
 }
 
 .categoria-info {
@@ -359,6 +378,152 @@ tr:hover {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid #e2e8f0;
+}
+
+/* Premium Card & Modal Enhancements */
+.premium-card {
+  text-align: center;
+  padding: 40px;
+}
+
+.modal-icon {
+  font-size: 3rem;
+  margin-bottom: 20px;
+}
+
+.modal-icon.warning {
+  color: #f59e0b;
+}
+
+.warning-box {
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  color: #9a3412;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin: 20px 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.delete-modal h3 {
+  color: #991b1b;
+}
+
+.btn-delete-confirm {
+  background: #ef4444;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-confirm:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(124, 58, 237, 0.2);
+}
+
+/* Toast Notification Styles */
+.toast {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  background: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+  min-width: 280px;
+  border-left: 6px solid #10b981;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.toast.error {
+  border-left-color: #ef4444;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toast-icon {
+  font-size: 1.25rem;
+}
+
+.toast-message {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.toast-progress {
+  height: 4px;
+  background: #f1f5f9;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.toast-progress::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: #10b981;
+  animation: progress 4s linear forwards;
+}
+
+.toast.error .toast-progress::after {
+  background: #ef4444;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes progress {
+  from { width: 100%; }
+  to { width: 0%; }
 }
 
 @media (max-width: 1024px) {

@@ -71,22 +71,27 @@ function Navbar() {
 
         <div ref={menuRef} className={`nav-menu ${menuOpen ? 'active' : ''}`}>
           <div className="nav-section">
-            <button 
-              onClick={() => handleNavigate('/dashboard')} 
-              className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
-            >
-              <span className="nav-icon">📊</span>
-              <span>Dashboard</span>
-              {isActive('/dashboard') && <span className="active-indicator"></span>}
-            </button>
-            <button 
-              onClick={() => handleNavigate('/contas')} 
-              className={`nav-item ${isActive('/contas') ? 'active' : ''}`}
-            >
-              <span className="nav-icon">🏦</span>
-              <span>Contas</span>
-              {isActive('/contas') && <span className="active-indicator"></span>}
-            </button>
+            {!user.is_admin && (
+              <>
+                <button 
+                  onClick={() => handleNavigate('/dashboard')} 
+                  className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
+                >
+                  <span className="nav-icon">📊</span>
+                  <span>Dashboard</span>
+                  {isActive('/dashboard') && <span className="active-indicator"></span>}
+                </button>
+                <button 
+                  onClick={() => handleNavigate('/contas')} 
+                  className={`nav-item ${isActive('/contas') ? 'active' : ''}`}
+                >
+                  <span className="nav-icon">🏦</span>
+                  <span>Contas</span>
+                  {isActive('/contas') && <span className="active-indicator"></span>}
+                </button>
+              </>
+            )}
+
             <button 
               onClick={() => handleNavigate('/categorias')} 
               className={`nav-item ${isActive('/categorias') ? 'active' : ''}`}
@@ -104,6 +109,17 @@ function Navbar() {
               <span>Auditoria</span>
               {isActive('/auditoria') && <span className="active-indicator"></span>}
             </button>
+
+            {user.is_admin && (
+              <button 
+                onClick={() => handleNavigate('/manager')} 
+                className={`nav-item ${isActive('/manager') ? 'active' : ''}`}
+              >
+                <span className="nav-icon">⚙️</span>
+                <span>Manager</span>
+                {isActive('/manager') && <span className="active-indicator"></span>}
+              </button>
+            )}
           </div>
 
           <div className="nav-divider"></div>

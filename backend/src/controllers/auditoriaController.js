@@ -12,14 +12,28 @@ const registrarAuditoria = async (usuarioId, usuarioNome, acao, tabela, registro
   }
 };
 
-// Listar todos os logs de auditoria (apenas do usuário autenticado)
+// Listar todos os logs de auditoria
 exports.getAll = async (req, res) => {
   try {
-    const usuarioId = req.userId; // ID do usuário autenticado (vem do middleware de autenticação)
-    const result = await pool.query(
-      'SELECT * FROM auditoria WHERE usuario_id = $1 ORDER BY created_at DESC LIMIT 500',
-      [usuarioId]
-    );
+    const usuarioId = req.userId;
+
+    // Verificar se o usuário é administrador
+    const userResult = await pool.query('SELECT is_admin FROM usuarios WHERE id = $1', [usuarioId]);
+    const isAdmin = userResult.rows[0]?.is_admin || false;
+
+    let query;
+    let params = [];
+
+    if (isAdmin) {
+      // Admin vê tudo
+      query = 'SELECT * FROM auditoria ORDER BY created_at DESC LIMIT 1000';
+    } else {
+      // Usuário comum vê apenas o seu
+      query = 'SELECT * FROM auditoria WHERE usuario_id = $1 ORDER BY created_at DESC LIMIT 500';
+      params.push(usuarioId);
+    }
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error(error);

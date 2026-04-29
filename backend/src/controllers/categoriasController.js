@@ -1,13 +1,17 @@
 const pool = require('../config/database');
 const { registrarAuditoria } = require('./auditoriaController');
 
-// Listar todas as categorias do usuário
+// Listar todas as categorias (Globais)
 exports.getAll = async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM categorias WHERE usuario_id = $1 ORDER BY tipo, nome',
-      [req.userId]
-    );
+    // Busca categorias e o limite específico do usuário logado
+    const result = await pool.query(`
+      SELECT c.*, l.valor_limite as meta_mensal
+      FROM categorias c
+      LEFT JOIN limites_usuarios l ON c.id = l.categoria_id AND l.usuario_id = $1
+      ORDER BY c.tipo, c.nome
+    `, [req.userId]);
+    
     res.json(result.rows);
   } catch (error) {
     console.error(error);
@@ -15,26 +19,24 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// Criar nova categoria
+// Criar nova categoria (Apenas Admin)
 exports.create = async (req, res) => {
   try {
-    const { nome, tipo, cor, meta_mensal } = req.body;
+    const { nome, tipo, cor } = req.body;
     const corPadrao = cor || '#7c3aed';
-    const meta = meta_mensal && tipo === 'saida' ? parseFloat(meta_mensal) : null;
 
     const result = await pool.query(
-      'INSERT INTO categorias (nome, tipo, cor, meta_mensal, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [nome, tipo, corPadrao, meta, req.userId]
+      'INSERT INTO categorias (nome, tipo, cor) VALUES ($1, $2, $3) RETURNING *',
+      [nome, tipo, corPadrao]
     );
 
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
       req.userId,
-      user.rows[0].nome,
+      'Admin',
       'CRIAR',
       'categorias',
       result.rows[0].id,
-      `Categoria criada: ${nome} (${tipo})`
+      `Categoria GLOBAL criada: ${nome} (${tipo})`
     );
 
     res.status(201).json(result.rows[0]);
@@ -44,30 +46,28 @@ exports.create = async (req, res) => {
   }
 };
 
-// Atualizar categoria
+// Atualizar categoria (Apenas Admin)
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, tipo, cor, meta_mensal } = req.body;
-    const meta = meta_mensal && tipo === 'saida' ? parseFloat(meta_mensal) : null;
+    const { nome, tipo, cor } = req.body;
 
     const result = await pool.query(
-      'UPDATE categorias SET nome = $1, tipo = $2, cor = $3, meta_mensal = $4 WHERE id = $5 AND usuario_id = $6 RETURNING *',
-      [nome, tipo, cor || '#7c3aed', meta, id, req.userId]
+      'UPDATE categorias SET nome = $1, tipo = $2, cor = $3 WHERE id = $4 RETURNING *',
+      [nome, tipo, cor || '#7c3aed', id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
 
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     await registrarAuditoria(
       req.userId,
-      user.rows[0].nome,
+      'Admin',
       'EDITAR',
       'categorias',
-      result.rows[0].id,
-      `Categoria editada: ${nome}`
+      id,
+      `Categoria GLOBAL editada: ${nome}`
     );
 
     res.json(result.rows[0]);
@@ -77,12 +77,11 @@ exports.update = async (req, res) => {
   }
 };
 
-// Deletar categoria
+// Deletar categoria (Apenas Admin)
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verificar se existem subcategorias associadas
     const subcategorias = await pool.query(
       'SELECT COUNT(*) FROM subcategorias WHERE categoria_id = $1',
       [id]
@@ -94,29 +93,25 @@ exports.delete = async (req, res) => {
       });
     }
 
-    const categoria = await pool.query(
-      'SELECT nome FROM categorias WHERE id = $1 AND usuario_id = $2',
-      [id, req.userId]
+    const lancamentos = await pool.query(
+      'SELECT COUNT(*) FROM lancamentos WHERE categoria_id = $1',
+      [id]
     );
 
+    if (parseInt(lancamentos.rows[0].count) > 0) {
+      return res.status(400).json({ 
+        error: 'Não é possível excluir esta categoria pois existem lançamentos vinculados a ela.' 
+      });
+    }
+
+    const categoria = await pool.query('SELECT nome FROM categorias WHERE id = $1', [id]);
     if (categoria.rows.length === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
 
-    await pool.query(
-      'DELETE FROM categorias WHERE id = $1 AND usuario_id = $2',
-      [id, req.userId]
-    );
+    await pool.query('DELETE FROM categorias WHERE id = $1', [id]);
 
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
-      req.userId,
-      user.rows[0].nome,
-      'EXCLUIR',
-      'categorias',
-      id,
-      `Categoria excluída: ${categoria.rows[0].nome}`
-    );
+    await registrarAuditoria(req.userId, 'Admin', 'EXCLUIR', 'categorias', id, `Categoria GLOBAL excluída: ${categoria.rows[0].nome}`);
 
     res.json({ message: 'Categoria excluída com sucesso' });
   } catch (error) {
@@ -125,25 +120,41 @@ exports.delete = async (req, res) => {
   }
 };
 
+// Salvar limite de categoria do usuário
+exports.saveLimiteCategoria = async (req, res) => {
+  try {
+    const { id } = req.params; // id da categoria
+    const { valor_limite } = req.body;
+    const usuarioId = req.userId;
+
+    await pool.query(`
+      INSERT INTO limites_usuarios (usuario_id, categoria_id, valor_limite)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (usuario_id, categoria_id) 
+      DO UPDATE SET valor_limite = EXCLUDED.valor_limite
+    `, [usuarioId, id, valor_limite]);
+
+    res.json({ message: 'Limite atualizado com sucesso' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao salvar limite' });
+  }
+};
+
+// --- Subcategorias ---
+
 // Listar subcategorias de uma categoria
 exports.getSubcategorias = async (req, res) => {
   try {
     const { categoriaId } = req.params;
 
-    // Verificar se a categoria pertence ao usuário
-    const categoria = await pool.query(
-      'SELECT * FROM categorias WHERE id = $1 AND usuario_id = $2',
-      [categoriaId, req.userId]
-    );
-
-    if (categoria.rows.length === 0) {
-      return res.status(404).json({ error: 'Categoria não encontrada' });
-    }
-
-    const result = await pool.query(
-      'SELECT * FROM subcategorias WHERE categoria_id = $1 ORDER BY nome',
-      [categoriaId]
-    );
+    const result = await pool.query(`
+      SELECT s.*, l.valor_limite as meta_mensal
+      FROM subcategorias s
+      LEFT JOIN limites_usuarios l ON s.id = l.subcategoria_id AND l.usuario_id = $1
+      WHERE s.categoria_id = $2
+      ORDER BY s.nome
+    `, [req.userId, categoriaId]);
 
     res.json(result.rows);
   } catch (error) {
@@ -152,56 +163,15 @@ exports.getSubcategorias = async (req, res) => {
   }
 };
 
-// Criar subcategoria
+// Criar subcategoria (Apenas Admin)
 exports.createSubcategoria = async (req, res) => {
   try {
     const { categoriaId } = req.params;
-    const { nome, cor, meta_mensal } = req.body;
-    const corPadrao = cor || '#7c3aed';
-
-    // Verificar se a categoria pertence ao usuário
-    const categoria = await pool.query(
-      'SELECT * FROM categorias WHERE id = $1 AND usuario_id = $2',
-      [categoriaId, req.userId]
-    );
-
-    if (categoria.rows.length === 0) {
-      return res.status(404).json({ error: 'Categoria não encontrada' });
-    }
-
-    let finalMeta = null;
-    if (meta_mensal !== undefined && meta_mensal !== null && meta_mensal !== '') {
-      const catMeta = categoria.rows[0].meta_mensal;
-      if (!catMeta) {
-        return res.status(400).json({ error: 'Para definir uma meta na subcategoria, a categoria pai precisa ter uma meta definida.' });
-      }
-
-      const subsQuery = await pool.query(
-        'SELECT SUM(meta_mensal) as total FROM subcategorias WHERE categoria_id = $1',
-        [categoriaId]
-      );
-      const totalAtual = subsQuery.rows[0].total ? parseFloat(subsQuery.rows[0].total) : 0;
-      const novoTotal = totalAtual + parseFloat(meta_mensal);
-
-      if (novoTotal > parseFloat(catMeta)) {
-        return res.status(400).json({ error: `A soma das metas das subcategorias (R$ ${novoTotal.toFixed(2)}) ultrapassa a meta da categoria pai (R$ ${parseFloat(catMeta).toFixed(2)}).` });
-      }
-      finalMeta = parseFloat(meta_mensal);
-    }
+    const { nome, cor } = req.body;
 
     const result = await pool.query(
-      'INSERT INTO subcategorias (nome, cor, categoria_id, meta_mensal) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nome, corPadrao, categoriaId, finalMeta]
-    );
-
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
-      req.userId,
-      user.rows[0].nome,
-      'CRIAR',
-      'subcategorias',
-      result.rows[0].id,
-      `Subcategoria criada: ${nome} (Categoria: ${categoria.rows[0].nome})`
+      'INSERT INTO subcategorias (nome, cor, categoria_id) VALUES ($1, $2, $3) RETURNING *',
+      [nome, cor || '#7c3aed', categoriaId]
     );
 
     res.status(201).json(result.rows[0]);
@@ -211,60 +181,15 @@ exports.createSubcategoria = async (req, res) => {
   }
 };
 
-// Atualizar subcategoria
+// Atualizar subcategoria (Apenas Admin)
 exports.updateSubcategoria = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, cor, meta_mensal } = req.body;
-
-    // Verificar se a subcategoria pertence a uma categoria do usuário
-    const subcategoria = await pool.query(
-      `SELECT s.*, c.usuario_id, c.meta_mensal as cat_meta 
-       FROM subcategorias s 
-       JOIN categorias c ON s.categoria_id = c.id 
-       WHERE s.id = $1 AND c.usuario_id = $2`,
-      [id, req.userId]
-    );
-
-    if (subcategoria.rows.length === 0) {
-      return res.status(404).json({ error: 'Subcategoria não encontrada' });
-    }
-
-    const catMeta = subcategoria.rows[0].cat_meta;
-    const categoriaId = subcategoria.rows[0].categoria_id;
-
-    let finalMeta = null;
-    if (meta_mensal !== undefined && meta_mensal !== null && meta_mensal !== '') {
-      if (!catMeta) {
-        return res.status(400).json({ error: 'Para definir uma meta na subcategoria, a categoria pai precisa ter uma meta definida.' });
-      }
-
-      const subsQuery = await pool.query(
-        'SELECT SUM(meta_mensal) as total FROM subcategorias WHERE categoria_id = $1 AND id != $2',
-        [categoriaId, id]
-      );
-      const totalOutras = subsQuery.rows[0].total ? parseFloat(subsQuery.rows[0].total) : 0;
-      const novoTotal = totalOutras + parseFloat(meta_mensal);
-
-      if (novoTotal > parseFloat(catMeta)) {
-        return res.status(400).json({ error: `A soma das metas das subcategorias (R$ ${novoTotal.toFixed(2)}) ultrapassa a meta da categoria pai (R$ ${parseFloat(catMeta).toFixed(2)}).` });
-      }
-      finalMeta = parseFloat(meta_mensal);
-    }
+    const { nome, cor } = req.body;
 
     const result = await pool.query(
-      'UPDATE subcategorias SET nome = $1, cor = $2, meta_mensal = $3 WHERE id = $4 RETURNING *',
-      [nome, cor || '#7c3aed', finalMeta, id]
-    );
-
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
-      req.userId,
-      user.rows[0].nome,
-      'EDITAR',
-      'subcategorias',
-      result.rows[0].id,
-      `Subcategoria editada: ${nome}`
+      'UPDATE subcategorias SET nome = $1, cor = $2 WHERE id = $3 RETURNING *',
+      [nome, cor || '#7c3aed', id]
     );
 
     res.json(result.rows[0]);
@@ -274,39 +199,50 @@ exports.updateSubcategoria = async (req, res) => {
   }
 };
 
-// Deletar subcategoria
+// Deletar subcategoria (Apenas Admin)
 exports.deleteSubcategoria = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verificar se a subcategoria pertence a uma categoria do usuário
-    const subcategoria = await pool.query(
-      `SELECT s.nome, c.usuario_id 
-       FROM subcategorias s 
-       JOIN categorias c ON s.categoria_id = c.id 
-       WHERE s.id = $1 AND c.usuario_id = $2`,
-      [id, req.userId]
+    const lancamentos = await pool.query(
+      'SELECT COUNT(*) FROM lancamentos WHERE subcategoria_id = $1',
+      [id]
     );
 
-    if (subcategoria.rows.length === 0) {
-      return res.status(404).json({ error: 'Subcategoria não encontrada' });
+    if (parseInt(lancamentos.rows[0].count) > 0) {
+      return res.status(400).json({ 
+        error: 'Não é possível excluir esta subcategoria pois existem lançamentos vinculados a ela.' 
+      });
     }
 
     await pool.query('DELETE FROM subcategorias WHERE id = $1', [id]);
-
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
-      req.userId,
-      user.rows[0].nome,
-      'EXCLUIR',
-      'subcategorias',
-      id,
-      `Subcategoria excluída: ${subcategoria.rows[0].nome}`
-    );
-
     res.json({ message: 'Subcategoria excluída com sucesso' });
   } catch (error) {
     console.error(error);
+    if (error.code === '23503') { // Foreign key violation
+      return res.status(400).json({ error: 'Esta subcategoria possui registros vinculados e não pode ser excluída.' });
+    }
     res.status(500).json({ error: 'Erro ao excluir subcategoria' });
+  }
+};
+
+// Salvar limite de subcategoria do usuário
+exports.saveLimiteSubcategoria = async (req, res) => {
+  try {
+    const { id } = req.params; // id da subcategoria
+    const { valor_limite } = req.body;
+    const usuarioId = req.userId;
+
+    await pool.query(`
+      INSERT INTO limites_usuarios (usuario_id, subcategoria_id, valor_limite)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (usuario_id, subcategoria_id) 
+      DO UPDATE SET valor_limite = EXCLUDED.valor_limite
+    `, [usuarioId, id, valor_limite]);
+
+    res.json({ message: 'Limite atualizado com sucesso' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao salvar limite' });
   }
 };
