@@ -58,6 +58,8 @@ function Dashboard() {
   const [modoGraficoProjetivo, setModoGraficoProjetivo] = useState(false);
   const [projetivasList, setProjetivasList] = useState([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
   
+  const totalProjetivas = entradasProjetivas.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
+  
   // Define o mês atual como filtro padrão (YYYY-MM)
   const mesAtual = new Date().toISOString().slice(0, 7);
   const [filterMes, setFilterMes] = useState(mesAtual);
@@ -818,6 +820,8 @@ function Dashboard() {
     
     const labels = [];
     const saldosAcumulados = [];
+    const entradasPorDia = [];
+    const saidasPorDia = [];
     
     let saldoAtual = 0;
     
@@ -859,6 +863,8 @@ function Dashboard() {
         
       saldoAtual += (entradasDia - saidasDia);
       saldosAcumulados.push(saldoAtual);
+      entradasPorDia.push(entradasDia);
+      saidasPorDia.push(saidasDia);
     }
 
     return {
@@ -873,7 +879,9 @@ function Dashboard() {
           tension: 0.4,
           pointRadius: 2,
           pointBackgroundColor: modoGraficoProjetivo ? '#8b5cf6' : '#10b981',
-          borderWidth: 3
+          borderWidth: 3,
+          entradas: entradasPorDia,
+          saidas: saidasPorDia
         }
       ]
     };
@@ -902,6 +910,12 @@ function Dashboard() {
               label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
             }
             return label;
+          },
+          afterLabel: function(context) {
+            const index = context.dataIndex;
+            const entries = context.dataset.entradas[index];
+            const exits = context.dataset.saidas[index];
+            return `\nEntrada: R$ ${entries.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nSaída: R$ ${exits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
           }
         }
       }
@@ -931,7 +945,7 @@ function Dashboard() {
           </div>
           <div className="quick-actions-btns">
             <button className="btn-quick btn-secondary-action" onClick={() => setShowModalProjetivas(true)} style={{ backgroundColor: '#8b5cf6', color: 'white' }}>
-              <span>+</span> Cadastrar Entrada Projetiva
+              <span>+</span> Gerenciar Entradas Projetivas
             </button>
             <button className="btn-quick btn-primary-action" onClick={() => { setQuickAddType(null); setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''}); setShowModal(true); }}>
               <span>+</span> Adicionar Lançamento
@@ -943,7 +957,7 @@ function Dashboard() {
         <div className="contas-section">
           {/* Card de Saldo Total */}
           <div className="saldo-total-card">
-            <div className="saldo-total-icon">💰</div>
+
             <div className="saldo-total-content">
             <div className="saldo-total-header">
                 <div className="saldo-label-group">
@@ -1759,35 +1773,39 @@ function Dashboard() {
       {showModalProjetivas && (
         <div className="modal">
           <div className="modal-content modal-projetivas premium-card" style={{ maxWidth: '800px', width: '90%' }}>
-            <h3>Gerenciar Entradas Projetivas</h3>
-            <p style={{ marginBottom: '20px', color: '#666', fontSize: '0.9rem' }}>
-              Cadastre previsões de entradas. <strong>Apenas o dia será considerado</strong> (independente de mês ou ano), aparecendo em todos os meses no gráfico de Evolução Diária.
-            </p>
+            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div className="header-info">
+                <h3 style={{ margin: 0 }}>Gerenciar Entradas Projetivas</h3>
+                <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>Apenas o dia será considerado.</p>
+              </div>
+              <div className="total-badge-projetivas" style={{ background: '#f5f3ff', padding: '10px 20px', borderRadius: '12px', textAlign: 'right' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase' }}>Total Projetado:</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#5b21b6' }}>R$ {totalProjetivas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              </div>
+            </div>
             
             {entradasProjetivas.length > 0 && (
-              <div className="projetivas-existentes" style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto' }}>
-                <h4>Projeções Salvas</h4>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                  <thead>
+              <div className="projetivas-existentes" style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
                     <tr style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>
-                      <th style={{ padding: '8px' }}>Dia</th>
-                      <th style={{ padding: '8px' }}>Descrição</th>
-                      <th style={{ padding: '8px' }}>Valor</th>
-                      <th style={{ padding: '8px', textAlign: 'center' }}>Ação</th>
+                      <th style={{ padding: '10px' }}>Dia</th>
+                      <th style={{ padding: '10px' }}>Descrição</th>
+                      <th style={{ padding: '10px' }}>Valor</th>
+                      <th style={{ padding: '10px', textAlign: 'center' }}>Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {entradasProjetivas.map(proj => (
                       <tr key={proj.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '8px' }}>Dia {parseInt(proj.data.split('-')[2].substring(0, 2))}</td>
-                        <td style={{ padding: '8px' }}>{proj.descricao}</td>
-                        <td style={{ padding: '8px', color: '#10b981', fontWeight: 'bold' }}>R$ {parseFloat(proj.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <td style={{ padding: '10px' }}>Dia {parseInt(proj.data.split('-')[2].substring(0, 2))}</td>
+                        <td style={{ padding: '10px' }}>{proj.descricao}</td>
+                        <td style={{ padding: '10px', color: '#10b981', fontWeight: 'bold' }}>R$ {parseFloat(proj.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
                           <button 
                             type="button" 
                             onClick={() => handleDeleteProjetivaDb(proj.id)}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
-                            title="Excluir projeção"
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem' }}
                           >
                             🗑️
                           </button>
@@ -1802,51 +1820,23 @@ function Dashboard() {
             <div className="projetivas-novas" style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h4 style={{ margin: 0 }}>Adicionar Novas Projeções</h4>
-                <button type="button" className="btn-secondary" onClick={handleAddProjetivaRow} style={{ padding: '5px 10px', fontSize: '0.8rem' }}>
-                  + Adicionar Linha
+                <button type="button" className="btn-secondary" onClick={handleAddProjetivaRow} style={{ padding: '5px 12px', fontSize: '0.8rem', fontWeight: 700 }}>
+                  + Linha
                 </button>
               </div>
 
-              {projetivasList.map((item, index) => (
-                <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <input
-                      type="date"
-                      value={item.data}
-                      onChange={(e) => handleProjetivaChange(index, 'data', e.target.value)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {projetivasList.map((item, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input type="date" value={item.data} onChange={(e) => handleProjetivaChange(index, 'data', e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                    <input type="text" placeholder="Descrição" value={item.descricao} onChange={(e) => handleProjetivaChange(index, 'descricao', e.target.value)} style={{ flex: 2, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                    <input type="number" step="0.01" placeholder="Valor" value={item.valor} onChange={(e) => handleProjetivaChange(index, 'valor', e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                    {projetivasList.length > 1 && (
+                      <button type="button" onClick={() => handleRemoveProjetivaRow(index)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
+                    )}
                   </div>
-                  <div style={{ flex: 2 }}>
-                    <input
-                      type="text"
-                      placeholder="Descrição (ex: Bônus de fim de ano)"
-                      value={item.descricao}
-                      onChange={(e) => handleProjetivaChange(index, 'descricao', e.target.value)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Valor (R$)"
-                      value={item.valor}
-                      onChange={(e) => handleProjetivaChange(index, 'valor', e.target.value)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </div>
-                  {projetivasList.length > 1 && (
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveProjetivaRow(index)}
-                      style={{ padding: '8px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             <div className="modal-actions" style={{ marginTop: '20px' }}>
