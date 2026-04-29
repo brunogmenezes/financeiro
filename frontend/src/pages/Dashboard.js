@@ -1056,56 +1056,15 @@ function Dashboard() {
             
             {lancamentos.length > 0 && (
               <div className="chart-container chart-area">
-                <div className="chart-header-compact" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="chart-header-compact">
                   <h4>Evolução Diária do Fluxo de Caixa {filterMes === 'TODOS' && '(Mês Atual)'}</h4>
                   <div 
-                    className="toggle-projetivo-container" 
+                    className={`toggle-projetivo-container ${modoGraficoProjetivo ? 'projetivo' : 'real'}`}
                     onClick={() => setModoGraficoProjetivo(!modoGraficoProjetivo)}
-                    style={{ 
-                      display: 'flex', 
-                      background: '#f3f4f6', 
-                      borderRadius: '20px', 
-                      padding: '3px', 
-                      cursor: 'pointer', 
-                      position: 'relative', 
-                      width: '160px',
-                      height: '32px',
-                      alignItems: 'center',
-                      userSelect: 'none',
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
-                    }}
                   >
-                    <div 
-                      className="toggle-slider" 
-                      style={{ 
-                        position: 'absolute', 
-                        width: '78px', 
-                        height: '26px', 
-                        background: modoGraficoProjetivo ? '#8b5cf6' : '#10b981', 
-                        borderRadius: '18px', 
-                        left: modoGraficoProjetivo ? '79px' : '3px', 
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                      }}
-                    ></div>
-                    <span style={{ 
-                      flex: 1, 
-                      textAlign: 'center', 
-                      zIndex: 1, 
-                      fontSize: '0.75rem', 
-                      fontWeight: 'bold', 
-                      color: !modoGraficoProjetivo ? 'white' : '#6b7280',
-                      transition: 'color 0.3s'
-                    }}>Real</span>
-                    <span style={{ 
-                      flex: 1, 
-                      textAlign: 'center', 
-                      zIndex: 1, 
-                      fontSize: '0.75rem', 
-                      fontWeight: 'bold', 
-                      color: modoGraficoProjetivo ? 'white' : '#6b7280',
-                      transition: 'color 0.3s'
-                    }}>Projetivo</span>
+                    <div className="toggle-slider"></div>
+                    <span className="span-real">Real</span>
+                    <span className="span-projetivo">Projetivo</span>
                   </div>
                 </div>
                 <div className="chart-content-area" style={{ height: '350px' }}>
