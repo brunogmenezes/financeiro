@@ -19,9 +19,10 @@ const entradasProjetivasController = {
   async criar(req, res) {
     try {
       const { descricao, valor, data } = req.body;
+      const valorNumerico = parseFloat(String(valor).replace(',', '.')) || 0;
       const result = await pool.query(
         'INSERT INTO entradas_projetivas (descricao, valor, data, usuario_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [descricao, valor, data, req.userId]
+        [descricao, valorNumerico, data, req.userId]
       );
       res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -44,9 +45,10 @@ const entradasProjetivasController = {
         const insertedItems = [];
         
         for (const item of items) {
+          const valorNumerico = parseFloat(String(item.valor).replace(',', '.')) || 0;
           const result = await client.query(
             'INSERT INTO entradas_projetivas (descricao, valor, data, usuario_id) VALUES ($1, $2, $3, $4) RETURNING *',
-            [item.descricao, item.valor, item.data, req.userId]
+            [item.descricao, valorNumerico, item.data, req.userId]
           );
           insertedItems.push(result.rows[0]);
         }
@@ -61,7 +63,7 @@ const entradasProjetivasController = {
       }
     } catch (error) {
       console.error('Erro ao criar múltiplas entradas projetivas:', error);
-      res.status(500).json({ error: 'Erro ao criar múltiplas entradas projetivas' });
+      res.status(500).json({ error: 'Erro ao criar múltiplas entradas projetivas: ' + error.message });
     }
   },
 

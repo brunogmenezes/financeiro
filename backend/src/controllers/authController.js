@@ -168,7 +168,7 @@ exports.login = async (req, res) => {
 exports.getPerfil = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nome, email, cor_tema, whatsapp, created_at, (google_id IS NOT NULL) as is_google FROM usuarios WHERE id = $1',
+      'SELECT id, nome, email, cor_tema, whatsapp, created_at, onboarding_completed, (google_id IS NOT NULL) as is_google FROM usuarios WHERE id = $1',
       [req.userId]
     );
 
@@ -217,9 +217,14 @@ exports.updatePerfil = async (req, res) => {
       }
     }
 
-    // Preparar atualização
+    // Preparar atualização (usar valores existentes se não enviados no body)
+    const finalNome = nome || user.nome;
+    const finalEmail = email || user.email;
+    const finalCorTema = corTema || user.cor_tema || 'roxo';
+    const finalWhatsapp = whatsapp !== undefined ? whatsapp : user.whatsapp;
+
     let query = 'UPDATE usuarios SET nome = $1, email = $2, cor_tema = $3, whatsapp = $4';
-    let params = [nome, email, corTema || 'roxo', whatsapp || null];
+    let params = [finalNome, finalEmail, finalCorTema, finalWhatsapp];
     
     if (novaSenha) {
       const hashedPassword = await bcrypt.hash(novaSenha, 10);
@@ -240,7 +245,7 @@ exports.updatePerfil = async (req, res) => {
       'EDITAR',
       'usuarios',
       userId,
-      `Perfil atualizado: ${nome} (${email})${novaSenha ? ' - Senha alterada' : ''}`
+      `Perfil atualizado: ${finalNome} (${finalEmail})${novaSenha ? ' - Senha alterada' : ''}`
     );
 
     res.json({ 
@@ -252,3 +257,15 @@ exports.updatePerfil = async (req, res) => {
     res.status(500).json({ error: 'Erro ao atualizar perfil' });
   }
 };
+
+// Marcar onboarding como concluído
+exports.completeOnboarding = async (req, res) => {
+  try {
+    await pool.query('UPDATE usuarios SET onboarding_completed = TRUE WHERE id = $1', [req.userId]);
+    res.json({ ok: true, message: 'Onboarding concluído' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao concluir onboarding' });
+  }
+};
+

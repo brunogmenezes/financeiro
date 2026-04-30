@@ -39,27 +39,39 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { nome, descricao, saldo_inicial, tipo, limite_total } = req.body;
+    const userId = req.userId;
 
-    // Verificar se o usuário é PRO ou ADMIN (usando dados do middleware)
-    const { is_pro, is_admin } = req.user;
+    if (!nome) {
+      return res.status(400).json({ error: 'Nome da conta é obrigatório' });
+    }
 
-    if (!is_pro && !is_admin) {
-      const contasCount = await pool.query('SELECT COUNT(*) FROM contas WHERE usuario_id = $1', [req.userId]);
+    // Verificar se o usuário é PRO ou ADMIN
+    const isPro = req.user?.is_pro || false;
+    const isAdmin = req.user?.is_admin || false;
+
+    if (!isPro && !isAdmin) {
+      const contasCount = await pool.query('SELECT COUNT(*) FROM contas WHERE usuario_id = $1', [userId]);
       if (parseInt(contasCount.rows[0].count) >= 1) {
         return res.status(403).json({ error: 'Usuários não PRO podem criar apenas 1 conta. Adquira o plano PRO para criar contas ilimitadas!' });
       }
     }
 
+    // Converter valores para números para evitar erro de tipo no Postgres
+    const valorSaldo = parseFloat(String(saldo_inicial).replace(',', '.')) || 0;
+    const valorLimite = parseFloat(String(limite_total).replace(',', '.')) || 0;
+
     const result = await pool.query(
       'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, limite_total, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [nome, descricao || null, saldo_inicial || 0, tipo || 'Conta Corrente', limite_total || 0, req.userId]
+      [nome, descricao || null, valorSaldo, tipo || 'Conta Corrente', valorLimite, userId]
     );
 
-    // Buscar nome do usuário
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+    // Buscar nome do usuário para auditoria
+    const userResult = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [userId]);
+    const userName = userResult.rows[0]?.nome || 'Usuário';
+
     await registrarAuditoria(
-      req.userId,
-      user.rows[0]?.nome || 'Usuário',
+      userId,
+      userName,
       'CRIAR',
       'contas',
       result.rows[0].id,
@@ -68,8 +80,8 @@ exports.create = async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Erro ao criar conta' });
+    console.error('ERRO AO CRIAR CONTA:', error);
+    res.status(500).json({ error: 'Erro ao criar conta: ' + error.message });
   }
 };
 
