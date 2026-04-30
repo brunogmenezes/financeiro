@@ -58,6 +58,8 @@ function Dashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [mostrarValores, setMostrarValores] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showPagoModal, setShowPagoModal] = useState(false);
+  const [pagoItem, setPagoItem] = useState(null);
   
   const filterRef = useRef(null);
   const [entradasProjetivas, setEntradasProjetivas] = useState([]);
@@ -289,15 +291,23 @@ function Dashboard() {
     }
   };
 
-  const handleTogglePago = async (lancamento) => {
+  const handleTogglePago = (lancamento) => {
+    setPagoItem(lancamento);
+    setShowPagoModal(true);
+  };
+
+  const confirmTogglePago = async () => {
     try {
-      await togglePagoLancamento(lancamento.id);
-      triggerToast(`Status alterado: ${!lancamento.pago ? 'Pago' : 'Pendente'}`);
+      await togglePagoLancamento(pagoItem.id);
+      triggerToast(`Status alterado: ${!pagoItem.pago ? 'Pago' : 'Pendente'}`);
+      setShowPagoModal(false);
+      setPagoItem(null);
       loadLancamentos();
       loadDashboard();
       loadContas();
     } catch (error) {
       triggerToast('Erro ao alterar status de pagamento', 'error');
+      setShowPagoModal(false);
     }
   };
 
@@ -1883,6 +1893,44 @@ function Dashboard() {
           </div>
         </div>
       )}
+      {/* Modal de Confirmação de Pagamento */}
+      {showPagoModal && pagoItem && (
+        <div className="modal">
+          <div className="modal-content payment-modal premium-card">
+            <div className="modal-icon info">💳</div>
+            <h3>Confirmar Status?</h3>
+            <p className="payment-warning">
+              Deseja alterar o status para <strong>{!pagoItem.pago ? 'PAGO' : 'PENDENTE'}</strong>?
+            </p>
+            
+            <div className="payment-details-box">
+              <div className="detail-row">
+                <span className="detail-label">Lançamento:</span>
+                <span className="detail-value">{pagoItem.descricao}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Valor:</span>
+                <span className="detail-value highlight">R$ {formatarMoeda(Number(pagoItem.valor))}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Conta:</span>
+                <span className="detail-value">{pagoItem.conta_nome}</span>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowPagoModal(false)}>Cancelar</button>
+              <button 
+                className={`btn-confirm-payment ${!pagoItem.pago ? 'pay' : 'unpay'}`} 
+                onClick={confirmTogglePago}
+              >
+                {!pagoItem.pago ? 'Sim, Marcar como Pago' : 'Sim, Marcar como Pendente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Botões Flutuantes */}
       <div className="fab-container">
         <button 

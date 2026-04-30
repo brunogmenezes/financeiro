@@ -9,6 +9,10 @@
   --text-main: #1e293b;
   --text-muted: #64748b;
   --bg-main: #f8fafc;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="roxo"] {
