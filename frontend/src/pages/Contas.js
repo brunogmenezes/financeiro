@@ -200,7 +200,7 @@ function Contas() {
                     <td className="actions-column">
                       <div className="actions-cell">
                         <button className="btn-edit" onClick={() => handleEdit(conta)}>Editar</button>
-                        <button className="btn-delete" onClick={() => handleDelete(conta.id)}>Excluir</button>
+                        <button className="btn-delete" onClick={() => handleDelete(conta)}>Excluir</button>
                       </div>
                     </td>
                   </tr>

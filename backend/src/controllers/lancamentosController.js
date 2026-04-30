@@ -287,6 +287,10 @@ exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (isNaN(id) || id === 'undefined') {
+      return res.status(400).json({ error: 'ID do lançamento inválido' });
+    }
+
     const result = await pool.query(
       'DELETE FROM lancamentos WHERE id = $1 AND usuario_id = $2 RETURNING *',
       [id, req.userId]

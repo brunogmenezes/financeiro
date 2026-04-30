@@ -82,6 +82,10 @@ exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (isNaN(id) || id === 'undefined') {
+      return res.status(400).json({ error: 'ID da categoria inválido' });
+    }
+
     const subcategorias = await pool.query(
       'SELECT COUNT(*) FROM subcategorias WHERE categoria_id = $1',
       [id]
@@ -148,6 +152,10 @@ exports.getSubcategorias = async (req, res) => {
   try {
     const { categoriaId } = req.params;
 
+    if (isNaN(categoriaId) || categoriaId === 'undefined') {
+      return res.status(400).json({ error: 'ID da categoria inválido' });
+    }
+
     const result = await pool.query(`
       SELECT s.*, l.valor_limite as meta_mensal
       FROM subcategorias s
@@ -203,6 +211,10 @@ exports.updateSubcategoria = async (req, res) => {
 exports.deleteSubcategoria = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (isNaN(id) || id === 'undefined') {
+      return res.status(400).json({ error: 'ID da subcategoria inválido' });
+    }
 
     const lancamentos = await pool.query(
       'SELECT COUNT(*) FROM lancamentos WHERE subcategoria_id = $1',

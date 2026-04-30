@@ -124,6 +124,10 @@ exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (isNaN(id) || id === 'undefined') {
+      return res.status(400).json({ error: 'ID da conta inválido' });
+    }
+
     // Verificar se existem lançamentos associados a esta conta
     const lancamentos = await pool.query(
       'SELECT COUNT(*) FROM lancamentos WHERE conta_id = $1',
