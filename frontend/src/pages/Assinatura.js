@@ -8,7 +8,7 @@ function Assinatura() {
   const [history, setHistory] = useState([]);
   const [expiresAt, setExpiresAt] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [subscriptionPrice, setSubscriptionPrice] = useState('9.99');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,9 +17,20 @@ function Assinatura() {
       navigate('/');
       return;
     }
-    setUser(loggedUser);
     loadHistory();
+    loadSubPrice();
+    // eslint-disable-next-line
   }, []);
+
+  const loadSubPrice = async () => {
+    try {
+      const { getPublicSubscriptionConfig } = await import('../services/api');
+      const response = await getPublicSubscriptionConfig();
+      setSubscriptionPrice(response.data.preco_assinatura);
+    } catch (e) {
+      console.error('Erro ao carregar preço:', e);
+    }
+  };
 
   const loadHistory = async () => {
     try {
@@ -104,7 +115,7 @@ function Assinatura() {
             <div className="card-icon">💳</div>
             <div className="card-info">
               <h3>Valor Mensal</h3>
-              <p className="price">R$ 9,99</p>
+              <p className="price">R$ {parseFloat(subscriptionPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               <span className="billing-type">Pagamento via PIX</span>
             </div>
           </div>

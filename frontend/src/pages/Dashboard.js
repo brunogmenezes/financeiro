@@ -11,9 +11,7 @@ import {
   getCategorias,
   getSubcategorias,
   getEntradasProjetivas,
-  createEntradaProjetiva,
   createEntradasProjetivasBulk,
-  updateEntradaProjetiva,
   deleteEntradaProjetiva,
   generatePixSubscription,
   checkSubscriptionStatus
@@ -154,7 +152,7 @@ function Dashboard() {
       // Extrair subcategorias da categoria selecionada sem duplicatas
       const subCatsMap = new Map();
       lancamentos
-        .filter(l => l.categoria_id == categId && l.subcategoria_nome)
+        .filter(l => String(l.categoria_id) === String(categId) && l.subcategoria_nome)
         .forEach(l => {
           if (!subCatsMap.has(l.subcategoria_id)) {
             subCatsMap.set(l.subcategoria_id, { id: l.subcategoria_id, nome: l.subcategoria_nome });
@@ -676,7 +674,7 @@ function Dashboard() {
       const subcategoriaId = lancamento.subcategoria_id || 'sem-subcategoria';
 
       if (!grupos[categoriaId]) {
-        const catOriginal = categorias.find(c => c.id == categoriaId);
+        const catOriginal = categorias.find(c => String(c.id) === String(categoriaId));
         grupos[categoriaId] = {
           nome: categoriaNome,
           cor: categoriaCor,
