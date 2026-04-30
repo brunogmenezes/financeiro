@@ -52,6 +52,8 @@ function Dashboard() {
   const [contas, setContas] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showProLimitModal, setShowProLimitModal] = useState(false);
+  const [proLimitMessage, setProLimitMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingLancamento, setEditingLancamento] = useState(null);
@@ -226,6 +228,11 @@ function Dashboard() {
     }
   };
 
+  const handleUpgradeClick = () => {
+    setProLimitMessage('Esta funcionalidade de análise avançada está disponível apenas para usuários PRO.');
+    setShowProLimitModal(true);
+  };
+
   const loadLancamentos = async () => {
     try {
       const response = await getLancamentos();
@@ -337,8 +344,14 @@ function Dashboard() {
       loadDashboard();
       loadContas();
     } catch (error) {
-      console.error(error);
-      triggerToast(editingLancamento ? 'Erro ao atualizar lançamento' : 'Erro ao criar lançamento', 'error');
+      if (error.response?.status === 403) {
+        setProLimitMessage(error.response.data.error);
+        setShowProLimitModal(true);
+        setShowModal(false);
+      } else {
+        console.error(error);
+        triggerToast(editingLancamento ? 'Erro ao atualizar lançamento' : 'Erro ao criar lançamento', 'error');
+      }
     }
   };
 
@@ -1108,7 +1121,19 @@ function Dashboard() {
         {dashboardData.length > 0 ? (
           <div className="charts-container">
             <div className="chart-container chart-line">
-              <Bar data={processChartData()} options={chartOptions} />
+              <div className="chart-wrapper">
+                {(!user.is_pro && !user.is_admin) && (
+                  <div className="chart-lock-overlay">
+                    <div className="modal-icon diamond" style={{ fontSize: '2rem', marginBottom: '10px' }}>💎</div>
+                    <h5>Análise Bloqueada</h5>
+                    <p>Torne-se PRO para visualizar o balanço mensal de entradas e saídas.</p>
+                    <button className="btn-upgrade-chart" onClick={handleUpgradeClick}>
+                      <span>✨</span> Seja PRO Agora
+                    </button>
+                  </div>
+                )}
+                <Bar data={processChartData()} options={chartOptions} />
+              </div>
             </div>
             
             {lancamentos.length > 0 && (
@@ -1125,7 +1150,19 @@ function Dashboard() {
                   </div>
                 </div>
                 <div className="chart-content-area" style={{ height: '350px' }}>
-                  <Line data={processAreaChartData()} options={areaChartOptions} />
+                  <div className="chart-wrapper">
+                    {(!user.is_pro && !user.is_admin) && (
+                      <div className="chart-lock-overlay">
+                        <div className="modal-icon diamond" style={{ fontSize: '2rem', marginBottom: '10px' }}>💎</div>
+                        <h5>Gráfico de Evolução</h5>
+                        <p>Acompanhe sua evolução diária detalhada com o plano PRO.</p>
+                        <button className="btn-upgrade-chart" onClick={handleUpgradeClick}>
+                          <span>✨</span> Seja PRO Agora
+                        </button>
+                      </div>
+                    )}
+                    <Line data={processAreaChartData()} options={areaChartOptions} />
+                  </div>
                 </div>
               </div>
             )}
@@ -1571,7 +1608,7 @@ function Dashboard() {
                             </div>
                             <div className="item-actions">
                               <button className="btn-action-edit" onClick={() => handleEdit(lancamento)} title="Editar">✏️</button>
-                              <button className="btn-action-delete" onClick={() => handleDelete(lancamento.id)} title="Excluir">🗑️</button>
+                              <button className="btn-action-delete" onClick={() => handleDelete(lancamento)} title="Excluir">🗑️</button>
                             </div>
                           </div>
                         ))}
@@ -1968,6 +2005,33 @@ function Dashboard() {
             <span className="toast-message">{toast.message}</span>
           </div>
           <div className="toast-progress"></div>
+        </div>
+      )}
+      {/* Modal de Limite PRO */}
+      {showProLimitModal && (
+        <div className="modal">
+          <div className="modal-content premium-card pro-limit-modal">
+            <div className="modal-icon diamond">💎</div>
+            <h3>Limite Atingido</h3>
+            <div className="pro-limit-content">
+              <p>{proLimitMessage || 'Você atingiu o limite do seu plano atual.'}</p>
+              <div className="pro-benefit-box">
+                <p><strong>Vantagens do Plano PRO:</strong></p>
+                <ul>
+                  <li>✨ Lançamentos ilimitados</li>
+                  <li>🏦 Contas bancárias ilimitadas</li>
+                  <li>📊 Gráficos e análises avançadas</li>
+                  <li>📱 Suporte prioritário</li>
+                </ul>
+              </div>
+              <div className="upgrade-instruction">
+                Para se tornar <strong>PRO</strong> e liberar acesso total, entre em contato com o administrador do sistema.
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-save" onClick={() => setShowProLimitModal(false)}>Entendi</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

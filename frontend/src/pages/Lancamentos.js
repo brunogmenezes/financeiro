@@ -20,6 +20,8 @@ function Lancamentos() {
   const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showProLimitModal, setShowProLimitModal] = useState(false);
+  const [proLimitMessage, setProLimitMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingLancamento, setEditingLancamento] = useState(null);
@@ -174,8 +176,14 @@ function Lancamentos() {
       loadLancamentos();
       triggerToast(editingLancamento ? 'Lançamento atualizado!' : 'Lançamento criado!');
     } catch (error) {
-      console.error('Erro completo:', error);
-      triggerToast(error.response?.data?.error || 'Erro ao salvar lançamento', 'error');
+      if (error.response?.status === 403) {
+        setProLimitMessage(error.response.data.error);
+        setShowProLimitModal(true);
+        setShowModal(false);
+      } else {
+        console.error('Erro completo:', error);
+        triggerToast(error.response?.data?.error || 'Erro ao salvar lançamento', 'error');
+      }
     }
   };
 
@@ -634,6 +642,33 @@ function Lancamentos() {
             <span className="toast-message">{toast.message}</span>
           </div>
           <div className="toast-progress"></div>
+        </div>
+      )}
+      {/* Modal de Limite PRO */}
+      {showProLimitModal && (
+        <div className="modal">
+          <div className="modal-content premium-card pro-limit-modal">
+            <div className="modal-icon diamond">💎</div>
+            <h3>Limite Atingido</h3>
+            <div className="pro-limit-content">
+              <p>{proLimitMessage || 'Você atingiu o limite de lançamentos do seu plano atual.'}</p>
+              <div className="pro-benefit-box">
+                <p><strong>Vantagens do Plano PRO:</strong></p>
+                <ul>
+                  <li>✨ Lançamentos ilimitados</li>
+                  <li>🏦 Contas bancárias ilimitadas</li>
+                  <li>📊 Gráficos e análises avançadas</li>
+                  <li>📱 Suporte prioritário</li>
+                </ul>
+              </div>
+              <div className="upgrade-instruction">
+                Para se tornar <strong>PRO</strong> e liberar acesso total, entre em contato com o administrador do sistema.
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-save" onClick={() => setShowProLimitModal(false)}>Entendi</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

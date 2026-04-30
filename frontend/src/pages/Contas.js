@@ -8,6 +8,8 @@ function Contas() {
   const [contas, setContas] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showProLimitModal, setShowProLimitModal] = useState(false);
+  const [proLimitMessage, setProLimitMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingConta, setEditingConta] = useState(null);
@@ -69,7 +71,13 @@ function Contas() {
       setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, tipo: 'Conta Corrente' });
       loadContas();
     } catch (error) {
-      triggerToast('Erro ao salvar conta', 'error');
+      if (error.response?.status === 403) {
+        setProLimitMessage(error.response.data.error);
+        setShowProLimitModal(true);
+        setShowModal(false);
+      } else {
+        triggerToast('Erro ao salvar conta', 'error');
+      }
     }
   };
 
@@ -262,6 +270,33 @@ function Contas() {
             <span className="toast-message">{toast.message}</span>
           </div>
           <div className="toast-progress"></div>
+        </div>
+      )}
+      {/* Modal de Limite PRO */}
+      {showProLimitModal && (
+        <div className="modal">
+          <div className="modal-content premium-card pro-limit-modal">
+            <div className="modal-icon diamond">💎</div>
+            <h3>Limite Atingido</h3>
+            <div className="pro-limit-content">
+              <p>{proLimitMessage || 'Você atingiu o limite de contas do seu plano atual.'}</p>
+              <div className="pro-benefit-box">
+                <p><strong>Vantagens do Plano PRO:</strong></p>
+                <ul>
+                  <li>✨ Lançamentos ilimitados</li>
+                  <li>🏦 Contas bancárias ilimitadas</li>
+                  <li>📊 Gráficos e análises avançadas</li>
+                  <li>📱 Suporte prioritário</li>
+                </ul>
+              </div>
+              <div className="upgrade-instruction">
+                Para se tornar <strong>PRO</strong> e liberar acesso total, entre em contato com o administrador do sistema.
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-save" onClick={() => setShowProLimitModal(false)}>Entendi</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
