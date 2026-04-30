@@ -475,3 +475,12 @@
     font-size: 13px;
   }
 }
+
+.nav-item-pro {
+  color: #fbbf24 !important; /* Dourado para destacar */
+  font-weight: 700 !important;
+}
+
+.nav-item-pro .nav-icon {
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.4));
+}

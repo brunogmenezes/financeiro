@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getContas, createConta, updateConta, deleteConta } from '../services/api';
+import { getContas, createConta, updateConta, deleteConta, generatePixSubscription, checkSubscriptionStatus } from '../services/api';
 import Navbar from '../components/Navbar';
 import './Contas.css';
 
@@ -10,6 +10,12 @@ function Contas() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showProLimitModal, setShowProLimitModal] = useState(false);
   const [proLimitMessage, setProLimitMessage] = useState('');
+  
+  // Checkout PRO
+  const [pixData, setPixData] = useState(null);
+  const [isGeneratingPix, setIsGeneratingPix] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const pollingRef = useRef(null);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingConta, setEditingConta] = useState(null);
@@ -27,8 +33,40 @@ function Contas() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
+  const handleStartSubscription = async () => {
+    try {
+      setIsGeneratingPix(true);
+      const response = await generatePixSubscription();
+      setPixData(response.data);
+      setPaymentStatus('PENDING');
+      startPaymentPolling(response.data.txid);
+    } catch (error) {
+      alert('Erro ao gerar PIX. Verifique a configuração.');
+    } finally {
+      setIsGeneratingPix(false);
+    }
+  };
+
+  const startPaymentPolling = (txid) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const response = await checkSubscriptionStatus(txid);
+        if (response.data.status === 'PAID') {
+          setPaymentStatus('PAID');
+          clearInterval(pollingRef.current);
+          const user = JSON.parse(localStorage.getItem('user'));
+          const updatedUser = { ...user, is_pro: true };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setTimeout(() => { window.location.reload(); }, 3000);
+        }
+      } catch (error) { console.error(error); }
+    }, 5000);
+  };
+
   useEffect(() => {
     loadContas();
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []);
 
   const loadContas = async () => {
@@ -72,8 +110,10 @@ function Contas() {
       loadContas();
     } catch (error) {
       if (error.response?.status === 403) {
-        setProLimitMessage(error.response.data.error);
+        setProLimitMessage(error.response?.data?.error || 'Você atingiu o limite do seu plano.');
         setShowProLimitModal(true);
+        setPixData(null);
+        setPaymentStatus(null);
         setShowModal(false);
       } else {
         triggerToast('Erro ao salvar conta', 'error');
@@ -272,30 +312,76 @@ function Contas() {
           <div className="toast-progress"></div>
         </div>
       )}
-      {/* Modal de Limite PRO */}
+      {/* Modal de Limite PRO / Checkout */}
       {showProLimitModal && (
         <div className="modal">
-          <div className="modal-content premium-card pro-limit-modal">
-            <div className="modal-icon diamond">💎</div>
-            <h3>Limite Atingido</h3>
-            <div className="pro-limit-content">
-              <p>{proLimitMessage || 'Você atingiu o limite de contas do seu plano atual.'}</p>
-              <div className="pro-benefit-box">
-                <p><strong>Vantagens do Plano PRO:</strong></p>
-                <ul>
-                  <li>✨ Lançamentos ilimitados</li>
-                  <li>🏦 Contas bancárias ilimitadas</li>
-                  <li>📊 Gráficos e análises avançadas</li>
-                  <li>📱 Suporte prioritário</li>
-                </ul>
+          <div className="modal-content premium-card pro-limit-modal checkout-modal">
+            <button className="btn-close-modal" onClick={() => setShowProLimitModal(false)}>✕</button>
+            
+            {!pixData ? (
+              <>
+                <div className="modal-icon diamond">💎</div>
+                <h3>Limite Atingido</h3>
+                <div className="pro-limit-content">
+                  <p>{proLimitMessage || 'Acesse recursos ilimitados e impulsione sua gestão financeira.'}</p>
+                  <div className="pro-benefit-box">
+                    <p><strong>Benefícios do Plano PRO:</strong></p>
+                    <ul>
+                      <li>✨ Contas e Lançamentos ilimitados</li>
+                      <li>📊 Gráficos e análises avançadas</li>
+                      <li>🏦 Gestão de múltiplas contas</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="price-tag">
+                    <span className="currency">R$</span>
+                    <span className="amount">9,99</span>
+                    <span className="period">/mês</span>
+                  </div>
+
+                  <button 
+                    className="btn-save btn-upgrade-confirm" 
+                    onClick={handleStartSubscription}
+                    disabled={isGeneratingPix}
+                  >
+                    {isGeneratingPix ? 'Gerando PIX...' : 'Assinar Agora via PIX'}
+                  </button>
+                </div>
+              </>
+            ) : paymentStatus === 'PAID' ? (
+              <div className="success-checkout">
+                <div className="success-icon">🎉</div>
+                <h3>Pagamento Confirmado!</h3>
+                <p>Seu acesso PRO foi liberado. Aproveite!</p>
+                <div className="loading-spinner-small"></div>
               </div>
-              <div className="upgrade-instruction">
-                Para se tornar <strong>PRO</strong> e liberar acesso total, entre em contato com o administrador do sistema.
+            ) : (
+              <div className="pix-checkout-area">
+                <h3>Pagamento via PIX</h3>
+                <p>Escaneie o QR Code ou use o Copia e Cola.</p>
+                
+                <div className="qrcode-container">
+                  <img src={pixData.imagemQrcode} alt="QR Code PIX" />
+                </div>
+                
+                <div className="copia-e-cola-box">
+                  <div className="copy-input">
+                    <input type="text" readOnly value={pixData.copiaECola} id="pix-copy-input-contas" />
+                    <button onClick={() => {
+                      const copyText = document.getElementById("pix-copy-input-contas");
+                      copyText.select();
+                      document.execCommand("copy");
+                      triggerToast('Copiado!');
+                    }}>Copiar</button>
+                  </div>
+                </div>
+
+                <div className="polling-status">
+                  <div className="spinner"></div>
+                  <span>Aguardando pagamento...</span>
+                </div>
               </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-save" onClick={() => setShowProLimitModal(false)}>Entendi</button>
-            </div>
+            )}
           </div>
         </div>
       )}

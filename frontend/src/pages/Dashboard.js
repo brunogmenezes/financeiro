@@ -14,7 +14,9 @@ import {
   createEntradaProjetiva,
   createEntradasProjetivasBulk,
   updateEntradaProjetiva,
-  deleteEntradaProjetiva
+  deleteEntradaProjetiva,
+  generatePixSubscription,
+  checkSubscriptionStatus
 } from '../services/api';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
@@ -63,6 +65,13 @@ function Dashboard() {
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [pagoItem, setPagoItem] = useState(null);
   
+  // Checkout PRO
+  const [pixData, setPixData] = useState(null);
+  const [isGeneratingPix, setIsGeneratingPix] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null); // 'PENDING', 'PAID', 'EXPIRED'
+  const [subscriptionPrice, setSubscriptionPrice] = useState('9.99');
+  const pollingRef = useRef(null);
+  
   const filterRef = useRef(null);
   const [entradasProjetivas, setEntradasProjetivas] = useState([]);
   const [showModalProjetivas, setShowModalProjetivas] = useState(false);
@@ -110,8 +119,19 @@ function Dashboard() {
     loadContas();
     loadCategorias();
     loadEntradasProjetivas();
+    loadSubPrice();
     // eslint-disable-next-line
   }, []);
+
+  const loadSubPrice = async () => {
+    try {
+      const { getPublicSubscriptionConfig } = await import('../services/api');
+      const response = await getPublicSubscriptionConfig();
+      setSubscriptionPrice(response.data.preco_assinatura);
+    } catch (e) {
+      console.error('Erro ao carregar preço da assinatura:', e);
+    }
+  };
 
   const loadEntradasProjetivas = async () => {
     try {
@@ -231,7 +251,55 @@ function Dashboard() {
   const handleUpgradeClick = () => {
     setProLimitMessage('Esta funcionalidade de análise avançada está disponível apenas para usuários PRO.');
     setShowProLimitModal(true);
+    setPixData(null);
+    setPaymentStatus(null);
   };
+
+  const handleStartSubscription = async () => {
+    try {
+      setIsGeneratingPix(true);
+      const response = await generatePixSubscription();
+      setPixData(response.data);
+      setPaymentStatus('PENDING');
+      startPaymentPolling(response.data.txid);
+    } catch (error) {
+      triggerToast('Erro ao gerar PIX. Verifique se a chave PIX está configurada.', 'error');
+    } finally {
+      setIsGeneratingPix(false);
+    }
+  };
+
+  const startPaymentPolling = (txid) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    
+    pollingRef.current = setInterval(async () => {
+      try {
+        const response = await checkSubscriptionStatus(txid);
+        if (response.data.status === 'PAID') {
+          setPaymentStatus('PAID');
+          clearInterval(pollingRef.current);
+          triggerToast('Parabéns! Você agora é PRO!', 'success');
+          
+          // Atualizar usuário no localStorage
+          const updatedUser = { ...user, is_pro: true };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          
+          // Recarregar após 3 segundos
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Erro no polling:', error);
+      }
+    }, 5000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const loadLancamentos = async () => {
     try {
@@ -1023,7 +1091,10 @@ function Dashboard() {
           </div>
         </div>
 
+        </div>
+        
         {/* Seção de Contas */}
+        <div className="contas-section">
         <div className="contas-section">
           {/* Card de Saldo Total */}
           <div className="saldo-total-card">
@@ -1963,6 +2034,16 @@ function Dashboard() {
 
       {/* Botões Flutuantes */}
       <div className="fab-container">
+        {(!user.is_pro && !user.is_admin) && (
+          <button 
+            className="fab-item fab-pro-badge" 
+            onClick={() => handleUpgradeClick()}
+            title="Seja PRO"
+          >
+            💎
+          </button>
+        )}
+        
         <button 
           className={`fab-item fab-filter ${showFilters ? 'active' : ''}`} 
           onClick={toggleFilters}
@@ -2007,30 +2088,84 @@ function Dashboard() {
           <div className="toast-progress"></div>
         </div>
       )}
-      {/* Modal de Limite PRO */}
+      {/* Modal de Limite PRO / Checkout */}
       {showProLimitModal && (
         <div className="modal">
-          <div className="modal-content premium-card pro-limit-modal">
-            <div className="modal-icon diamond">💎</div>
-            <h3>Limite Atingido</h3>
-            <div className="pro-limit-content">
-              <p>{proLimitMessage || 'Você atingiu o limite do seu plano atual.'}</p>
-              <div className="pro-benefit-box">
-                <p><strong>Vantagens do Plano PRO:</strong></p>
-                <ul>
-                  <li>✨ Lançamentos ilimitados</li>
-                  <li>🏦 Contas bancárias ilimitadas</li>
-                  <li>📊 Gráficos e análises avançadas</li>
-                  <li>📱 Suporte prioritário</li>
-                </ul>
+          <div className="modal-content premium-card pro-limit-modal checkout-modal">
+            <button className="btn-close-modal" onClick={() => setShowProLimitModal(false)}>✕</button>
+            
+            {!pixData ? (
+              <>
+                <div className="modal-icon diamond">💎</div>
+                <h3>Upgrade para o Plano PRO</h3>
+                <div className="pro-limit-content">
+                  <p>{proLimitMessage || 'Acesse recursos ilimitados e impulsione sua gestão financeira.'}</p>
+                  <div className="pro-benefit-box">
+                    <p><strong>Benefícios Exclusivos:</strong></p>
+                    <ul>
+                      <li>✨ Lançamentos e Contas ilimitados</li>
+                      <li>📊 Gráficos de Evolução Diária e Fluxo</li>
+                      <li>🏦 Gestão de múltiplas contas bancárias</li>
+                      <li>🏷️ Categorias globais personalizadas</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="price-tag">
+                    <span className="currency">R$</span>
+                    <span className="amount">{parseFloat(subscriptionPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="period">/mês</span>
+                  </div>
+
+                  <button 
+                    className="btn-save btn-upgrade-confirm" 
+                    onClick={handleStartSubscription}
+                    disabled={isGeneratingPix}
+                  >
+                    {isGeneratingPix ? 'Gerando PIX...' : 'Assinar Agora via PIX'}
+                  </button>
+                </div>
+              </>
+            ) : paymentStatus === 'PAID' ? (
+              <div className="success-checkout">
+                <div className="success-icon">🎉</div>
+                <h3>Pagamento Confirmado!</h3>
+                <p>Seu acesso PRO foi liberado por 30 dias. Aproveite todos os recursos!</p>
+                <div className="loading-spinner-small"></div>
+                <p className="small-text">Recarregando o sistema...</p>
               </div>
-              <div className="upgrade-instruction">
-                Para se tornar <strong>PRO</strong> e liberar acesso total, entre em contato com o administrador do sistema.
+            ) : (
+              <div className="pix-checkout-area">
+                <h3>Finalize seu Pagamento</h3>
+                <p>Escaneie o QR Code abaixo ou utilize o Copia e Cola.</p>
+                
+                <div className="qrcode-container">
+                  <img src={pixData.imagemQrcode} alt="QR Code PIX" />
+                </div>
+                
+                <div className="copia-e-cola-box">
+                  <label>Código Copia e Cola:</label>
+                  <div className="copy-input">
+                    <input type="text" readOnly value={pixData.copiaECola} id="pix-copy-input" />
+                    <button onClick={() => {
+                      const copyText = document.getElementById("pix-copy-input");
+                      copyText.select();
+                      document.execCommand("copy");
+                      triggerToast('Código copiado!');
+                    }}>Copiar</button>
+                  </div>
+                </div>
+
+                <div className="polling-status">
+                  <div className="spinner"></div>
+                  <span>Aguardando confirmação do pagamento...</span>
+                </div>
+
+                <div className="payment-info-footer">
+                  <p>Valor: <strong>R$ {parseFloat(subscriptionPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
+                  <p>Validade: 30 dias de acesso PRO</p>
+                </div>
               </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-save" onClick={() => setShowProLimitModal(false)}>Entendi</button>
-            </div>
+            )}
           </div>
         </div>
       )}

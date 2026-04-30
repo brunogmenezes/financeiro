@@ -40,9 +40,8 @@ exports.create = async (req, res) => {
   try {
     const { nome, descricao, saldo_inicial, tipo, limite_total } = req.body;
 
-    // Verificar se o usuário é PRO ou ADMIN
-    const userResult = await pool.query('SELECT is_pro, is_admin FROM usuarios WHERE id = $1', [req.userId]);
-    const { is_pro, is_admin } = userResult.rows[0];
+    // Verificar se o usuário é PRO ou ADMIN (usando dados do middleware)
+    const { is_pro, is_admin } = req.user;
 
     if (!is_pro && !is_admin) {
       const contasCount = await pool.query('SELECT COUNT(*) FROM contas WHERE usuario_id = $1', [req.userId]);

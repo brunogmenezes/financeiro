@@ -8,6 +8,7 @@ import Auditoria from './pages/Auditoria';
 import Perfil from './pages/Perfil';
 import Categorias from './pages/Categorias';
 import Manager from './pages/Manager';
+import Assinatura from './pages/Assinatura';
 
 function App() {
   const isAuthenticated = () => {
@@ -69,6 +70,11 @@ function App() {
           <AdminRoute>
             <Manager />
           </AdminRoute>
+        } />
+        <Route path="/assinatura" element={
+          <UserRoute>
+            <Assinatura />
+          </UserRoute>
         } />
       </Routes>
     </Router>

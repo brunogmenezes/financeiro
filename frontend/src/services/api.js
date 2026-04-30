@@ -69,10 +69,19 @@ export const deleteEntradaProjetiva = (id) => api.delete(`/entradas-projetivas/$
 
 
 // Admin
-export const adminGetUsers = () => api.get('/admin/users');
+export const adminGetUsers = (search = '') => api.get(`/admin/users${search ? `?search=${search}` : ''}`);
 export const adminResetPassword = (id, novaSenha) => api.post(`/admin/users/${id}/reset-password`, { novaSenha });
 export const adminToggleAdmin = (id, isAdmin) => api.patch(`/admin/users/${id}/toggle-admin`, { isAdmin });
 export const adminTogglePro = (id, isPro) => api.patch(`/admin/users/${id}/toggle-pro`, { isPro });
 export const adminDeleteUser = (id) => api.delete(`/admin/users/${id}`);
+export const adminGetUserPayments = (id) => api.get(`/admin/users/${id}/payments`);
+export const adminGetConfigs = () => api.get('/admin/configs');
+export const adminUpdateConfig = (chave, valor) => api.post('/admin/configs', { chave, valor });
+
+// Subscription
+export const generatePixSubscription = () => api.post('/subscription/generate-pix');
+export const checkSubscriptionStatus = (txid) => api.get(`/subscription/status/${txid}`);
+export const getSubscriptionHistory = () => api.get('/subscription/history');
+export const getPublicSubscriptionConfig = () => api.get('/subscription/config');
 
 export default api;

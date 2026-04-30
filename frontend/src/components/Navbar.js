@@ -101,6 +101,17 @@ function Navbar() {
               {isActive('/categorias') && <span className="active-indicator"></span>}
             </button>
 
+            {!user.is_admin && (
+              <button 
+                onClick={() => handleNavigate('/assinatura')} 
+                className={`nav-item ${isActive('/assinatura') ? 'active' : ''} ${user.is_pro ? 'nav-item-pro' : ''}`}
+              >
+                <span className="nav-icon">💎</span>
+                <span>Minha Assinatura</span>
+                {isActive('/assinatura') && <span className="active-indicator"></span>}
+              </button>
+            )}
+
             <button 
               onClick={() => handleNavigate('/auditoria')} 
               className={`nav-item ${isActive('/auditoria') ? 'active' : ''}`}

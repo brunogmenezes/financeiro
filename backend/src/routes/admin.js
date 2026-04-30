@@ -13,4 +13,11 @@ router.patch('/users/:id/toggle-admin', adminController.toggleAdmin);
 router.patch('/users/:id/toggle-pro', adminController.togglePro);
 router.delete('/users/:id', adminController.deleteUser);
 
+// Histórico de pagamentos do usuário
+router.get('/users/:id/payments', adminController.getUserPaymentHistory);
+
+// Configurações Globais
+router.get('/configs', adminController.getConfigs);
+router.post('/configs', adminController.updateConfig);
+
 module.exports = router;

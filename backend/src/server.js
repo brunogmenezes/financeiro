@@ -11,6 +11,7 @@ const categoriasRoutes = require('./routes/categorias');
 const whatsappRoutes = require('./routes/whatsapp');
 const entradasProjetivasRoutes = require('./routes/entradasProjetivas');
 const adminRoutes = require('./routes/admin');
+const subscriptionRoutes = require('./routes/subscription');
 const { ensureOptionalColumns } = require('./config/migrations');
 const { startReminderScheduler } = require('./services/reminderScheduler');
 
@@ -29,6 +30,7 @@ app.use('/api/categorias', categoriasRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/entradas-projetivas', entradasProjetivasRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {

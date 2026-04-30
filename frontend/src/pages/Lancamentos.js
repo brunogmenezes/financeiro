@@ -8,9 +8,12 @@ import {
   getContas,
   getCategorias,
   getSubcategorias,
-  togglePagoLancamento
+  togglePagoLancamento,
+  generatePixSubscription,
+  checkSubscriptionStatus
 } from '../services/api';
 import Navbar from '../components/Navbar';
+import { useRef } from 'react';
 import './Lancamentos.css';
 
 function Lancamentos() {
@@ -23,6 +26,12 @@ function Lancamentos() {
   const [showProLimitModal, setShowProLimitModal] = useState(false);
   const [proLimitMessage, setProLimitMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
+  
+  // Checkout PRO
+  const [pixData, setPixData] = useState(null);
+  const [isGeneratingPix, setIsGeneratingPix] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const pollingRef = useRef(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingLancamento, setEditingLancamento] = useState(null);
   const [filterMes, setFilterMes] = useState('TODOS');
@@ -52,7 +61,39 @@ function Lancamentos() {
     loadLancamentos();
     loadContas();
     loadCategorias();
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []);
+
+  const handleStartSubscription = async () => {
+    try {
+      setIsGeneratingPix(true);
+      const response = await generatePixSubscription();
+      setPixData(response.data);
+      setPaymentStatus('PENDING');
+      startPaymentPolling(response.data.txid);
+    } catch (error) {
+      alert('Erro ao gerar PIX. Verifique a configuração.');
+    } finally {
+      setIsGeneratingPix(false);
+    }
+  };
+
+  const startPaymentPolling = (txid) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const response = await checkSubscriptionStatus(txid);
+        if (response.data.status === 'PAID') {
+          setPaymentStatus('PAID');
+          clearInterval(pollingRef.current);
+          const user = JSON.parse(localStorage.getItem('user'));
+          const updatedUser = { ...user, is_pro: true };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setTimeout(() => { window.location.reload(); }, 3000);
+        }
+      } catch (error) { console.error(error); }
+    }, 5000);
+  };
 
   const loadLancamentos = async () => {
     try {
@@ -177,8 +218,10 @@ function Lancamentos() {
       triggerToast(editingLancamento ? 'Lançamento atualizado!' : 'Lançamento criado!');
     } catch (error) {
       if (error.response?.status === 403) {
-        setProLimitMessage(error.response.data.error);
+        setProLimitMessage(error.response?.data?.error || 'Limite de lançamentos atingido.');
         setShowProLimitModal(true);
+        setPixData(null);
+        setPaymentStatus(null);
         setShowModal(false);
       } else {
         console.error('Erro completo:', error);
@@ -644,30 +687,76 @@ function Lancamentos() {
           <div className="toast-progress"></div>
         </div>
       )}
-      {/* Modal de Limite PRO */}
+      {/* Modal de Limite PRO / Checkout */}
       {showProLimitModal && (
         <div className="modal">
-          <div className="modal-content premium-card pro-limit-modal">
-            <div className="modal-icon diamond">💎</div>
-            <h3>Limite Atingido</h3>
-            <div className="pro-limit-content">
-              <p>{proLimitMessage || 'Você atingiu o limite de lançamentos do seu plano atual.'}</p>
-              <div className="pro-benefit-box">
-                <p><strong>Vantagens do Plano PRO:</strong></p>
-                <ul>
-                  <li>✨ Lançamentos ilimitados</li>
-                  <li>🏦 Contas bancárias ilimitadas</li>
-                  <li>📊 Gráficos e análises avançadas</li>
-                  <li>📱 Suporte prioritário</li>
-                </ul>
+          <div className="modal-content premium-card pro-limit-modal checkout-modal">
+            <button className="btn-close-modal" onClick={() => setShowProLimitModal(false)}>✕</button>
+            
+            {!pixData ? (
+              <>
+                <div className="modal-icon diamond">💎</div>
+                <h3>Limite Atingido</h3>
+                <div className="pro-limit-content">
+                  <p>{proLimitMessage || 'Acesse recursos ilimitados e impulsione sua gestão financeira.'}</p>
+                  <div className="pro-benefit-box">
+                    <p><strong>Benefícios do Plano PRO:</strong></p>
+                    <ul>
+                      <li>✨ Lançamentos e Contas ilimitados</li>
+                      <li>📊 Gráficos e análises avançadas</li>
+                      <li>🏦 Gestão completa de fluxo</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="price-tag">
+                    <span className="currency">R$</span>
+                    <span className="amount">9,99</span>
+                    <span className="period">/mês</span>
+                  </div>
+
+                  <button 
+                    className="btn-save btn-upgrade-confirm" 
+                    onClick={handleStartSubscription}
+                    disabled={isGeneratingPix}
+                  >
+                    {isGeneratingPix ? 'Gerando PIX...' : 'Assinar Agora via PIX'}
+                  </button>
+                </div>
+              </>
+            ) : paymentStatus === 'PAID' ? (
+              <div className="success-checkout">
+                <div className="success-icon">🎉</div>
+                <h3>Pagamento Confirmado!</h3>
+                <p>Seu acesso PRO foi liberado. Aproveite!</p>
+                <div className="loading-spinner-small"></div>
               </div>
-              <div className="upgrade-instruction">
-                Para se tornar <strong>PRO</strong> e liberar acesso total, entre em contato com o administrador do sistema.
+            ) : (
+              <div className="pix-checkout-area">
+                <h3>Pagamento via PIX</h3>
+                <p>Escaneie o QR Code ou use o Copia e Cola.</p>
+                
+                <div className="qrcode-container">
+                  <img src={pixData.imagemQrcode} alt="QR Code PIX" />
+                </div>
+                
+                <div className="copia-e-cola-box">
+                  <div className="copy-input">
+                    <input type="text" readOnly value={pixData.copiaECola} id="pix-copy-input-lancamentos" />
+                    <button onClick={() => {
+                      const copyText = document.getElementById("pix-copy-input-lancamentos");
+                      copyText.select();
+                      document.execCommand("copy");
+                      triggerToast('Copiado!');
+                    }}>Copiar</button>
+                  </div>
+                </div>
+
+                <div className="polling-status">
+                  <div className="spinner"></div>
+                  <span>Aguardando pagamento...</span>
+                </div>
               </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-save" onClick={() => setShowProLimitModal(false)}>Entendi</button>
-            </div>
+            )}
           </div>
         </div>
       )}
