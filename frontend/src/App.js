@@ -5,7 +5,6 @@ import Dashboard from './pages/Dashboard';
 import Contas from './pages/Contas';
 import Lancamentos from './pages/Lancamentos';
 import Auditoria from './pages/Auditoria';
-import Perfil from './pages/Perfil';
 import Categorias from './pages/Categorias';
 import Manager from './pages/Manager';
 import Assinatura from './pages/Assinatura';
@@ -56,11 +55,7 @@ function App() {
             <Auditoria />
           </PrivateRoute>
         } />
-        <Route path="/perfil" element={
-          <PrivateRoute>
-            <Perfil />
-          </PrivateRoute>
-        } />
+
         <Route path="/categorias" element={
           <PrivateRoute>
             <Categorias />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ProfileModal from './ProfileModal';
 import './Navbar.css';
 
 function Navbar() {
@@ -8,6 +9,7 @@ function Navbar() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const menuRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -51,7 +53,8 @@ function Navbar() {
   };
 
   return (
-    <nav className="navbar">
+    <>
+      <nav className="navbar">
       {menuOpen && <div className="menu-overlay" onClick={() => setMenuOpen(false)}></div>}
       
       <div className="navbar-container">
@@ -151,7 +154,7 @@ function Navbar() {
             {profileOpen && (
               <div className="profile-dropdown">
                 <button 
-                  onClick={() => { handleNavigate('/perfil'); setProfileOpen(false); }} 
+                  onClick={() => { setShowProfileModal(true); setProfileOpen(false); }} 
                   className="dropdown-item"
                 >
                   <span className="dropdown-icon">👤</span>
@@ -166,8 +169,14 @@ function Navbar() {
             )}
           </div>
         </div>
-      </div>
-    </nav>
+        </div>
+      </nav>
+
+      <ProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+      />
+    </>
   );
 }
 
