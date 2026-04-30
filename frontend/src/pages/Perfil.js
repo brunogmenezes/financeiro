@@ -215,15 +215,17 @@ function Perfil() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="whatsapp">WhatsApp (com DDD e país)</label>
+              <label htmlFor="whatsapp">WhatsApp (apenas números: DDI + DDD + Número)</label>
               <input
-                type="text"
+                type="tel"
                 id="whatsapp"
                 name="whatsapp"
                 value={formData.whatsapp}
-                onChange={handleChange}
+                maxLength={13}
+                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value.replace(/\D/g, '') })}
                 placeholder="Ex: 5511999999999"
               />
+              <small className="input-tip">Formato: 55 + DDD + Número</small>
             </div>
           </div>
 

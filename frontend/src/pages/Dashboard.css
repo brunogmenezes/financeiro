@@ -6,10 +6,16 @@
 .dashboard-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: 30px 60px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    padding: 20px 16px;
+  }
 }
 
 /* Welcome Section */
@@ -17,11 +23,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 0px;
+  padding: 0 10px;
 }
 
 .welcome-text h2 {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: var(--text-main);
   margin-bottom: 4px;
@@ -30,7 +37,7 @@
 
 .welcome-text p {
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .quick-actions-btns {
@@ -42,13 +49,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 28px;
-  border-radius: 16px;
+  padding: 10px 20px;
+  border-radius: 12px;
   border: none;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 1rem;
+  font-size: 0.9rem;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
 }
 
@@ -141,8 +148,8 @@
 .saldo-total-card {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: white;
-  padding: 48px;
-  border-radius: 40px;
+  padding: 32px 40px;
+  border-radius: 32px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
@@ -215,13 +222,13 @@
 }
 
 .saldo-total-valor {
-  font-size: 4.5rem;
+  font-size: 2.8rem;
   font-weight: 800;
   font-family: 'Outfit', sans-serif;
-  line-height: 1;
-  margin-bottom: 32px;
+  line-height: 1.2;
+  margin-bottom: 24px;
   display: block;
-  letter-spacing: -2px;
+  letter-spacing: -1px;
 }
 
 .btn-toggle-valores-card {
@@ -255,14 +262,14 @@
 }
 
 .tipo-item {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
-  padding: 18px 24px;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.3s ease;
   flex: 1;
-  min-width: 180px;
+  min-width: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -288,7 +295,7 @@
 }
 
 .tipo-valor {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   font-weight: 700;
   font-family: 'Outfit', sans-serif;
 }
@@ -364,12 +371,12 @@
 }
 
 .conta-saldo .valor {
-  font-size: 2.2rem;
+  font-size: 1.6rem;
   font-weight: 800;
   font-family: 'Outfit', sans-serif;
   color: var(--text-main);
   display: block;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 /* Charts Section */
@@ -381,8 +388,8 @@
 
 .chart-container {
   background: white;
-  padding: 40px;
-  border-radius: 32px;
+  padding: 32px;
+  border-radius: 28px;
   border: 1px solid rgba(0,0,0,0.04);
   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
 }
@@ -439,6 +446,41 @@
   font-weight: 800;
   color: var(--text-main);
   font-family: 'Outfit', sans-serif;
+}
+
+/* Empty States */
+.empty-state-card {
+  background: white;
+  padding: 60px 40px;
+  border-radius: 24px;
+  text-align: center;
+  border: 2px dashed #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 20px 0;
+  color: var(--text-muted);
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.empty-state-card h4 {
+  font-size: 1.2rem;
+  color: var(--text-main);
+  font-weight: 700;
+  margin: 0;
+}
+
+.empty-state-card p {
+  max-width: 400px;
+  margin: 0;
+  line-height: 1.5;
 }
 
 /* Toggle Projetivo Custom Switch */
@@ -541,7 +583,7 @@
 }
 
 .card-value {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: 800;
   font-family: 'Outfit', sans-serif;
 }
@@ -553,8 +595,8 @@
 /* Category Bars */
 .category-bars-section {
   background: white;
-  padding: 40px;
-  border-radius: 32px;
+  padding: 32px;
+  border-radius: 28px;
   border: 1px solid rgba(0,0,0,0.04);
 }
 

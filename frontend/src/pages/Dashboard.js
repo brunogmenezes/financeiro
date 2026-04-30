@@ -1,21 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  getDashboard, 
-  getLancamentos, 
-  deleteLancamento, 
-  updateLancamento, 
-  createLancamento, 
-  getContas, 
-  togglePagoLancamento,
-  getCategorias,
-  getSubcategorias,
-  getEntradasProjetivas,
-  createEntradasProjetivasBulk,
-  deleteEntradaProjetiva,
-  generatePixSubscription,
-  checkSubscriptionStatus
-} from '../services/api';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -31,6 +15,24 @@ import {
   ArcElement,
 } from 'chart.js';
 import Navbar from '../components/Navbar';
+import WelcomeWizard from '../components/WelcomeWizard';
+import { 
+  getDashboard, 
+  getLancamentos, 
+  deleteLancamento, 
+  updateLancamento, 
+  createLancamento, 
+  getContas, 
+  togglePagoLancamento,
+  getCategorias,
+  getSubcategorias,
+  getEntradasProjetivas,
+  createEntradasProjetivasBulk,
+  deleteEntradaProjetiva,
+  generatePixSubscription,
+  checkSubscriptionStatus,
+  getPerfil
+} from '../services/api';
 import './Dashboard.css';
 
 ChartJS.register(
@@ -62,6 +64,7 @@ function Dashboard() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [pagoItem, setPagoItem] = useState(null);
+  const [showWizard, setShowWizard] = useState(false);
   
   // Checkout PRO
   const [pixData, setPixData] = useState(null);
@@ -112,6 +115,7 @@ function Dashboard() {
   };
 
   useEffect(() => {
+    checkOnboarding();
     loadDashboard();
     loadLancamentos();
     loadContas();
@@ -120,6 +124,26 @@ function Dashboard() {
     loadSubPrice();
     // eslint-disable-next-line
   }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      const response = await getPerfil();
+      if (!response.data.onboarding_completed) {
+        setShowWizard(true);
+      }
+    } catch (e) {
+      console.error('Erro ao verificar onboarding:', e);
+    }
+  };
+
+  const handleFinishWizard = () => {
+    setShowWizard(false);
+    triggerToast('Onboarding concluído com sucesso! 🎉');
+    loadDashboard();
+    loadLancamentos();
+    loadContas();
+    loadEntradasProjetivas();
+  };
 
   const loadSubPrice = async () => {
     try {
@@ -1406,7 +1430,11 @@ function Dashboard() {
                         );
                       })
                     ) : (
-                      <p className="no-data">Nenhum dado disponível para os filtros selecionados</p>
+                      <div className="empty-state-card">
+                        <div className="empty-state-icon">📊</div>
+                        <h4>Sem dados para análise</h4>
+                        <p>Nenhum dado encontrado para os filtros selecionados.</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1414,7 +1442,11 @@ function Dashboard() {
             )}
           </div>
         ) : (
-          <p>Nenhum dado encontrado. Cadastre lançamentos para visualizar o dashboard.</p>
+          <div className="empty-state-card">
+            <div className="empty-state-icon">🏢</div>
+            <h4>Dashboard Vazio</h4>
+            <p>Cadastre seus primeiros lançamentos para visualizar o resumo financeiro.</p>
+          </div>
         )}
 
         <div className="lancamentos-section">
@@ -1687,7 +1719,21 @@ function Dashboard() {
                 })}
               </div>
             ) : (
-              <p>Nenhum lançamento encontrado com os filtros selecionados.</p>
+              <div className="empty-state-card" style={{ marginTop: '20px' }}>
+                <div className="empty-state-icon">🔍</div>
+                <h4>Nenhum lançamento</h4>
+                <p>Nenhum lançamento encontrado com os filtros selecionados.</p>
+                <button className="btn-limpar-filtros" onClick={() => {
+                  setFilterMes('TODOS');
+                  setFilterTipo('TODOS');
+                  setFilterCategoria('TODAS');
+                  setFilterSubcategoria('TODAS');
+                  setFilterConta('TODAS');
+                  setFilterAtraso(false);
+                }} style={{ marginTop: '10px' }}>
+                  Limpar Filtros
+                </button>
+              </div>
             );
           })()}
         </div>
@@ -2167,6 +2213,8 @@ function Dashboard() {
           </div>
         </div>
       )}
+      {/* Wizard de Boas-vindas */}
+      {showWizard && <WelcomeWizard onFinish={handleFinishWizard} />}
     </div>
   );
 }
