@@ -72,6 +72,7 @@ export const deleteEntradaProjetiva = (id) => api.delete(`/entradas-projetivas/$
 export const adminGetUsers = () => api.get('/admin/users');
 export const adminResetPassword = (id, novaSenha) => api.post(`/admin/users/${id}/reset-password`, { novaSenha });
 export const adminToggleAdmin = (id, isAdmin) => api.patch(`/admin/users/${id}/toggle-admin`, { isAdmin });
+export const adminTogglePro = (id, isPro) => api.patch(`/admin/users/${id}/toggle-pro`, { isPro });
 export const adminDeleteUser = (id) => api.delete(`/admin/users/${id}`);
 
 export default api;

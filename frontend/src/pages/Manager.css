@@ -56,6 +56,35 @@
   background: #e2e8f0;
 }
 
+.pro-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pro-toggle label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  background: #f1f5f9;
+}
+
+.pro-toggle label.pro-active {
+  background: #f5f3ff;
+  color: #7c3aed;
+  box-shadow: 0 2px 4px rgba(124, 58, 237, 0.1);
+}
+
+.pro-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .table-responsive {
   overflow-x: auto;
 }

@@ -40,6 +40,17 @@ exports.create = async (req, res) => {
   try {
     const { nome, descricao, saldo_inicial, tipo, limite_total } = req.body;
 
+    // Verificar se o usuário é PRO ou ADMIN
+    const userResult = await pool.query('SELECT is_pro, is_admin FROM usuarios WHERE id = $1', [req.userId]);
+    const { is_pro, is_admin } = userResult.rows[0];
+
+    if (!is_pro && !is_admin) {
+      const contasCount = await pool.query('SELECT COUNT(*) FROM contas WHERE usuario_id = $1', [req.userId]);
+      if (parseInt(contasCount.rows[0].count) >= 1) {
+        return res.status(403).json({ error: 'Usuários não PRO podem criar apenas 1 conta. Adquira o plano PRO para criar contas ilimitadas!' });
+      }
+    }
+
     const result = await pool.query(
       'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, limite_total, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [nome, descricao || null, saldo_inicial || 0, tipo || 'Conta Corrente', limite_total || 0, req.userId]

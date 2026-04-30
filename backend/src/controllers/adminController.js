@@ -12,6 +12,7 @@ exports.listUsers = async (req, res) => {
         email, 
         username,
         is_admin, 
+        is_pro,
         ultimo_login, 
         ultima_atividade,
         (ultima_atividade > NOW() - INTERVAL '5 minutes') as is_online,
@@ -80,6 +81,21 @@ exports.toggleAdmin = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao atualizar status de administrador' });
+  }
+};
+
+// Alternar status PRO
+exports.togglePro = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isPro } = req.body;
+
+    await pool.query('UPDATE usuarios SET is_pro = $1 WHERE id = $2', [isPro, id]);
+
+    res.json({ message: 'Status PRO atualizado com sucesso' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao atualizar status PRO' });
   }
 };
 

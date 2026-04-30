@@ -57,7 +57,8 @@ exports.googleLogin = async (req, res) => {
         email: user.email,
         cor_tema: user.cor_tema || 'roxo',
         whatsapp: user.whatsapp || '',
-        is_admin: user.is_admin
+        is_admin: user.is_admin,
+        is_pro: user.is_pro
       }
     });
 
@@ -146,7 +147,8 @@ exports.login = async (req, res) => {
         email: user.email,
         cor_tema: user.cor_tema || 'roxo',
         whatsapp: user.whatsapp || '',
-        is_admin: user.is_admin
+        is_admin: user.is_admin,
+        is_pro: user.is_pro
       }
     });
 

@@ -60,6 +60,19 @@ exports.create = async (req, res) => {
     const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, parcelado, num_parcelas, pago } = req.body;
     const pagoStatus = pago !== undefined ? pago : false;
 
+    // Verificar se o usuário é PRO ou ADMIN
+    const userResult = await pool.query('SELECT is_pro, is_admin FROM usuarios WHERE id = $1', [req.userId]);
+    const { is_pro, is_admin } = userResult.rows[0];
+
+    if (!is_pro && !is_admin) {
+      const lancamentosCount = await pool.query('SELECT COUNT(*) FROM lancamentos WHERE usuario_id = $1', [req.userId]);
+      const totalFuturo = parseInt(lancamentosCount.rows[0].count) + (parcelado ? parseInt(num_parcelas) : 1);
+      
+      if (totalFuturo > 10) {
+        return res.status(403).json({ error: 'Usuários não PRO possuem limite de 10 lançamentos. Adquira o plano PRO para lançamentos ilimitados!' });
+      }
+    }
+
     // Se for parcelado, criar múltiplos lançamentos
     if (parcelado && num_parcelas > 1) {
       const lancamentosCriados = [];

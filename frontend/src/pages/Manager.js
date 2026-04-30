@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import { adminGetUsers, adminResetPassword, adminToggleAdmin, adminDeleteUser } from '../services/api';
+import { adminGetUsers, adminResetPassword, adminToggleAdmin, adminTogglePro, adminDeleteUser } from '../services/api';
 import './Manager.css';
 
 function Manager() {
@@ -55,6 +55,16 @@ function Manager() {
     }
   };
 
+  const handleTogglePro = async (user) => {
+    try {
+      await adminTogglePro(user.id, !user.is_pro);
+      triggerToast(`Usuário ${user.nome} agora é ${!user.is_pro ? 'PRO! 💎' : 'padrão.'}`);
+      loadUsers();
+    } catch (err) {
+      triggerToast(err.response?.data?.error || 'Erro ao alterar status PRO', 'error');
+    }
+  };
+
   const confirmDelete = async () => {
     try {
       await adminDeleteUser(selectedUser.id);
@@ -97,6 +107,7 @@ function Manager() {
                   <th>Nome / Usuário</th>
                   <th>E-mail</th>
                   <th>Último Login</th>
+                  <th>Pro?</th>
                   <th>Admin?</th>
                   <th>Ações</th>
                 </tr>
@@ -118,6 +129,19 @@ function Manager() {
                     </td>
                     <td>{user.email}</td>
                     <td>{formatarData(user.ultimo_login)}</td>
+                    <td>
+                      <div className="pro-toggle">
+                        <input 
+                          type="checkbox" 
+                          id={`pro-${user.id}`}
+                          checked={user.is_pro} 
+                          onChange={() => handleTogglePro(user)}
+                        />
+                        <label htmlFor={`pro-${user.id}`} className={user.is_pro ? 'pro-active' : ''}>
+                          {user.is_pro ? '💎 PRO' : 'Não'}
+                        </label>
+                      </div>
+                    </td>
                     <td>
                       <input 
                         type="checkbox" 
