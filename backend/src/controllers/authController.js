@@ -19,21 +19,20 @@ exports.googleLogin = async (req, res) => {
     });
     
     const payload = ticket.getPayload();
-    const { email, name: nome } = payload;
+    const { email, name: nome, sub: google_id } = payload;
     
-    // Buscar usuário por email
-    let userResult = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    // Buscar usuário por email ou google_id
+    let userResult = await pool.query('SELECT * FROM usuarios WHERE email = $1 OR google_id = $2', [email, google_id]);
     let user;
     
     if (userResult.rows.length === 0) {
       // Criar novo usuário se não existir
-      // Gerar uma senha aleatória segura
       const randomPassword = crypto.randomBytes(16).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
       
       const insertResult = await pool.query(
-        'INSERT INTO usuarios (nome, email, senha) VALUES ($1, $2, $3) RETURNING id, nome, email',
-        [nome, email, hashedPassword]
+        'INSERT INTO usuarios (nome, email, senha, google_id) VALUES ($1, $2, $3, $4) RETURNING id, nome, email',
+        [nome, email, hashedPassword, google_id]
       );
       user = insertResult.rows[0];
       
@@ -41,6 +40,11 @@ exports.googleLogin = async (req, res) => {
       await registrarAuditoria(user.id, user.nome, 'CRIAR', 'usuarios', user.id, `Novo usuário via Google: ${email}`);
     } else {
       user = userResult.rows[0];
+      // Se o usuário existia mas não tinha google_id vinculado, vincular agora
+      if (!user.google_id) {
+        await pool.query('UPDATE usuarios SET google_id = $1 WHERE id = $2', [google_id, user.id]);
+        user.google_id = google_id;
+      }
     }
     
     // Gerar token JWT
@@ -164,7 +168,7 @@ exports.login = async (req, res) => {
 exports.getPerfil = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nome, email, cor_tema, whatsapp, created_at FROM usuarios WHERE id = $1',
+      'SELECT id, nome, email, cor_tema, whatsapp, created_at, (google_id IS NOT NULL) as is_google FROM usuarios WHERE id = $1',
       [req.userId]
     );
 

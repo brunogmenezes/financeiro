@@ -7,7 +7,11 @@ import {
   adminDeleteUser,
   adminGetConfigs,
   adminUpdateConfig,
-  adminGetUserPayments
+  adminGetUserPayments,
+  getEvolutionConfig,
+  updateEvolutionConfig,
+  getWhatsappStatus,
+  sendRemindersNow
 } from '../services/api';
 import './Manager.css';
 
@@ -17,6 +21,12 @@ function Manager() {
   const [configs, setConfigs] = useState({ preco_assinatura: '9.99' });
   const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
   
+  // WhatsApp / Evolution
+  const [evolutionConfig, setEvolutionConfig] = useState({ url: '', instancia: '', token: '' });
+  const [waStatus, setWaStatus] = useState({ state: 'desconhecido', message: '' });
+  const [configLoading, setConfigLoading] = useState(false);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+
   const [showResetModal, setShowResetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -28,11 +38,58 @@ function Manager() {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      await Promise.all([loadUsers(), loadConfigs()]);
+      await Promise.all([loadUsers(), loadConfigs(), loadEvolutionConfig(), fetchWhatsappStatus()]);
     };
     loadInitialData();
     // eslint-disable-next-line
   }, []);
+
+  const loadEvolutionConfig = async () => {
+    try {
+      const response = await getEvolutionConfig();
+      setEvolutionConfig(response.data.data);
+    } catch (error) {
+      console.error('Erro ao carregar config Evolution:', error);
+    }
+  };
+
+  const fetchWhatsappStatus = async () => {
+    try {
+      const response = await getWhatsappStatus();
+      const state = response.data?.data?.state || response.data?.data?.connectionStatus || 'desconhecido';
+      const isConnected = state === 'open' || response.data?.data?.isConnected === true;
+      setWaStatus({ 
+        state: isConnected ? 'Conectado ✅' : state,
+        message: isConnected ? 'Instância operacional' : 'Aguardando conexão...'
+      });
+    } catch (error) {
+      setWaStatus({ state: 'Erro ❌', message: 'Não foi possível obter o status' });
+    }
+  };
+
+  const handleSaveEvolutionConfig = async () => {
+    setConfigLoading(true);
+    try {
+      await updateEvolutionConfig(evolutionConfig);
+      triggerToast('Configuração Evolution salva! 📱');
+    } catch (error) {
+      triggerToast('Erro ao salvar configuração', 'error');
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const handleSendRemindersNow = async () => {
+    setRemindersLoading(true);
+    try {
+      await sendRemindersNow();
+      triggerToast('Lembretes disparados com sucesso! 🚀');
+    } catch (error) {
+      triggerToast('Erro ao disparar lembretes', 'error');
+    } finally {
+      setRemindersLoading(false);
+    }
+  };
 
   const loadUsers = async (search = '') => {
     try {
@@ -153,6 +210,55 @@ function Manager() {
                   {isUpdatingPrice ? '...' : 'Salvar'}
                 </button>
               </div>
+            </div>
+          </div>
+
+          <div className="config-card premium-card evolution-config-section">
+            <div className="config-header-row">
+              <h3>WhatsApp / API Evolution</h3>
+              <div className={`wa-status-badge ${waStatus.state === 'Conectado ✅' ? 'active' : 'inactive'}`}>
+                {waStatus.state}
+              </div>
+            </div>
+            
+            <div className="evolution-grid">
+              <div className="form-group-mini">
+                <label>URL da API</label>
+                <input 
+                  type="text" 
+                  value={evolutionConfig.url} 
+                  onChange={(e) => setEvolutionConfig({...evolutionConfig, url: e.target.value})}
+                  placeholder="https://sua-api.com"
+                />
+              </div>
+              <div className="form-group-mini">
+                <label>Instância</label>
+                <input 
+                  type="text" 
+                  value={evolutionConfig.instancia} 
+                  onChange={(e) => setEvolutionConfig({...evolutionConfig, instancia: e.target.value})}
+                  placeholder="nome-instancia"
+                />
+              </div>
+              <div className="form-group-mini">
+                <label>Token</label>
+                <input 
+                  type="password" 
+                  value={evolutionConfig.token} 
+                  onChange={(e) => setEvolutionConfig({...evolutionConfig, token: e.target.value})}
+                  placeholder="API Key"
+                />
+              </div>
+            </div>
+
+            <div className="evolution-actions">
+              <button className="btn-refresh-mini" onClick={fetchWhatsappStatus}>🔄 Status</button>
+              <button className="btn-save-mini" onClick={handleSaveEvolutionConfig} disabled={configLoading}>
+                {configLoading ? 'Salvando...' : 'Salvar Config'}
+              </button>
+              <button className="btn-reminders-mini" onClick={handleSendRemindersNow} disabled={remindersLoading}>
+                {remindersLoading ? 'Disparando...' : '🚀 Disparar Lembretes'}
+              </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPerfil, updatePerfil, getWhatsappStatus, getEvolutionConfig, updateEvolutionConfig, sendTestMessage, sendRemindersNow } from '../services/api';
+import { getPerfil, updatePerfil, getWhatsappStatus, sendTestMessage } from '../services/api';
 import Navbar from '../components/Navbar';
 import './Perfil.css';
 
@@ -9,14 +9,8 @@ function Perfil() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [waStatus, setWaStatus] = useState({ state: 'desconhecido', message: '' });
-  const [evolutionConfig, setEvolutionConfig] = useState({
-    url: '',
-    instancia: '',
-    token: ''
-  });
-  const [configLoading, setConfigLoading] = useState(false);
   const [testMessageLoading, setTestMessageLoading] = useState(false);
-  const [remindersLoading, setRemindersLoading] = useState(false);
+  const [isGoogle, setIsGoogle] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -30,7 +24,6 @@ function Perfil() {
   useEffect(() => {
     fetchPerfil();
     fetchWhatsappStatus();
-    fetchEvolutionConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -46,6 +39,7 @@ function Perfil() {
         novaSenha: '',
         confirmarSenha: ''
       });
+      setIsGoogle(response.data.is_google);
       setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
@@ -72,34 +66,6 @@ function Perfil() {
     }
   };
 
-  const fetchEvolutionConfig = async () => {
-    try {
-      const response = await getEvolutionConfig();
-      setEvolutionConfig(response.data.data);
-    } catch (error) {
-      console.error('Erro ao carregar config Evolution:', error);
-    }
-  };
-
-  const handleConfigChange = (e) => {
-    const { name, value } = e.target;
-    setEvolutionConfig({ ...evolutionConfig, [name]: value });
-  };
-
-  const handleSaveConfig = async () => {
-    setConfigLoading(true);
-    setMessage({ type: '', text: '' });
-    try {
-      await updateEvolutionConfig(evolutionConfig);
-      setMessage({ type: 'success', text: 'Configuração salva com sucesso!' });
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao salvar configuração' });
-    } finally {
-      setConfigLoading(false);
-    }
-  };
-
   const handleSendTestMessage = async () => {
     if (!formData.whatsapp) {
       setMessage({ type: 'error', text: 'Informe seu número de WhatsApp primeiro!' });
@@ -118,22 +84,6 @@ function Perfil() {
       setTestMessageLoading(false);
     }
   };
-
-  const handleSendRemindersNow = async () => {
-    setRemindersLoading(true);
-    setMessage({ type: '', text: '' });
-    try {
-      await sendRemindersNow();
-      setMessage({ type: 'success', text: 'Lembretes disparados com sucesso! Verifique seu WhatsApp para mensagens de hoje e amanhã.' });
-      setTimeout(() => setMessage({ type: '', text: '' }), 6000);
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao disparar lembretes' });
-    } finally {
-      setRemindersLoading(false);
-    }
-  };
-
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -305,81 +255,6 @@ function Perfil() {
           </div>
 
           <div className="form-section">
-            <h2>Configuração da API Evolution</h2>
-            <p className="section-description">
-              Configure a URL, instância e token da API Evolution para WhatsApp.
-            </p>
-            
-            <div className="form-group">
-              <label htmlFor="url">URL da API</label>
-              <input
-                type="text"
-                id="url"
-                name="url"
-                value={evolutionConfig.url}
-                onChange={handleConfigChange}
-                placeholder="https://netconnect.netsolutions.com.br"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="instancia">Instância</label>
-              <input
-                type="text"
-                id="instancia"
-                name="instancia"
-                value={evolutionConfig.instancia}
-                onChange={handleConfigChange}
-                placeholder="financeiro"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="token">Token / API Key</label>
-              <input
-                type="password"
-                id="token"
-                name="token"
-                value={evolutionConfig.token}
-                onChange={handleConfigChange}
-                placeholder="Cole aqui seu token da API Evolution"
-              />
-            </div>
-
-            <button
-              type="button"
-              className="btn-save-config"
-              onClick={handleSaveConfig}
-              disabled={configLoading}
-            >
-              {configLoading ? 'Salvando...' : 'Salvar Configuração'}
-            </button>
-          </div>
-
-          <div className="form-section">
-            <h2>Teste de Lembretes Automáticos</h2>
-            <p className="section-description">
-              Dispare os lembretes de D-1 e D0 manualmente para testar a integração.
-            </p>
-            <p className="section-info">
-              ℹ️ Certifique-se de que:
-            </p>
-            <ul className="reminder-checklist">
-              <li>Sua instância Evolution está <strong>conectada</strong> ✅</li>
-              <li>Seu <strong>número de WhatsApp</strong> está preenchido</li>
-              <li>Você tem <strong>lançamentos não pagos</strong> cadastrados para hoje e/ou amanhã</li>
-            </ul>
-            <button
-              type="button"
-              className="btn-send-reminders"
-              onClick={handleSendRemindersNow}
-              disabled={remindersLoading}
-            >
-              {remindersLoading ? 'Disparando...' : '🚀 Disparar Lembretes Agora'}
-            </button>
-          </div>
-
-          <div className="form-section">
             <h2>Aparência</h2>
             <p className="section-description">
               Escolha a cor do tema do sistema
@@ -436,48 +311,50 @@ function Perfil() {
             </div>
           </div>
 
-          <div className="form-section">
-            <h2>Alterar Senha</h2>
-            <p className="section-description">
-              Deixe em branco se não deseja alterar a senha
-            </p>
+          {!isGoogle && (
+            <div className="form-section">
+              <h2>Alterar Senha</h2>
+              <p className="section-description">
+                Deixe em branco se não deseja alterar a senha
+              </p>
 
-            <div className="form-group">
-              <label htmlFor="senhaAtual">Senha Atual</label>
-              <input
-                type="password"
-                id="senhaAtual"
-                name="senhaAtual"
-                value={formData.senhaAtual}
-                onChange={handleChange}
-                placeholder="Digite sua senha atual"
-              />
-            </div>
+              <div className="form-group">
+                <label htmlFor="senhaAtual">Senha Atual</label>
+                <input
+                  type="password"
+                  id="senhaAtual"
+                  name="senhaAtual"
+                  value={formData.senhaAtual}
+                  onChange={handleChange}
+                  placeholder="Digite sua senha atual"
+                />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="novaSenha">Nova Senha</label>
-              <input
-                type="password"
-                id="novaSenha"
-                name="novaSenha"
-                value={formData.novaSenha}
-                onChange={handleChange}
-                placeholder="Mínimo 6 caracteres"
-              />
-            </div>
+              <div className="form-group">
+                <label htmlFor="novaSenha">Nova Senha</label>
+                <input
+                  type="password"
+                  id="novaSenha"
+                  name="novaSenha"
+                  value={formData.novaSenha}
+                  onChange={handleChange}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="confirmarSenha">Confirmar Nova Senha</label>
-              <input
-                type="password"
-                id="confirmarSenha"
-                name="confirmarSenha"
-                value={formData.confirmarSenha}
-                onChange={handleChange}
-                placeholder="Digite novamente a nova senha"
-              />
+              <div className="form-group">
+                <label htmlFor="confirmarSenha">Confirmar Nova Senha</label>
+                <input
+                  type="password"
+                  id="confirmarSenha"
+                  name="confirmarSenha"
+                  value={formData.confirmarSenha}
+                  onChange={handleChange}
+                  placeholder="Digite novamente a nova senha"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="form-actions">
             <button type="submit" className="btn-salvar">

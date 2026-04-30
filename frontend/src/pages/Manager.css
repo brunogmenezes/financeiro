@@ -467,4 +467,133 @@ td {
   }
 }
 
+/* Evolution Config Section */
+.evolution-config-section {
+  flex: 1.5;
+  min-width: 350px;
+}
+
+.config-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.config-header-row h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.wa-status-badge {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.wa-status-badge.active {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.wa-status-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.evolution-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group-mini label {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.form-group-mini input {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #1e293b;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.form-group-mini input:focus {
+  outline: none;
+  border-color: #7c3aed;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.evolution-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-refresh-mini, .btn-save-mini, .btn-reminders-mini {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-refresh-mini {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-save-mini {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.btn-reminders-mini {
+  background: #0ea5e9;
+  color: #fff;
+}
+
+.btn-refresh-mini:hover {
+  background: #e2e8f0;
+}
+
+.btn-save-mini:hover, .btn-reminders-mini:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.btn-save-mini:disabled, .btn-reminders-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
 

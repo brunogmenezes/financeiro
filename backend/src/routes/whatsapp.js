@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
+const adminAuth = require('../middlewares/adminAuth');
 const pool = require('../config/database');
 const { getConnectionState, sendText } = require('../services/evolutionService');
 const { sendReminder } = require('../services/reminderScheduler');
@@ -14,7 +15,7 @@ router.get('/status', auth, async (req, res) => {
   }
 });
 
-router.get('/config', auth, async (req, res) => {
+router.get('/config', auth, adminAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT url, instancia, token FROM evolution_config LIMIT 1');
     if (!result.rows[0]) {
@@ -26,7 +27,7 @@ router.get('/config', auth, async (req, res) => {
   }
 });
 
-router.post('/config', auth, async (req, res) => {
+router.post('/config', auth, adminAuth, async (req, res) => {
   try {
     const { url, instancia, token } = req.body;
     
@@ -78,7 +79,7 @@ router.post('/test-message', auth, async (req, res) => {
   }
 });
 
-router.post('/send-reminders-now', auth, async (req, res) => {
+router.post('/send-reminders-now', auth, adminAuth, async (req, res) => {
   try {
     const now = new Date();
     
