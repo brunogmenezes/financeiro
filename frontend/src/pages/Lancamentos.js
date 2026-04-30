@@ -62,6 +62,7 @@ function Lancamentos() {
     loadContas();
     loadCategorias();
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+    // eslint-disable-next-line
   }, []);
 
   const handleStartSubscription = async () => {
@@ -157,7 +158,7 @@ function Lancamentos() {
       // Extrair subcategorias da categoria selecionada sem duplicatas
       const subCatsMap = new Map();
       lancamentos
-        .filter(l => l.categoria_id == categId && l.subcategoria_nome)
+        .filter(l => String(l.categoria_id) === String(categId) && l.subcategoria_nome)
         .forEach(l => {
           if (!subCatsMap.has(l.subcategoria_id)) {
             subCatsMap.set(l.subcategoria_id, { id: l.subcategoria_id, nome: l.subcategoria_nome });
@@ -395,11 +396,11 @@ function Lancamentos() {
                 }
 
                 if (filterCategoria !== 'TODAS') {
-                  filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
+                  filtrados = filtrados.filter(l => String(l.categoria_id) === String(filterCategoria));
                 }
 
                 if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
-                  filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
+                  filtrados = filtrados.filter(l => String(l.subcategoria_id) === String(filterSubcategoria));
                 }
 
                 return filtrados.length === 0 ? (

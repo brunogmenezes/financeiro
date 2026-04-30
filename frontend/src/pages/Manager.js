@@ -3,7 +3,6 @@ import Navbar from '../components/Navbar';
 import { 
   adminGetUsers, 
   adminResetPassword, 
-  adminToggleAdmin, 
   adminTogglePro, 
   adminDeleteUser,
   adminGetConfigs,
@@ -28,12 +27,12 @@ function Manager() {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
+    const loadInitialData = async () => {
+      await Promise.all([loadUsers(), loadConfigs()]);
+    };
     loadInitialData();
+    // eslint-disable-next-line
   }, []);
-
-  const loadInitialData = async () => {
-    await Promise.all([loadUsers(), loadConfigs()]);
-  };
 
   const loadUsers = async (search = '') => {
     try {
