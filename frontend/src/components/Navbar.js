@@ -67,8 +67,11 @@ function Navbar() {
             </span>
           </button>
           <div className="brand-content">
-            <div className="logo-badge">CF</div>
-            <h1>Controle Financeiro</h1>
+            <div className="logo-badge">💎</div>
+            <div className="brand-text">
+              <h1 className="brand-name">Prospera</h1>
+              <span className="brand-tagline">Gestão Inteligente</span>
+            </div>
           </div>
         </div>
 
