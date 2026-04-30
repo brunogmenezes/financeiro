@@ -12,7 +12,13 @@ function Login() {
     senha: ''
   });
   const [error, setError] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const navigate = useNavigate();
+
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,7 +42,7 @@ function Login() {
     try {
       if (isRegister) {
         await register(formData.nome, formData.email, formData.senha);
-        alert('Usuário registrado com sucesso! Faça login.');
+        triggerToast('Usuário registrado com sucesso! Faça login.');
         setIsRegister(false);
         setFormData({ nome: '', email: '', senha: '' });
       } else {
@@ -132,6 +138,17 @@ function Login() {
           </button>
         </p>
       </div>
+
+      {/* Notificação Toast */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-content">
+            <span className="toast-icon">{toast.type === 'success' ? '✅' : '❌'}</span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+          <div className="toast-progress"></div>
+        </div>
+      )}
     </div>
   );
 }

@@ -48,9 +48,10 @@ function Manager() {
   const handleToggleAdmin = async (user) => {
     try {
       await adminToggleAdmin(user.id, !user.is_admin);
+      triggerToast('Status de administrador alterado!');
       loadUsers();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao alterar status de admin');
+      triggerToast(err.response?.data?.error || 'Erro ao alterar status de admin', 'error');
     }
   };
 

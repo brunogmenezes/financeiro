@@ -7,6 +7,9 @@ import './Contas.css';
 function Contas() {
   const [contas, setContas] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingConta, setEditingConta] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
@@ -16,6 +19,11 @@ function Contas() {
     tipo: 'Conta Corrente'
   });
   const navigate = useNavigate();
+
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   useEffect(() => {
     loadContas();
@@ -51,15 +59,17 @@ function Contas() {
           tipo: formData.tipo,
           limite_total: formData.limite_total
         });
+        triggerToast('Conta atualizada com sucesso!');
       } else {
         await createConta(formData);
+        triggerToast('Conta criada com sucesso!');
       }
       setShowModal(false);
       setEditingConta(null);
       setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, tipo: 'Conta Corrente' });
       loadContas();
     } catch (error) {
-      alert('Erro ao salvar conta');
+      triggerToast('Erro ao salvar conta', 'error');
     }
   };
 
@@ -75,15 +85,22 @@ function Contas() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Deseja realmente excluir esta conta?')) {
-      try {
-        await deleteConta(id);
-        loadContas();
-      } catch (error) {
-        const mensagem = error.response?.data?.error || 'Erro ao excluir conta';
-        alert(mensagem);
-      }
+  const handleDelete = (conta) => {
+    setItemToDelete(conta);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteConta(itemToDelete.id);
+      triggerToast('Conta excluída com sucesso!');
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      loadContas();
+    } catch (error) {
+      const mensagem = error.response?.data?.error || 'Erro ao excluir conta';
+      triggerToast(mensagem, 'error');
+      setShowDeleteModal(false);
     }
   };
 
@@ -132,9 +149,11 @@ function Contas() {
                     <td className={parseFloat(conta.saldo_inicial) >= 0 ? 'valor-positivo' : 'valor-negativo'}>
                       R$ {formatarMoeda(conta.saldo_inicial)}
                     </td>
-                    <td>
-                      <button className="btn-edit" onClick={() => handleEdit(conta)}>Editar</button>
-                      <button className="btn-delete" onClick={() => handleDelete(conta.id)}>Excluir</button>
+                    <td className="actions-column">
+                      <div className="actions-cell">
+                        <button className="btn-edit" onClick={() => handleEdit(conta)}>Editar</button>
+                        <button className="btn-delete" onClick={() => handleDelete(conta.id)}>Excluir</button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -209,11 +228,40 @@ function Contas() {
               )}
 
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn-cancel">Cancelar</button>
+                <button type="submit" className="btn-save">Salvar Conta</button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão */}
+      {showDeleteModal && (
+        <div className="modal">
+          <div className="modal-content delete-modal">
+            <div className="modal-icon warning">⚠️</div>
+            <h3>Excluir Conta?</h3>
+            <p>Deseja realmente excluir a conta <strong>{itemToDelete?.nome}</strong>?</p>
+            <div className="warning-box">
+              Esta ação não poderá ser desfeita. A conta só será excluída se não houver lançamentos vinculados a ela.
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
+              <button className="btn-delete-confirm" onClick={confirmDelete}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-content">
+            <span className="toast-icon">{toast.type === 'success' ? '✅' : '❌'}</span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+          <div className="toast-progress"></div>
         </div>
       )}
     </div>

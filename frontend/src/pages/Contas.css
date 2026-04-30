@@ -59,27 +59,67 @@ th, td {
 }
 
 th {
-  font-weight: 600;
-  color: #555;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  background: #f8fafc;
+}
+
+th:last-child, td:last-child {
+  text-align: right;
+}
+
+.actions-column {
+  width: 260px; /* Aumentado para dar mais folga aos botões */
+}
+
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
 }
 
 .btn-edit, .btn-delete {
-  padding: 6px 12px;
-  margin-right: 5px;
+  padding: 10px 22px;
+  min-width: 100px; /* Garante que o botão tenha um tamanho mínimo */
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin: 0;
 }
 
 .btn-edit {
-  background: #4CAF50;
-  color: white;
+  background: #6366f1 !important;
+  color: white !important;
+}
+
+.btn-edit:hover {
+  background: #4f46e5 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .btn-delete {
-  background: #f44336;
-  color: white;
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+.btn-delete:hover {
+  background: #dc2626 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .modal {
@@ -188,68 +228,143 @@ th {
 /* Media Queries para Mobile */
 @media (max-width: 768px) {
   .content {
-    padding: 0 10px;
-    margin: 20px auto;
+    padding: 16px 12px;
+    margin: 10px auto;
   }
 
   .header {
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     align-items: stretch;
+    margin-bottom: 20px;
   }
 
   .header h2 {
-    font-size: 1.5em;
-    text-align: center;
+    font-size: 1.5rem;
+    text-align: left;
   }
 
   .btn-new {
     width: 100%;
     padding: 14px;
+    border-radius: 12px;
+    font-size: 1rem;
+    order: 2;
   }
 
-  table {
-    font-size: 13px;
+  /* Transformar Tabela em Cards */
+  .table-container {
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
   }
 
-  th, td {
-    padding: 10px 5px;
+  table, thead, tbody, th, td, tr {
+    display: block;
+    width: 100%;
   }
 
-  .btn-edit,
+  thead {
+    display: none; /* Esconde o cabeçalho no mobile */
+  }
+
+  tr {
+    background: white;
+    margin-bottom: 16px;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.05);
+    position: relative;
+  }
+
+  td {
+    padding: 8px 0;
+    border: none;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+  }
+
+  /* Primeiro TD (Nome) ganha destaque */
+  td:first-child {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+    display: block; /* Nome em cima sozinho */
+  }
+
+  /* Estilização dos labels via CSS (opcional se quiser nomes antes dos valores) */
+  td:nth-child(2)::before { content: "Tipo"; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+  td:nth-child(3)::before { content: "Descrição"; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+  td:nth-child(4)::before { content: "Saldo Atual"; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+
+  td:last-child {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #e2e8f0;
+    display: block;
+    width: 100%;
+  }
+
+  .actions-cell {
+    display: flex;
+    gap: 10px;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .btn-edit {
+    background: #6366f1 !important;
+    color: white !important;
+  }
+
   .btn-delete {
-    font-size: 12px;
-    padding: 6px 10px;
+    background: #ef4444 !important;
+    color: white !important;
   }
 
+  .btn-edit, .btn-delete {
+    flex: 1;
+    padding: 14px;
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: 12px;
+    text-align: center;
+    margin: 0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .badge-tipo {
+    margin: 0;
+  }
+
+  /* Modal Mobile */
   .modal-content {
     width: 95%;
-    padding: 20px;
+    padding: 24px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 24px;
   }
 
   .modal-actions {
     flex-direction: column;
+    gap: 10px;
   }
 
   .modal-actions button {
     width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  table {
-    font-size: 12px;
-  }
-
-  th, td {
-    padding: 8px 3px;
-  }
-
-  .header h2 {
-    font-size: 1.3em;
-  }
-
-  button {
-    font-size: 13px;
+    padding: 14px;
+    font-size: 1rem;
+    border-radius: 12px;
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   getDashboard, 
@@ -51,8 +51,15 @@ function Dashboard() {
   const [lancamentos, setLancamentos] = useState([]);
   const [contas, setContas] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingLancamento, setEditingLancamento] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [mostrarValores, setMostrarValores] = useState(true);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  const filterRef = useRef(null);
   const [entradasProjetivas, setEntradasProjetivas] = useState([]);
   const [showModalProjetivas, setShowModalProjetivas] = useState(false);
   const [modoGraficoProjetivo, setModoGraficoProjetivo] = useState(false);
@@ -87,6 +94,11 @@ function Dashboard() {
   const [quickAddType, setQuickAddType] = useState(null); // 'entrada' ou 'saida'
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   useEffect(() => {
     loadDashboard();
@@ -150,6 +162,31 @@ function Dashboard() {
     });
     
     return Array.from(categoriasSet.values());
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.pageYOffset > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const toggleFilters = () => {
+    const newState = !showFilters;
+    setShowFilters(newState);
+    
+    // Se estiver abrindo, rolar até o filtro após um pequeno delay para o componente renderizar
+    if (newState) {
+      setTimeout(() => {
+        filterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
   };
 
   const loadCategorias = async () => {
@@ -227,26 +264,40 @@ function Dashboard() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Deseja realmente excluir este lançamento?')) {
-      try {
-        await deleteLancamento(id);
+  const handleDelete = (lancamento) => {
+    setItemToDelete({ type: 'lancamento', item: lancamento });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      if (itemToDelete.type === 'lancamento') {
+        await deleteLancamento(itemToDelete.item.id);
+        triggerToast('Lançamento excluído com sucesso!');
         loadLancamentos();
-        loadDashboard();
-      } catch (error) {
-        alert('Erro ao excluir lançamento');
+      } else if (itemToDelete.type === 'projetiva') {
+        await deleteEntradaProjetiva(itemToDelete.item.id);
+        triggerToast('Entrada projetiva excluída!');
+        loadEntradasProjetivas();
       }
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      loadDashboard();
+    } catch (error) {
+      triggerToast('Erro ao excluir item', 'error');
+      setShowDeleteModal(false);
     }
   };
 
   const handleTogglePago = async (lancamento) => {
     try {
       await togglePagoLancamento(lancamento.id);
+      triggerToast(`Status alterado: ${!lancamento.pago ? 'Pago' : 'Pendente'}`);
       loadLancamentos();
       loadDashboard();
       loadContas();
     } catch (error) {
-      alert('Erro ao alterar status de pagamento');
+      triggerToast('Erro ao alterar status de pagamento', 'error');
     }
   };
 
@@ -261,6 +312,7 @@ function Dashboard() {
       
       setShowModal(false);
       setEditingLancamento(null);
+      triggerToast(editingLancamento ? 'Lançamento atualizado!' : 'Lançamento criado!');
       setFormData({
         descricao: '',
         valor: '',
@@ -276,7 +328,7 @@ function Dashboard() {
       loadContas();
     } catch (error) {
       console.error(error);
-      alert(editingLancamento ? 'Erro ao atualizar lançamento' : 'Erro ao criar lançamento');
+      triggerToast(editingLancamento ? 'Erro ao atualizar lançamento' : 'Erro ao criar lançamento', 'error');
     }
   };
 
@@ -302,24 +354,19 @@ function Dashboard() {
       const validItems = projetivasList.filter(item => item.descricao && item.valor && item.data);
       if (validItems.length > 0) {
         await createEntradasProjetivasBulk(validItems);
+        triggerToast('Entradas projetivas salvas! 📈');
         loadEntradasProjetivas();
       }
       setShowModalProjetivas(false);
       setProjetivasList([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
     } catch (e) {
-      alert('Erro ao salvar entradas projetivas');
+      triggerToast('Erro ao salvar entradas projetivas', 'error');
     }
   };
 
-  const handleDeleteProjetivaDb = async (id) => {
-    if (window.confirm('Deseja realmente excluir esta entrada projetiva?')) {
-      try {
-        await deleteEntradaProjetiva(id);
-        loadEntradasProjetivas();
-      } catch (e) {
-        alert('Erro ao excluir entrada projetiva');
-      }
-    }
+  const handleDeleteProjetivaDb = (id) => {
+    setItemToDelete({ type: 'projetiva', item: { id } });
+    setShowDeleteModal(true);
   };
 
 
@@ -1256,88 +1303,117 @@ function Dashboard() {
 
         <div className="lancamentos-section">
           <div className="lancamentos-header">
-            <h3>Lançamentos por Data</h3>
-            <div className="filters">
-              <select 
-                value={filterMes} 
-                onChange={(e) => setFilterMes(e.target.value)}
-                className="filter-select"
-              >
-                <option value="TODOS">Todos os meses</option>
-                {[...new Set(lancamentos.map(l => {
-                  const data = new Date(l.data);
-                  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-                }))].sort().reverse().map(mes => {
-                  const [ano, mesNum] = mes.split('-');
-                  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                  return <option key={mes} value={mes}>{meses[parseInt(mesNum) - 1]}/{ano}</option>;
-                })}
-              </select>
-              
-              <select 
-                value={filterTipo} 
-                onChange={handleFilterTipoChange}
-                className="filter-select"
-              >
-                <option value="TODOS">Todos os tipos</option>
-                <option value="entrada">Entradas</option>
-                <option value="saida">Saídas</option>
-                <option value="transferencia">Transferências</option>
-                <option value="neutro">Neutros</option>
-              </select>
-
-              <select 
-                value={filterConta} 
-                onChange={(e) => setFilterConta(e.target.value)}
-                className="filter-select"
-              >
-                <option value="TODAS">Todas as contas</option>
-                {contas.map(conta => (
-                  <option key={conta.id} value={conta.id}>{conta.nome}</option>
-                ))}
-              </select>
-
-              <select 
-                value={filterCategoria} 
-                onChange={handleFilterCategoriaChange}
-                className="filter-select"
-              >
-                <option value="TODAS">Todas as categorias</option>
-                {getCategoriasDisponiveis().map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                ))}
-              </select>
-
-              {filterCategoria !== 'TODAS' && subcategorias.length > 0 && (
-                <select 
-                  value={filterSubcategoria} 
-                  onChange={(e) => setFilterSubcategoria(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="TODAS">Todas as subcategorias</option>
-                  {subcategorias.map(subCat => (
-                    <option key={subCat.id} value={subCat.id}>{subCat.nome}</option>
-                  ))}
-                </select>
-              )}
-
+            <div className="title-with-filter">
+              <h3>Lançamentos por Data</h3>
               <button 
-                className={`btn-filter-atraso ${filterAtraso ? 'active' : ''}`}
-                onClick={() => setFilterAtraso(!filterAtraso)}
-                title="Filtrar lançamentos em atraso"
+                className={`btn-toggle-filters ${showFilters ? 'active' : ''}`}
+                onClick={toggleFilters}
               >
-                ⚠️ {filterAtraso ? 'Exibindo em atraso' : 'Mostrar em atraso'}
-              </button>
-
-              <button 
-                onClick={handleLimparFiltros}
-                className="btn-limpar-filtros"
-                title="Limpar todos os filtros"
-              >
-                ✕ Limpar filtros
+                <span className="filter-icon">🔍</span>
+                {showFilters ? 'Ocultar Filtros' : 'Filtrar'}
               </button>
             </div>
           </div>
+
+          {showFilters && (
+            <div className="filters-container active" ref={filterRef}>
+              <div className="filters-grid">
+                <div className="filter-group">
+                  <label>Mês</label>
+                  <select 
+                    value={filterMes} 
+                    onChange={(e) => setFilterMes(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="TODOS">Todos os meses</option>
+                    {[...new Set(lancamentos.map(l => {
+                      const data = new Date(l.data);
+                      return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+                    }))].sort().reverse().map(mes => {
+                      const [ano, mesNum] = mes.split('-');
+                      const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                      return <option key={mes} value={mes}>{meses[parseInt(mesNum) - 1]}/{ano}</option>;
+                    })}
+                  </select>
+                </div>
+                
+                <div className="filter-group">
+                  <label>Tipo</label>
+                  <select 
+                    value={filterTipo} 
+                    onChange={handleFilterTipoChange}
+                    className="filter-select"
+                  >
+                    <option value="TODOS">Todos os tipos</option>
+                    <option value="entrada">Entradas</option>
+                    <option value="saida">Saídas</option>
+                    <option value="transferencia">Transferências</option>
+                    <option value="neutro">Neutros</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Conta</label>
+                  <select 
+                    value={filterConta} 
+                    onChange={(e) => setFilterConta(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="TODAS">Todas as contas</option>
+                    {contas.map(conta => (
+                      <option key={conta.id} value={conta.id}>{conta.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Categoria</label>
+                  <select 
+                    value={filterCategoria} 
+                    onChange={handleFilterCategoriaChange}
+                    className="filter-select"
+                  >
+                    <option value="TODAS">Todas as categorias</option>
+                    {getCategoriasDisponiveis().map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {filterCategoria !== 'TODAS' && subcategorias.length > 0 && (
+                  <div className="filter-group">
+                    <label>Subcategoria</label>
+                    <select 
+                      value={filterSubcategoria} 
+                      onChange={(e) => setFilterSubcategoria(e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="TODAS">Todas as subcategorias</option>
+                      {subcategorias.map(subCat => (
+                        <option key={subCat.id} value={subCat.id}>{subCat.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="filters-actions">
+                <button 
+                  className={`btn-filter-atraso ${filterAtraso ? 'active' : ''}`}
+                  onClick={() => setFilterAtraso(!filterAtraso)}
+                >
+                  {filterAtraso ? '⚠️ Exibindo em atraso' : '⚠️ Mostrar em atraso'}
+                </button>
+
+                <button 
+                  onClick={handleLimparFiltros}
+                  className="btn-limpar-filtros"
+                >
+                  ✕ Limpar filtros
+                </button>
+              </div>
+            </div>
+          )}
           
           {(() => {
             let filtrados = lancamentos;
@@ -1800,11 +1876,57 @@ function Dashboard() {
 
             <div className="modal-actions" style={{ marginTop: '20px' }}>
               <button type="button" className="btn-cancel" onClick={() => setShowModalProjetivas(false)}>Fechar</button>
-              <button type="button" className="btn-primary" onClick={handleSaveProjetivas} style={{ backgroundColor: '#8b5cf6' }}>
+              <button type="button" className="btn-save" onClick={handleSaveProjetivas} style={{ backgroundColor: '#8b5cf6' }}>
                 Salvar Projeções
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Botões Flutuantes */}
+      <div className="fab-container">
+        <button 
+          className={`fab-item fab-filter ${showFilters ? 'active' : ''}`} 
+          onClick={toggleFilters}
+          title="Filtros"
+        >
+          🔍
+        </button>
+        
+        {showScrollTop && (
+          <button 
+            className="fab-item fab-scroll-top" 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            title="Voltar ao topo"
+          >
+            ↑
+          </button>
+        )}
+      </div>
+
+      {/* Modal de Exclusão Global */}
+      {showDeleteModal && (
+        <div className="modal">
+          <div className="modal-content delete-modal">
+            <div className="modal-icon warning">⚠️</div>
+            <h3>Excluir Item?</h3>
+            <p>Deseja realmente excluir este item permanentemente?</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
+              <button className="btn-delete-confirm" onClick={confirmDelete}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-content">
+            <span className="toast-icon">{toast.type === 'success' ? '✅' : '❌'}</span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+          <div className="toast-progress"></div>
         </div>
       )}
     </div>

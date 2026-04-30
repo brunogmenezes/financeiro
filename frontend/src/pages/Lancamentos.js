@@ -19,6 +19,9 @@ function Lancamentos() {
   const [categorias, setCategorias] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [editingLancamento, setEditingLancamento] = useState(null);
   const [filterMes, setFilterMes] = useState('TODOS');
   const [filterCategoria, setFilterCategoria] = useState('TODAS');
@@ -37,6 +40,11 @@ function Lancamentos() {
     pago: false
   });
   const navigate = useNavigate();
+
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   useEffect(() => {
     loadLancamentos();
@@ -164,10 +172,10 @@ function Lancamentos() {
       });
       setSubcategorias([]);
       loadLancamentos();
+      triggerToast(editingLancamento ? 'Lançamento atualizado!' : 'Lançamento criado!');
     } catch (error) {
       console.error('Erro completo:', error);
-      console.error('Resposta do erro:', error.response?.data);
-      alert(error.response?.data?.error || 'Erro ao salvar lançamento');
+      triggerToast(error.response?.data?.error || 'Erro ao salvar lançamento', 'error');
     }
   };
 
@@ -197,23 +205,31 @@ function Lancamentos() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Deseja realmente excluir este lançamento?')) {
-      try {
-        await deleteLancamento(id);
-        loadLancamentos();
-      } catch (error) {
-        alert('Erro ao excluir lançamento');
-      }
+  const handleDelete = (id) => {
+    setItemToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteLancamento(itemToDelete);
+      triggerToast('Lançamento excluído com sucesso!');
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      loadLancamentos();
+    } catch (error) {
+      triggerToast('Erro ao excluir lançamento', 'error');
+      setShowDeleteModal(false);
     }
   };
 
   const handleTogglePago = async (lancamento) => {
     try {
       await togglePagoLancamento(lancamento.id);
+      triggerToast(`Lançamento marcado como ${!lancamento.pago ? 'pago' : 'não pago'}!`);
       loadLancamentos();
     } catch (error) {
-      alert('Erro ao alterar status de pagamento');
+      triggerToast('Erro ao alterar status de pagamento', 'error');
     }
   };
 
@@ -587,11 +603,37 @@ function Lancamentos() {
               )}
 
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn-cancel">Cancelar</button>
+                <button type="submit" className="btn-save">Salvar Lançamento</button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão */}
+      {showDeleteModal && (
+        <div className="modal">
+          <div className="modal-content delete-modal">
+            <div className="modal-icon warning">⚠️</div>
+            <h3>Excluir Lançamento?</h3>
+            <p>Deseja realmente excluir este lançamento permanentemente?</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
+              <button className="btn-delete-confirm" onClick={confirmDelete}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-content">
+            <span className="toast-icon">{toast.type === 'success' ? '✅' : '❌'}</span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+          <div className="toast-progress"></div>
         </div>
       )}
     </div>
@@ -599,3 +641,4 @@ function Lancamentos() {
 }
 
 export default Lancamentos;
+
