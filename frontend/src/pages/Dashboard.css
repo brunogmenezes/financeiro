@@ -1537,6 +1537,20 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
+.fab-add {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.4);
+  font-size: 1.4rem !important;
+}
+
+.fab-add:hover {
+  transform: scale(1.15) rotate(90deg);
+  box-shadow: 0 15px 30px -5px rgba(124, 58, 237, 0.6);
+  filter: brightness(1.1);
+}
+
 .fab-filter {
   background: rgba(99, 102, 241, 0.5); /* Bem transparente e discreto */
   color: white;

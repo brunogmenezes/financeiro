@@ -1742,7 +1742,8 @@ function Dashboard() {
       {showModal && (
         <div className="modal">
           <div className="modal-content modal-lancamento premium-card">
-            <h3>{editingLancamento ? 'Editar Lançamento' : `Nov${formData.tipo === 'entrada' ? 'a Receita' : formData.tipo === 'saida' ? 'a Despesa' : formData.tipo === 'transferencia' ? 'a Transferência' : 'o Lançamento'}`}</h3>
+            <button className="btn-close-modal" onClick={() => { setShowModal(false); setEditingLancamento(null); setQuickAddType(null); }}>✕</button>
+            <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               
               <div className="form-group">
@@ -2078,6 +2079,13 @@ function Dashboard() {
 
       {/* Botões Flutuantes */}
       <div className="fab-container">
+        <button 
+          className="fab-item fab-add" 
+          onClick={() => { setQuickAddType(null); setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''}); setShowModal(true); }}
+          title="Novo Lançamento"
+        >
+          ➕
+        </button>
         {(!user.is_pro && !user.is_admin) && (
           <button 
             className="fab-item fab-pro-badge" 
