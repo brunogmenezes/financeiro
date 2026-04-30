@@ -1817,7 +1817,7 @@ function Dashboard() {
       )}
       {showModalProjetivas && (
         <div className="modal">
-          <div className="modal-content modal-projetivas premium-card" style={{ maxWidth: '800px', width: '90%' }}>
+          <div className="modal-content modal-projetivas premium-card" style={{ maxWidth: '750px', width: '95%' }}>
             <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div className="header-info">
                 <h3 style={{ margin: 0 }}>Gerenciar Entradas Projetivas</h3>
@@ -1830,35 +1830,28 @@ function Dashboard() {
             </div>
             
             {entradasProjetivas.length > 0 && (
-              <div className="projetivas-existentes" style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
-                    <tr style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>
-                      <th style={{ padding: '10px' }}>Dia</th>
-                      <th style={{ padding: '10px' }}>Descrição</th>
-                      <th style={{ padding: '10px' }}>Valor</th>
-                      <th style={{ padding: '10px', textAlign: 'center' }}>Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entradasProjetivas.map(proj => (
-                      <tr key={proj.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '10px' }}>Dia {parseInt(proj.data.split('-')[2].substring(0, 2))}</td>
-                        <td style={{ padding: '10px' }}>{proj.descricao}</td>
-                        <td style={{ padding: '10px', color: '#10b981', fontWeight: 'bold' }}>R$ {parseFloat(proj.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        <td style={{ padding: '10px', textAlign: 'center' }}>
-                          <button 
-                            type="button" 
-                            onClick={() => handleDeleteProjetivaDb(proj.id)}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem' }}
-                          >
-                            🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="projetivas-list-container">
+                <div className="projetivas-scroll-area">
+                  {entradasProjetivas.map(proj => (
+                    <div key={proj.id} className="projetiva-item-card">
+                      <div className="proj-row-top">
+                        <span className="proj-dia-badge">Dia {parseInt(proj.data.split('-')[2].substring(0, 2))}</span>
+                        <span className="proj-desc-main">{proj.descricao}</span>
+                      </div>
+                      <div className="proj-row-bottom">
+                        <span className="proj-valor-main">R$ {parseFloat(proj.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <button 
+                          type="button" 
+                          className="btn-delete-proj-v2"
+                          onClick={() => handleDeleteProjetivaDb(proj.id)}
+                          title="Remover projeção"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
