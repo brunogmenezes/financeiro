@@ -84,8 +84,8 @@ exports.create = async (req, res) => {
         const descricaoParcelada = `${descricao} (${i + 1}/${num_parcelas})`;
         
         const result = await pool.query(
-          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
         );
         
         // Atualizar saldo da conta (com a nova lógica de Cartão)
@@ -120,8 +120,8 @@ exports.create = async (req, res) => {
 
     // Lançamento único (não parcelado)
     const result = await pool.query(
-      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, conta_destino_id, categoria_id, subcategoria_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus]
+      'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, conta_destino_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, parcelado || false, num_parcelas || 1, req.body.parcela_atual || 1]
     );
 
     // Atualizar saldo da conta
@@ -178,7 +178,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, pago } = req.body;
+    const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, pago, parcelado, num_parcelas } = req.body;
 
     // Buscar lançamento antigo
     const lancamentoAntigo = await pool.query(
@@ -235,8 +235,8 @@ exports.update = async (req, res) => {
 
     // Atualizar lançamento
     const result = await pool.query(
-      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, conta_destino_id = $6, categoria_id = $7, subcategoria_id = $8, pago = $9 WHERE id = $10 AND usuario_id = $11 RETURNING *',
-      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, id, req.userId]
+      'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, conta_destino_id = $6, categoria_id = $7, subcategoria_id = $8, pago = $9, parcelado = $10, num_parcelas = $11, parcela_atual = $12 WHERE id = $13 AND usuario_id = $14 RETURNING *',
+      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, parcelado || false, num_parcelas || 1, req.body.parcela_atual || 1, id, req.userId]
     );
 
     // Aplicar o novo valor
@@ -252,6 +252,50 @@ exports.update = async (req, res) => {
       // Adiciona no destino (Cartão)
       if (conta_destino_id) {
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
+      }
+    }
+
+    // Se for solicitado parcelamento durante a edição e o número de parcelas for maior que 1
+    if (parcelado && num_parcelas > 1) {
+      // Verificar limite PRO para as novas parcelas
+      const { is_pro, is_admin } = req.user;
+      if (!is_pro && !is_admin) {
+        const lancamentosCount = await pool.query('SELECT COUNT(*) FROM lancamentos WHERE usuario_id = $1', [req.userId]);
+        const totalFuturo = parseInt(lancamentosCount.rows[0].count) + (parseInt(num_parcelas) - 1);
+        
+        if (totalFuturo > 10) {
+          return res.status(403).json({ error: 'Limite PRO: A conversão para parcelamento excederia o limite de 10 lançamentos.' });
+        }
+      }
+
+      // 1. Atualizar o lançamento atual para ser a 1ª parcela
+      const descPrimeiraParcela = `${descricao} (1/${num_parcelas})`;
+      await pool.query(
+        'UPDATE lancamentos SET descricao = $1, parcelado = $2, num_parcelas = $3, parcela_atual = $4 WHERE id = $5',
+        [descPrimeiraParcela, true, num_parcelas, 1, id]
+      );
+
+      // 2. Criar as demais parcelas (da 2 em diante)
+      const dataInicial = new Date(data);
+      for (let i = 1; i < num_parcelas; i++) {
+        const dataLancamento = new Date(dataInicial);
+        dataLancamento.setMonth(dataLancamento.getMonth() + i);
+        
+        const descParcela = `${descricao} (${i + 1}/${num_parcelas})`;
+        
+        const resNovo = await pool.query(
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+          [descParcela, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
+        );
+
+        // Atualizar saldo para cada nova parcela
+        if (tipo === 'entrada') {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+        } else if (tipo === 'saida') {
+          if (isCartaoNovo || pagoStatus) {
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+          }
+        }
       }
     } else if (tipo === 'saida') {
       if (isCartaoNovo) {

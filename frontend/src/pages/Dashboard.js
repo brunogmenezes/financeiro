@@ -359,7 +359,9 @@ function Dashboard() {
       conta_destino_id: lancamento.conta_destino_id || '',
       categoria_id: lancamento.categoria_id || '',
       subcategoria_id: lancamento.subcategoria_id || '',
-      pago: lancamento.pago
+      pago: lancamento.pago,
+      parcelado: lancamento.parcelado || false,
+      num_parcelas: lancamento.num_parcelas || 1
     });
     setShowModal(true);
   };
