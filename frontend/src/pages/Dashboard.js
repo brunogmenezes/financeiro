@@ -495,19 +495,37 @@ function Dashboard() {
 
   const calcularFaturaMes = (contaId) => {
     const mesParaFiltro = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
-    return lancamentos
-      .filter(l => l.conta_id === contaId)
+    let totalGasto = 0;
+    let totalPago = 0;
+
+    lancamentos
       .filter(l => {
         const data = new Date(l.data);
         const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-        return mesLancamento === mesParaFiltro;
+        if (mesLancamento !== mesParaFiltro) return false;
+        
+        // Se for gasto normal ou entrada direta no cartão
+        if (Number(l.conta_id) === Number(contaId)) return true;
+        
+        // Se for um pagamento de fatura vindo de outra conta para este cartão
+        if (l.tipo === 'pagamento_fatura' && Number(l.conta_destino_id) === Number(contaId)) return true;
+        
+        return false;
       })
-      .reduce((total, l) => {
-        // Agora somamos o valor absoluto das saídas (gastos) no mês
-        if (l.tipo === 'saida') return total + parseFloat(l.valor);
-        if (l.tipo === 'entrada') return total - parseFloat(l.valor);
-        return total;
-      }, 0);
+      .forEach(l => {
+        // Gasto: saídas na conta do cartão
+        if (l.tipo === 'saida' && Number(l.conta_id) === Number(contaId)) totalGasto += parseFloat(l.valor);
+        
+        // Pagamento: entradas na conta do cartão OU pagamento_fatura onde o destino é este cartão
+        if (l.tipo === 'entrada' && Number(l.conta_id) === Number(contaId)) totalPago += parseFloat(l.valor);
+        if (l.tipo === 'pagamento_fatura' && Number(l.conta_destino_id) === Number(contaId)) totalPago += parseFloat(l.valor);
+      });
+
+    return { 
+      totalGasto, 
+      totalPago, 
+      saldoRestante: totalGasto - totalPago 
+    };
   };
 
   const calcularSaldoTotal = () => {
@@ -1176,10 +1194,29 @@ function Dashboard() {
                 <div className="conta-saldo">
                   {mostrarValores ? (
                     <>
-                      <span className="label">{conta.tipo === 'Cartão de Crédito' ? 'Fatura do Mês:' : 'Saldo:'}</span>
-                      <span className={`valor ${conta.tipo === 'Cartão de Crédito' ? 'valor-fatura' : (parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo')}`}>
-                        R$ {formatarMoeda(conta.tipo === 'Cartão de Crédito' ? Math.abs(calcularFaturaMes(conta.id)) : (Number(conta.saldo_inicial) || 0))}
-                      </span>
+                      {conta.tipo === 'Cartão de Crédito' ? (
+                        <div className="cc-invoice-details">
+                          <div className="cc-detail-item">
+                            <span className="cc-detail-label">Gasto:</span>
+                            <span className="cc-detail-valor">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalGasto)}</span>
+                          </div>
+                          <div className="cc-detail-item">
+                            <span className="cc-detail-label">Pago:</span>
+                            <span className="cc-detail-valor pago">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalPago)}</span>
+                          </div>
+                          <div className="cc-detail-item total">
+                            <span className="cc-detail-label">Fatura:</span>
+                            <span className="cc-detail-valor fatura">R$ {formatarMoeda(calcularFaturaMes(conta.id).saldoRestante)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="label">Saldo:</span>
+                          <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
+                            R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
+                          </span>
+                        </>
+                      )}
                       
                       {conta.tipo === 'Cartão de Crédito' && (
                         <div className="limite-container">
@@ -1638,7 +1675,7 @@ function Dashboard() {
                             Saldo: R$ {formatarMoeda(Math.abs(saldoDia))}
                           </span>
                         </div>
-                        <div className="day-totals">
+            <div className="day-totals">
                           <span className="entrada">↑ Entrada: R$ {formatarMoeda(totalEntrada)}</span>
                           <span className="saida">↓ Saída: R$ {formatarMoeda(totalSaida)}</span>
                         </div>
@@ -1650,15 +1687,16 @@ function Dashboard() {
                               <span className={`badge ${lancamento.tipo}`}>
                                 {lancamento.tipo === 'entrada' ? '↑ Entrada' : 
                                  lancamento.tipo === 'saida' ? '↓ Saída' : 
-                                 lancamento.tipo === 'transferencia' ? '⇄ Transfer' : '⊝ Neutro'}
+                                 lancamento.tipo === 'transferencia' ? '⇄ Transfer' : 
+                                 lancamento.tipo === 'pagamento_fatura' ? '💳 Pagar Fatura' : '⊝ Neutro'}
                               </span>
                             </div>
                             <div className="item-descricao">
                               <div className="descricao-text">
                                 {lancamento.descricao}
-                                {lancamento.tipo === 'transferencia' && (
+                                {(lancamento.tipo === 'transferencia' || lancamento.tipo === 'pagamento_fatura') && (
                                   <span className="transfer-info-small">
-                                    ({lancamento.conta_nome} → {contas.find(c => c.id === lancamento.conta_destino_id)?.nome || 'Conta Destino'})
+                                    ({lancamento.conta_nome} → {contas.find(c => Number(c.id) === Number(lancamento.conta_destino_id))?.nome || 'Conta Destino'})
                                   </span>
                                 )}
                               </div>
@@ -1789,6 +1827,25 @@ function Dashboard() {
                   >
                     Neutro
                   </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'pagamento_fatura' ? 'active' : ''}
+                    onClick={() => {
+                      setFormData({
+                        ...formData, 
+                        tipo: 'pagamento_fatura', 
+                        descricao: 'Pagamento de Fatura',
+                        categoria_id: '', 
+                        subcategoria_id: '', 
+                        conta_destino_id: '', 
+                        pago: true
+                      });
+                      setQuickAddType(null);
+                    }}
+                    style={{ backgroundColor: formData.tipo === 'pagamento_fatura' ? '#10b981' : '' }}
+                  >
+                    💳 Pagar Fatura
+                  </button>
                 </div>
               </div>
 
@@ -1889,36 +1946,48 @@ function Dashboard() {
               </div>
 
               <div className="form-group">
-                <label>{formData.tipo === 'transferencia' ? 'Conta de Origem *' : 'Conta *'}</label>
+                <label>
+                  {formData.tipo === 'transferencia' ? 'Conta de Origem *' : 
+                   formData.tipo === 'pagamento_fatura' ? 'Retirar de qual conta? *' : 'Conta *'}
+                </label>
                 <select
                   value={formData.conta_id}
                   onChange={(e) => setFormData({...formData, conta_id: e.target.value})}
                   required
                 >
                   <option value="">Selecione uma conta</option>
-                  {contas.map(conta => (
-                    <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
-                  ))}
+                  {contas
+                    .filter(c => formData.tipo === 'pagamento_fatura' ? c.tipo !== 'Cartão de Crédito' : true)
+                    .map(conta => (
+                      <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
+                    ))}
                 </select>
               </div>
 
-              {formData.tipo === 'transferencia' && (
+              {(formData.tipo === 'transferencia' || formData.tipo === 'pagamento_fatura') && (
                 <div className="form-group">
-                  <label>Conta de Destino *</label>
+                  <label>
+                    {formData.tipo === 'transferencia' ? 'Conta de Destino *' : 'Qual Cartão de Crédito? *'}
+                  </label>
                   <select
                     value={formData.conta_destino_id}
                     onChange={(e) => setFormData({...formData, conta_destino_id: e.target.value})}
                     required
                   >
-                    <option value="">Selecione a conta de destino</option>
-                    {contas.filter(c => c.id.toString() !== formData.conta_id.toString()).map(conta => (
-                      <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
-                    ))}
+                    <option value="">{formData.tipo === 'transferencia' ? 'Selecione a conta de destino' : 'Selecione o cartão'}</option>
+                    {contas
+                      .filter(c => {
+                        if (formData.tipo === 'pagamento_fatura') return c.tipo === 'Cartão de Crédito';
+                        return c.id.toString() !== formData.conta_id.toString();
+                      })
+                      .map(conta => (
+                        <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
+                      ))}
                   </select>
                 </div>
               )}
 
-              {formData.tipo !== 'transferencia' && (
+              {formData.tipo !== 'transferencia' && formData.tipo !== 'pagamento_fatura' && (
                 <>
                   <div className="form-group">
                     <label>Classificação</label>

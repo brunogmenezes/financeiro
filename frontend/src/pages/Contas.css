@@ -225,6 +225,18 @@ th:last-child, td:last-child {
   color: #f57c00;
 }
 
+.badge-cartão-de-crédito {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.vencimento-info {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 /* Media Queries para Mobile */
 @media (max-width: 768px) {
   .content {

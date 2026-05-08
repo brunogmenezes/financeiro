@@ -24,6 +24,7 @@ function Contas() {
     descricao: '',
     saldo_inicial: 0,
     limite_total: 0,
+    dia_vencimento: '',
     tipo: 'Conta Corrente'
   });
   const navigate = useNavigate();
@@ -97,7 +98,8 @@ function Contas() {
           nome: formData.nome,
           descricao: formData.descricao,
           tipo: formData.tipo,
-          limite_total: formData.limite_total
+          limite_total: formData.limite_total,
+          dia_vencimento: formData.dia_vencimento
         });
         triggerToast('Conta atualizada com sucesso!');
       } else {
@@ -106,7 +108,7 @@ function Contas() {
       }
       setShowModal(false);
       setEditingConta(null);
-      setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, tipo: 'Conta Corrente' });
+      setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, dia_vencimento: '', tipo: 'Conta Corrente' });
       loadContas();
     } catch (error) {
       if (error.response?.status === 403) {
@@ -128,6 +130,7 @@ function Contas() {
       descricao: conta.descricao || '',
       saldo_inicial: conta.saldo_inicial,
       limite_total: conta.limite_total || 0,
+      dia_vencimento: conta.dia_vencimento || '',
       tipo: conta.tipo || 'Conta Corrente'
     });
     setShowModal(true);
@@ -154,7 +157,7 @@ function Contas() {
 
   const handleNew = () => {
     setEditingConta(null);
-    setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, tipo: 'Conta Corrente' });
+    setFormData({ nome: '', descricao: '', saldo_inicial: 0, limite_total: 0, dia_vencimento: '', tipo: 'Conta Corrente' });
     setShowModal(true);
   };
 
@@ -192,6 +195,11 @@ function Contas() {
                       <span className={`badge badge-tipo badge-${conta.tipo?.toLowerCase().replace(' ', '-') || 'corrente'}`}>
                         {conta.tipo || 'Conta Corrente'}
                       </span>
+                      {conta.tipo === 'Cartão de Crédito' && conta.dia_vencimento && (
+                        <div className="vencimento-info" style={{fontSize: '0.8rem', color: '#666', marginTop: '4px'}}>
+                          Vence dia {conta.dia_vencimento}
+                        </div>
+                      )}
                     </td>
                     <td>{conta.descricao || '-'}</td>
                     <td className={parseFloat(conta.saldo_inicial) >= 0 ? 'valor-positivo' : 'valor-negativo'}>
@@ -263,16 +271,30 @@ function Contas() {
               </div>
 
               {formData.tipo === 'Cartão de Crédito' && (
-                <div className="form-group">
-                  <label>Limite Total *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.limite_total}
-                    onChange={(e) => setFormData({...formData, limite_total: e.target.value})}
-                    required
-                  />
-                </div>
+                <>
+                  <div className="form-group">
+                    <label>Limite Total *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.limite_total}
+                      onChange={(e) => setFormData({...formData, limite_total: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Dia do Vencimento *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="Ex: 10"
+                      value={formData.dia_vencimento}
+                      onChange={(e) => setFormData({...formData, dia_vencimento: e.target.value})}
+                      required
+                    />
+                  </div>
+                </>
               )}
 
               <div className="modal-actions">

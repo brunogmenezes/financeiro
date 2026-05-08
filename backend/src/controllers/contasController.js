@@ -38,7 +38,7 @@ exports.getById = async (req, res) => {
 // Criar nova conta
 exports.create = async (req, res) => {
   try {
-    const { nome, descricao, saldo_inicial, tipo, limite_total } = req.body;
+    const { nome, descricao, saldo_inicial, tipo, limite_total, dia_vencimento } = req.body;
     const userId = req.userId;
 
     if (!nome) {
@@ -61,8 +61,16 @@ exports.create = async (req, res) => {
     const valorLimite = parseFloat(String(limite_total).replace(',', '.')) || 0;
 
     const result = await pool.query(
-      'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, limite_total, usuario_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [nome, descricao || null, valorSaldo, tipo || 'Conta Corrente', valorLimite, userId]
+      'INSERT INTO contas (nome, descricao, saldo_inicial, tipo, limite_total, dia_vencimento, usuario_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [
+        nome, 
+        descricao || null, 
+        valorSaldo, 
+        tipo || 'Conta Corrente', 
+        valorLimite, 
+        tipo === 'Cartão de Crédito' ? (parseInt(dia_vencimento) || null) : null,
+        userId
+      ]
     );
 
     // Buscar nome do usuário para auditoria
@@ -89,12 +97,20 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, descricao, tipo, limite_total } = req.body;
+    const { nome, descricao, tipo, limite_total, dia_vencimento } = req.body;
 
     // Não permitir alteração de saldo_inicial
     const result = await pool.query(
-      'UPDATE contas SET nome = $1, descricao = $2, tipo = $3, limite_total = $4 WHERE id = $5 AND usuario_id = $6 RETURNING *',
-      [nome, descricao, tipo || 'Conta Corrente', limite_total || 0, id, req.userId]
+      'UPDATE contas SET nome = $1, descricao = $2, tipo = $3, limite_total = $4, dia_vencimento = $5 WHERE id = $6 AND usuario_id = $7 RETURNING *',
+      [
+        nome, 
+        descricao, 
+        tipo || 'Conta Corrente', 
+        limite_total || 0, 
+        tipo === 'Cartão de Crédito' ? (parseInt(dia_vencimento) || null) : null,
+        id, 
+        req.userId
+      ]
     );
 
     if (result.rows.length === 0) {

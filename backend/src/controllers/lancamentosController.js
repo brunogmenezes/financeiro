@@ -129,8 +129,15 @@ exports.create = async (req, res) => {
     const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
 
     if (tipo === 'entrada') {
-      // Entrada em qualquer conta (incluindo cartão) soma ao saldo
+      // Entrada em qualquer conta soma ao saldo
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+    } else if (tipo === 'pagamento_fatura') {
+      const { conta_destino_id } = req.body;
+      if (!conta_destino_id) return res.status(400).json({ error: 'Conta de destino (Cartão) é obrigatória' });
+      // Origem: sempre subtrai
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      // Destino (Cartão): sempre soma (reduz dívida)
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
     } else if (tipo === 'saida') {
       if (isCartao) {
         // Compra no cartão subtrai do saldo (fica negativo) mesmo se não marcado como pago
@@ -191,15 +198,18 @@ exports.update = async (req, res) => {
     const isCartaoAntigo = contaAntigaResult.rows[0]?.tipo === 'Cartão de Crédito';
 
     if (antigo.tipo === 'entrada') {
-      if (isCartaoAntigo) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
-      } else {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+    } else if (antigo.tipo === 'pagamento_fatura') {
+      // Devolve para a origem
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+      // Retira do destino (Cartão)
+      if (antigo.conta_destino_id) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
       }
     } else if (antigo.tipo === 'saida') {
       if (isCartaoAntigo) {
-        // Reverte aumento da fatura
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
+        // Reverte saída no cartão (devolve ao saldo / diminui dívida)
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
       } else if (antigo.pago) {
         // Reverte desconto do saldo
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
@@ -234,14 +244,19 @@ exports.update = async (req, res) => {
     const isCartaoNovo = contaNovaResult.rows[0]?.tipo === 'Cartão de Crédito';
 
     if (tipo === 'entrada') {
-      if (isCartaoNovo) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-      } else {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+    } else if (tipo === 'pagamento_fatura') {
+      const { conta_destino_id } = req.body;
+      // Retira da origem
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      // Adiciona no destino (Cartão)
+      if (conta_destino_id) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
       }
     } else if (tipo === 'saida') {
       if (isCartaoNovo) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+        // Saída no cartão diminui o saldo (aumenta a dívida)
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
       } else if (pagoStatus) {
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
       }
@@ -307,15 +322,18 @@ exports.delete = async (req, res) => {
     const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
 
     if (lancamento.tipo === 'entrada') {
-      if (isCartao) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
-      } else {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+    } else if (lancamento.tipo === 'pagamento_fatura') {
+      // Devolve para a origem
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+      // Retira do destino (Cartão)
+      if (lancamento.conta_destino_id) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_destino_id]);
       }
     } else if (lancamento.tipo === 'saida') {
       if (isCartao) {
-        // Reverte aumento da fatura
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
+        // Reverte saída no cartão (devolve ao saldo)
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
       } else if (lancamento.pago) {
         // Reverte desconto do saldo
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);

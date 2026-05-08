@@ -379,6 +379,51 @@
   margin-top: 4px;
 }
 
+/* Credit Card Invoice Details */
+.cc-invoice-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.cc-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cc-detail-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.cc-detail-valor {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Outfit', sans-serif;
+}
+
+.cc-detail-valor.pago {
+  color: #10b981;
+}
+
+.cc-detail-item.total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.cc-detail-valor.fatura {
+  font-size: 1.1rem;
+  color: #f59e0b;
+}
+
 /* Charts Section */
 .charts-container {
   display: grid;
@@ -1232,6 +1277,7 @@
 .badge.saida { background: #fef2f2; color: #dc2626; }
 .badge.transferencia { background: #eff6ff; color: #2563eb; }
 .badge.neutro { background: #f1f5f9; color: #64748b; }
+.badge.pagamento_fatura { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
 
 .transfer-info-small {
   font-size: 0.8rem;
