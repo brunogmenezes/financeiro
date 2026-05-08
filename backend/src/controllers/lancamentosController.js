@@ -179,7 +179,6 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, pago } = req.body;
-    const pagoStatus = pago !== undefined ? pago : true;
 
     // Buscar lançamento antigo
     const lancamentoAntigo = await pool.query(
@@ -192,6 +191,7 @@ exports.update = async (req, res) => {
     }
 
     const antigo = lancamentoAntigo.rows[0];
+    const pagoStatus = pago !== undefined ? pago : antigo.pago;
 
     // Reverter o valor do lançamento antigo
     const contaAntigaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [antigo.conta_id]);
