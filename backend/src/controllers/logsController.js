@@ -1,18 +1,18 @@
 const pool = require('../config/database');
 
 // Função auxiliar para registrar ação
-const registrarAuditoria = async (usuarioId, usuarioNome, acao, tabela, registroId, descricao) => {
+const registrarLog = async (usuarioId, usuarioNome, acao, tabela, registroId, descricao) => {
   try {
     await pool.query(
-      'INSERT INTO auditoria (usuario_id, usuario_nome, acao, tabela, registro_id, descricao) VALUES ($1, $2, $3, $4, $5, $6)',
+      'INSERT INTO logs (usuario_id, usuario_nome, acao, tabela, registro_id, descricao) VALUES ($1, $2, $3, $4, $5, $6)',
       [usuarioId, usuarioNome, acao, tabela, registroId, descricao]
     );
   } catch (error) {
-    console.error('Erro ao registrar auditoria:', error);
+    console.error('Erro ao registrar log:', error);
   }
 };
 
-// Listar todos os logs de auditoria
+// Listar todos os logs
 exports.getAll = async (req, res) => {
   try {
     const usuarioId = req.userId;
@@ -26,10 +26,10 @@ exports.getAll = async (req, res) => {
 
     if (isAdmin) {
       // Admin vê tudo
-      query = 'SELECT * FROM auditoria ORDER BY created_at DESC LIMIT 1000';
+      query = 'SELECT * FROM logs ORDER BY created_at DESC LIMIT 1000';
     } else {
       // Usuário comum vê apenas o seu
-      query = 'SELECT * FROM auditoria WHERE usuario_id = $1 ORDER BY created_at DESC LIMIT 500';
+      query = 'SELECT * FROM logs WHERE usuario_id = $1 ORDER BY created_at DESC LIMIT 500';
       params.push(usuarioId);
     }
 
@@ -37,7 +37,7 @@ exports.getAll = async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Erro ao buscar logs de auditoria' });
+    res.status(500).json({ error: 'Erro ao buscar logs' });
   }
 };
 
@@ -46,7 +46,7 @@ exports.getByUsuario = async (req, res) => {
   try {
     const { usuarioId } = req.params;
     const result = await pool.query(
-      'SELECT * FROM auditoria WHERE usuario_id = $1 ORDER BY created_at DESC',
+      'SELECT * FROM logs WHERE usuario_id = $1 ORDER BY created_at DESC',
       [usuarioId]
     );
     res.json(result.rows);
@@ -56,4 +56,4 @@ exports.getByUsuario = async (req, res) => {
   }
 };
 
-module.exports.registrarAuditoria = registrarAuditoria;
+module.exports.registrarLog = registrarLog;

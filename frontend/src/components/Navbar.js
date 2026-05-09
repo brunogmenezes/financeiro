@@ -119,12 +119,12 @@ function Navbar() {
             )}
 
             <button 
-              onClick={() => handleNavigate('/auditoria')} 
-              className={`nav-item ${isActive('/auditoria') ? 'active' : ''}`}
+              onClick={() => handleNavigate('/logs')} 
+              className={`nav-item ${isActive('/logs') ? 'active' : ''}`}
             >
               <span className="nav-icon">📋</span>
-              <span>Auditoria</span>
-              {isActive('/auditoria') && <span className="active-indicator"></span>}
+              <span>Logs</span>
+              {isActive('/logs') && <span className="active-indicator"></span>}
             </button>
 
             {user.is_admin && (

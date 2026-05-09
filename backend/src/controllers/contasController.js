@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { registrarAuditoria } = require('./auditoriaController');
+const { registrarLog } = require('./logsController');
 
 // Listar todas as contas do usuário
 exports.getAll = async (req, res) => {
@@ -73,11 +73,11 @@ exports.create = async (req, res) => {
       ]
     );
 
-    // Buscar nome do usuário para auditoria
+    // Buscar nome do usuário para logs
     const userResult = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [userId]);
     const userName = userResult.rows[0]?.nome || 'Usuário';
 
-    await registrarAuditoria(
+    await registrarLog(
       userId,
       userName,
       'CRIAR',
@@ -119,7 +119,7 @@ exports.update = async (req, res) => {
 
     // Buscar nome do usuário
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       user.rows[0].nome,
       'EDITAR',
@@ -167,7 +167,7 @@ exports.delete = async (req, res) => {
 
     // Buscar nome do usuário
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       user.rows[0]?.nome || 'Usuário',
       'EXCLUIR',

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuditoria } from '../services/api';
-import './Auditoria.css';
+import { getLogs } from '../services/api';
+import './Logs.css';
 
-function Auditoria() {
+function Logs() {
   const [logs, setLogs] = useState([]);
   const [filter, setFilter] = useState('TODOS');
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,16 +12,16 @@ function Auditoria() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadAuditoria();
+    loadLogs();
     // eslint-disable-next-line
   }, []);
 
-  const loadAuditoria = async () => {
+  const loadLogs = async () => {
     try {
-      const response = await getAuditoria();
+      const response = await getLogs();
       setLogs(response.data);
     } catch (error) {
-      console.error('Erro ao carregar auditoria:', error);
+      console.error('Erro ao carregar logs:', error);
       if (error.response?.status === 401) {
         navigate('/');
       }
@@ -77,7 +77,7 @@ function Auditoria() {
 
       <div className="content">
         <div className="header">
-          <h2>📋 Auditoria</h2>
+          <h2>📋 Logs de Atividades</h2>
           <div className="filter-buttons">
             <button 
               className={filter === 'TODOS' ? 'active' : ''} 
@@ -107,7 +107,7 @@ function Auditoria() {
         </div>
 
         {/* Barra de busca e controles */}
-        <div className="auditoria-controls">
+        <div className="logs-controls">
           <input
             type="text"
             className="search-input"
@@ -146,7 +146,7 @@ function Auditoria() {
               {currentLogs.length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{textAlign: 'center'}}>
-                    Nenhum registro de auditoria encontrado
+                    Nenhum registro encontrado
                   </td>
                 </tr>
               ) : (
@@ -216,4 +216,4 @@ function Auditoria() {
   );
 }
 
-export default Auditoria;
+export default Logs;

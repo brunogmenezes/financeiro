@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { registrarAuditoria } = require('./auditoriaController');
+const { registrarLog } = require('./logsController');
 
 // Listar todas as categorias (Globais)
 exports.getAll = async (req, res) => {
@@ -30,7 +30,7 @@ exports.create = async (req, res) => {
       [nome, tipo, corPadrao]
     );
 
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       'Admin',
       'CRIAR',
@@ -61,7 +61,7 @@ exports.update = async (req, res) => {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
 
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       'Admin',
       'EDITAR',
@@ -115,7 +115,7 @@ exports.delete = async (req, res) => {
 
     await pool.query('DELETE FROM categorias WHERE id = $1', [id]);
 
-    await registrarAuditoria(req.userId, 'Admin', 'EXCLUIR', 'categorias', id, `Categoria GLOBAL excluída: ${categoria.rows[0].nome}`);
+    await registrarLog(req.userId, 'Admin', 'EXCLUIR', 'categorias', id, `Categoria GLOBAL excluída: ${categoria.rows[0].nome}`);
 
     res.json({ message: 'Categoria excluída com sucesso' });
   } catch (error) {

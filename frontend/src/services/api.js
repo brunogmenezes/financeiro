@@ -39,8 +39,8 @@ export const deleteLancamento = (id) => api.delete(`/lancamentos/${id}`);
 export const togglePagoLancamento = (id) => api.patch(`/lancamentos/${id}/toggle-pago`);
 export const getDashboard = () => api.get('/lancamentos/dashboard');
 
-// Auditoria
-export const getAuditoria = () => api.get('/auditoria');
+// Logs
+export const getLogs = () => api.get('/logs');
 
 // Categorias
 export const getCategorias = () => api.get('/categorias');

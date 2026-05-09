@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
-const { registrarAuditoria } = require('./auditoriaController');
+const { registrarLog } = require('./logsController');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
 
@@ -36,8 +36,8 @@ exports.googleLogin = async (req, res) => {
       );
       user = insertResult.rows[0];
       
-      // Registrar auditoria
-      await registrarAuditoria(user.id, user.nome, 'CRIAR', 'usuarios', user.id, `Novo usuário via Google: ${email}`);
+      // Registrar log
+      await registrarLog(user.id, user.nome, 'CRIAR', 'usuarios', user.id, `Novo usuário via Google: ${email}`);
     } else {
       user = userResult.rows[0];
       // Se o usuário existia mas não tinha google_id vinculado, vincular agora
@@ -50,8 +50,8 @@ exports.googleLogin = async (req, res) => {
     // Gerar token JWT
     const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     
-    // Registrar auditoria de login
-    await registrarAuditoria(user.id, user.nome, 'LOGIN', 'usuarios', user.id, `Login via Google: ${email}`);
+    // Registrar log de login
+    await registrarLog(user.id, user.nome, 'LOGIN', 'usuarios', user.id, `Login via Google: ${email}`);
     
     res.json({
       token: jwtToken,
@@ -94,8 +94,8 @@ exports.register = async (req, res) => {
       [nome, email, hashedPassword]
     );
 
-    // Registrar auditoria
-    await registrarAuditoria(
+    // Registrar log
+    await registrarLog(
       result.rows[0].id,
       result.rows[0].nome,
       'CRIAR',
@@ -133,8 +133,8 @@ exports.login = async (req, res) => {
     // Gerar token
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    // Registrar auditoria de login
-    await registrarAuditoria(
+    // Registrar log de login
+    await registrarLog(
       user.id,
       user.nome,
       'LOGIN',
@@ -238,8 +238,8 @@ exports.updatePerfil = async (req, res) => {
     // Atualizar usuário
     const result = await pool.query(query, params);
 
-    // Registrar auditoria
-    await registrarAuditoria(
+    // Registrar log
+    await registrarLog(
       userId,
       user.nome,
       'EDITAR',

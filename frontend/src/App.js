@@ -4,7 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Contas from './pages/Contas';
 import Lancamentos from './pages/Lancamentos';
-import Auditoria from './pages/Auditoria';
+import Logs from './pages/Logs';
 import Categorias from './pages/Categorias';
 import Manager from './pages/Manager';
 import Assinatura from './pages/Assinatura';
@@ -55,9 +55,9 @@ function App() {
               <Lancamentos />
             </UserRoute>
           } />
-          <Route path="/auditoria" element={
+          <Route path="/logs" element={
             <PrivateRoute>
-              <Auditoria />
+              <Logs />
             </PrivateRoute>
           } />
 

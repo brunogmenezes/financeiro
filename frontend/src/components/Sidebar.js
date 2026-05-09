@@ -83,9 +83,9 @@ function Sidebar() {
               </button>
             )}
 
-            <button onClick={() => handleNavigate('/auditoria')} className={`nav-item ${isActive('/auditoria') ? 'active' : ''}`}>
+            <button onClick={() => handleNavigate('/logs')} className={`nav-item ${isActive('/logs') ? 'active' : ''}`}>
               <span className="nav-icon">📋</span>
-              <span>Auditoria</span>
+              <span>Logs</span>
             </button>
 
             {user.is_admin && (

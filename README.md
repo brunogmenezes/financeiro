@@ -42,7 +42,7 @@ Planeje o seu futuro financeiro sem bagunçar o presente:
 Controle total para administradores do sistema:
 *   **Gestão de Usuários**: Visualização de todos os usuários cadastrados e seus status.
 *   **Reset de Senhas**: Capacidade de resetar senhas de usuários de forma segura.
-*   **Monitoramento de Auditoria**: Log completo de todas as ações realizadas no sistema (quem, quando e o quê).
+*   **Logs de Atividades**: Log completo de todas as ações realizadas no sistema (quem, quando e o quê).
 
 ### 📱 Integração WhatsApp (Evolution API)
 *   **Lembretes Automáticos**: Receba notificações no seu WhatsApp sobre contas a vencer (D-1 e D0).
@@ -63,7 +63,7 @@ Controle total para administradores do sistema:
 *   **Frontend**: React.js, Chart.js, Axios.
 *   **Backend**: Node.js, Express, PostgreSQL.
 *   **Segurança**: JWT (JSON Web Token), Criptografia Bcrypt.
-*   **Infraestrutura**: PM2, Auditoria de Banco de Dados.
+*   **Infraestrutura**: PM2, Logs de Banco de Dados.
 
 ---
 

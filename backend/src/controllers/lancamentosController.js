@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { registrarAuditoria } = require('./auditoriaController');
+const { registrarLog } = require('./logsController');
 
 // Listar todos os lançamentos do usuário
 exports.getAll = async (req, res) => {
@@ -111,7 +111,7 @@ exports.create = async (req, res) => {
       }
       
       const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-      await registrarAuditoria(
+      await registrarLog(
         req.userId,
         user.rows[0]?.nome || 'Usuário',
         'CRIAR',
@@ -163,7 +163,7 @@ exports.create = async (req, res) => {
     }
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       user.rows[0]?.nome || 'Usuário',
       'CRIAR',
@@ -300,7 +300,7 @@ exports.update = async (req, res) => {
     }
 
     const userRes = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(req.userId, userRes.rows[0]?.nome || 'Usuário', 'EDITAR', 'lancamentos', id, `Lançamento "${descricao}" atualizado`);
+    await registrarLog(req.userId, userRes.rows[0]?.nome || 'Usuário', 'EDITAR', 'lancamentos', id, `Lançamento "${descricao}" atualizado`);
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -370,7 +370,7 @@ exports.delete = async (req, res) => {
     }
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       user.rows[0]?.nome || 'Usuário',
       'EXCLUIR',
@@ -453,7 +453,7 @@ exports.togglePago = async (req, res) => {
     );
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
+    await registrarLog(
       req.userId,
       user.rows[0]?.nome || 'Usuário',
       'EDITAR',

@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
-const { registrarAuditoria } = require('./auditoriaController');
+const { registrarLog } = require('./logsController');
 
 // Listar usuários do controle financeiro (não-admins) com filtro de busca
 exports.listUsers = async (req, res) => {
@@ -58,8 +58,8 @@ exports.resetPassword = async (req, res) => {
 
     await pool.query('UPDATE usuarios SET senha = $1 WHERE id = $2', [hashedPassword, id]);
 
-    // Auditoria
-    await registrarAuditoria(
+    // Logs
+    await registrarLog(
       req.userId,
       'Admin',
       'EDITAR',
