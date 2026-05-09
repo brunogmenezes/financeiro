@@ -918,27 +918,30 @@ function Dashboard() {
   const pieChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '65%',
+    cutout: '80%',
     plugins: {
       legend: {
-        display: false // Vamos usar as barras laterais para legenda
+        display: false
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        titleColor: '#1f2937',
-        bodyColor: '#1f2937',
-        borderColor: '#e5e7eb',
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        titleColor: '#1e293b',
+        bodyColor: '#1e293b',
+        borderColor: '#e2e8f0',
         borderWidth: 1,
         padding: 12,
-        boxPadding: 6,
+        boxPadding: 8,
         usePointStyle: true,
+        displayColors: true,
+        cornerRadius: 12,
+        caretSize: 6,
         callbacks: {
           label: function(context) {
             const label = context.label || '';
             const value = context.parsed;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
+            return ` ${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
           }
         }
       }
@@ -1335,13 +1338,23 @@ function Dashboard() {
                       <h4>Distribuição de Gastos</h4>
                     </div>
                     <div className="chart-content-pie">
-                      <Pie data={processPieChartData()} options={pieChartOptions} />
-                      {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
+                      <div className="chart-wrapper-pie">
+                        <Pie data={processPieChartData()} options={pieChartOptions} />
                         <div className="chart-center-info">
                           <span className="center-label">Total Gasto</span>
                           <span className="center-value">R$ {formatarMoeda(calcularTotaisFiltrados().totalSaidas)}</span>
                         </div>
-                      )}
+                      </div>
+                      
+                      <div className="custom-chart-legend">
+                        {processPieChartData().labels.map((label, index) => (
+                          <div key={index} className="legend-item">
+                            <span className="legend-dot" style={{ backgroundColor: processPieChartData().datasets[0].backgroundColor[index] }}></span>
+                            <span className="legend-label">{label}</span>
+                            <span className="legend-value">{((processPieChartData().datasets[0].data[index] / processPieChartData().datasets[0].data.reduce((a, b) => a + b, 0)) * 100).toFixed(0)}%</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   
@@ -1350,13 +1363,23 @@ function Dashboard() {
                       <h4>Gastos por Conta</h4>
                     </div>
                     <div className="chart-content-pie">
-                      <Pie data={processPieChartDataPorConta()} options={pieChartOptions} />
-                      {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
+                      <div className="chart-wrapper-pie">
+                        <Pie data={processPieChartDataPorConta()} options={pieChartOptions} />
                         <div className="chart-center-info">
                           <span className="center-label">Total Gasto</span>
                           <span className="center-value">R$ {formatarMoeda(calcularTotaisFiltrados().totalSaidas)}</span>
                         </div>
-                      )}
+                      </div>
+
+                      <div className="custom-chart-legend">
+                        {processPieChartDataPorConta().labels.map((label, index) => (
+                          <div key={index} className="legend-item">
+                            <span className="legend-dot" style={{ backgroundColor: processPieChartDataPorConta().datasets[0].backgroundColor[index] }}></span>
+                            <span className="legend-label">{label}</span>
+                            <span className="legend-value">{((processPieChartDataPorConta().datasets[0].data[index] / processPieChartDataPorConta().datasets[0].data.reduce((a, b) => a + b, 0)) * 100).toFixed(0)}%</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
