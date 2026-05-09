@@ -77,15 +77,20 @@ exports.create = async (req, res) => {
       const lancamentosCriados = [];
       const dataInicial = new Date(data);
       
+      const totalValue = parseFloat(valor);
+      const installmentValue = Math.floor((totalValue / num_parcelas) * 100) / 100;
+      const lastInstallmentValue = (totalValue - (installmentValue * (num_parcelas - 1))).toFixed(2);
+      
       for (let i = 0; i < num_parcelas; i++) {
         const dataLancamento = new Date(dataInicial);
         dataLancamento.setMonth(dataLancamento.getMonth() + i);
         
+        const currentInstallmentValue = (i === num_parcelas - 1) ? lastInstallmentValue : installmentValue.toFixed(2);
         const descricaoParcelada = `${descricao} (${i + 1}/${num_parcelas})`;
         
         const result = await pool.query(
           'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-          [descricaoParcelada, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
+          [descricaoParcelada, currentInstallmentValue, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
         );
         
         // Atualizar saldo da conta (com a nova lógica de Cartão)
@@ -93,12 +98,12 @@ exports.create = async (req, res) => {
         const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
 
         if (tipo === 'entrada') {
-          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentInstallmentValue, conta_id]);
         } else if (tipo === 'saida') {
           if (isCartao) {
-            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [currentInstallmentValue, conta_id]);
           } else if (pagoStatus) {
-            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [currentInstallmentValue, conta_id]);
           }
         }
         
@@ -200,139 +205,102 @@ exports.update = async (req, res) => {
     if (antigo.tipo === 'entrada') {
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
     } else if (antigo.tipo === 'pagamento_fatura') {
-      // Devolve para a origem
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
-      // Retira do destino (Cartão)
       if (antigo.conta_destino_id) {
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
       }
     } else if (antigo.tipo === 'saida') {
-      if (isCartaoAntigo) {
-        // Reverte saída no cartão (devolve ao saldo / diminui dívida)
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
-      } else if (antigo.pago) {
-        // Reverte desconto do saldo
+      if (isCartaoAntigo || antigo.pago) {
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
       }
     } else if (antigo.tipo === 'transferencia') {
-      // Devolve para a origem
-      if (isCartaoAntigo) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
-      } else {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
-      }
-      // Retira do destino
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
       if (antigo.conta_destino_id) {
-        const contaDestinoAntigaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [antigo.conta_destino_id]);
-        const isCartaoDestinoAntigo = contaDestinoAntigaResult.rows[0]?.tipo === 'Cartão de Crédito';
-        if (isCartaoDestinoAntigo) {
-          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
-        } else {
-          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
-        }
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
       }
     }
 
-    // Atualizar lançamento
+    // Calcular novo valor (dividir se for parcelado)
+    const totalValue = parseFloat(valor);
+    const numParcelasInt = parseInt(num_parcelas) || 1;
+    const isConvertingToParcelado = parcelado && numParcelasInt > 1 && !antigo.parcelado;
+    
+    let currentVal = totalValue;
+    let installmentValue = totalValue;
+    let lastInstallmentValue = totalValue;
+
+    if (parcelado && numParcelasInt > 1) {
+      installmentValue = Math.floor((totalValue / numParcelasInt) * 100) / 100;
+      lastInstallmentValue = parseFloat((totalValue - (installmentValue * (numParcelasInt - 1))).toFixed(2));
+      currentVal = installmentValue;
+    }
+
+    // Atualizar lançamento atual
     const result = await pool.query(
       'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, conta_destino_id = $6, categoria_id = $7, subcategoria_id = $8, pago = $9, parcelado = $10, num_parcelas = $11, parcela_atual = $12 WHERE id = $13 AND usuario_id = $14 RETURNING *',
-      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, parcelado || false, num_parcelas || 1, req.body.parcela_atual || 1, id, req.userId]
+      [descricao, currentVal, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, parcelado || false, numParcelasInt, req.body.parcela_atual || 1, id, req.userId]
     );
 
-    // Aplicar o novo valor
+    // Aplicar o novo valor ao saldo da conta
     const contaNovaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
     const isCartaoNovo = contaNovaResult.rows[0]?.tipo === 'Cartão de Crédito';
 
     if (tipo === 'entrada') {
-      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentVal, conta_id]);
     } else if (tipo === 'pagamento_fatura') {
       const { conta_destino_id } = req.body;
-      // Retira da origem
-      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-      // Adiciona no destino (Cartão)
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [currentVal, conta_id]);
       if (conta_destino_id) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
-      }
-    }
-
-    // Se for solicitado parcelamento durante a edição e o número de parcelas for maior que 1
-    if (parcelado && num_parcelas > 1) {
-      // Verificar limite PRO para as novas parcelas
-      const { is_pro, is_admin } = req.user;
-      if (!is_pro && !is_admin) {
-        const lancamentosCount = await pool.query('SELECT COUNT(*) FROM lancamentos WHERE usuario_id = $1', [req.userId]);
-        const totalFuturo = parseInt(lancamentosCount.rows[0].count) + (parseInt(num_parcelas) - 1);
-        
-        if (totalFuturo > 10) {
-          return res.status(403).json({ error: 'Limite PRO: A conversão para parcelamento excederia o limite de 10 lançamentos.' });
-        }
-      }
-
-      // 1. Atualizar o lançamento atual para ser a 1ª parcela
-      const descPrimeiraParcela = `${descricao} (1/${num_parcelas})`;
-      await pool.query(
-        'UPDATE lancamentos SET descricao = $1, parcelado = $2, num_parcelas = $3, parcela_atual = $4 WHERE id = $5',
-        [descPrimeiraParcela, true, num_parcelas, 1, id]
-      );
-
-      // 2. Criar as demais parcelas (da 2 em diante)
-      const dataInicial = new Date(data);
-      for (let i = 1; i < num_parcelas; i++) {
-        const dataLancamento = new Date(dataInicial);
-        dataLancamento.setMonth(dataLancamento.getMonth() + i);
-        
-        const descParcela = `${descricao} (${i + 1}/${num_parcelas})`;
-        
-        const resNovo = await pool.query(
-          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-          [descParcela, valor, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
-        );
-
-        // Atualizar saldo para cada nova parcela
-        if (tipo === 'entrada') {
-          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
-        } else if (tipo === 'saida') {
-          if (isCartaoNovo || pagoStatus) {
-            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-          }
-        }
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentVal, conta_destino_id]);
       }
     } else if (tipo === 'saida') {
-      if (isCartaoNovo) {
-        // Saída no cartão diminui o saldo (aumenta a dívida)
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-      } else if (pagoStatus) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+      if (isCartaoNovo || pagoStatus) {
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [currentVal, conta_id]);
       }
     } else if (tipo === 'transferencia') {
       const { conta_destino_id } = req.body;
-      // Retira da origem
-      if (isCartaoNovo) {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
-      } else {
-        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-      }
-      // Adiciona no destino
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [currentVal, conta_id]);
       if (conta_destino_id) {
-        const contaDestinoNovaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_destino_id]);
-        const isCartaoDestinoNovo = contaDestinoNovaResult.rows[0]?.tipo === 'Cartão de Crédito';
-        if (isCartaoDestinoNovo) {
-          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
-        } else {
-          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
+        await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentVal, conta_destino_id]);
+      }
+    }
+
+    // Se estiver convertendo para parcelado, criar as demais parcelas
+    if (isConvertingToParcelado) {
+      const { is_pro, is_admin } = req.user;
+      if (!is_pro && !is_admin) {
+        const lancamentosCount = await pool.query('SELECT COUNT(*) FROM lancamentos WHERE usuario_id = $1', [req.userId]);
+        if (parseInt(lancamentosCount.rows[0].count) + numParcelasInt - 1 > 10) {
+          return res.status(403).json({ error: 'Limite PRO: A conversão excederia o limite de 10 lançamentos.' });
+        }
+      }
+
+      // Ajustar descrição do primeiro (já atualizado acima)
+      await pool.query('UPDATE lancamentos SET descricao = $1 WHERE id = $2', [`${descricao} (1/${numParcelasInt})`, id]);
+
+      const dataInicial = new Date(data);
+      for (let i = 1; i < numParcelasInt; i++) {
+        const dataParcela = new Date(dataInicial);
+        dataParcela.setMonth(dataParcela.getMonth() + i);
+        const valParcela = (i === numParcelasInt - 1) ? lastInstallmentValue : installmentValue;
+        
+        await pool.query(
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+          [`${descricao} (${i + 1}/${numParcelasInt})`, valParcela, tipo, dataParcela.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, numParcelasInt, i + 1]
+        );
+
+        if (tipo === 'entrada') {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valParcela, conta_id]);
+        } else if (tipo === 'saida') {
+          if (isCartaoNovo || pagoStatus) {
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valParcela, conta_id]);
+          }
         }
       }
     }
 
-    const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarAuditoria(
-      req.userId,
-      user.rows[0]?.nome || 'Usuário',
-      'EDITAR',
-      'lancamentos',
-      id,
-      `Lançamento "${descricao}" atualizado`
-    );
+    const userRes = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+    await registrarAuditoria(req.userId, userRes.rows[0]?.nome || 'Usuário', 'EDITAR', 'lancamentos', id, `Lançamento "${descricao}" atualizado`);
 
     res.json(result.rows[0]);
   } catch (error) {

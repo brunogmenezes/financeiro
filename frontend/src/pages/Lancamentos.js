@@ -57,6 +57,24 @@ function Lancamentos() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingLancamento(null);
+    setFormData({
+      descricao: '',
+      valor: '',
+      tipo: 'saida',
+      data: new Date().toISOString().split('T')[0],
+      conta_id: '',
+      categoria_id: '',
+      subcategoria_id: '',
+      parcelado: false,
+      num_parcelas: 1,
+      pago: false
+    });
+    setSubcategorias([]);
+  };
+
   useEffect(() => {
     loadLancamentos();
     loadContas();
@@ -200,21 +218,7 @@ function Lancamentos() {
       } else {
         await createLancamento(formData);
       }
-      setShowModal(false);
-      setEditingLancamento(null);
-      setFormData({
-        descricao: '',
-        valor: '',
-        tipo: 'saida',
-        data: new Date().toISOString().split('T')[0],
-        conta_id: '',
-        categoria_id: '',
-        subcategoria_id: '',
-        parcelado: false,
-        num_parcelas: 1,
-        pago: false
-      });
-      setSubcategorias([]);
+      handleCloseModal();
       loadLancamentos();
       triggerToast(editingLancamento ? 'Lançamento atualizado!' : 'Lançamento criado!');
     } catch (error) {
@@ -478,6 +482,7 @@ function Lancamentos() {
       {showModal && (
         <div className="modal">
           <div className="modal-content modal-lancamento">
+            <button className="btn-close-modal" onClick={handleCloseModal} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
             <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               {/* Direção do lançamento */}
@@ -510,7 +515,7 @@ function Lancamentos() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>{formData.parcelado ? 'Valor da parcela *' : 'Valor *'}</label>
+                  <label>{formData.parcelado ? 'Valor Total (R$) *' : 'Valor *'}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -594,7 +599,7 @@ function Lancamentos() {
                   <button
                     type="button"
                     className={formData.parcelado ? 'active' : ''}
-                    onClick={() => setFormData({...formData, parcelado: true})}
+                    onClick={() => setFormData({...formData, parcelado: true, num_parcelas: parseInt(formData.num_parcelas) > 1 ? formData.num_parcelas : 2})}
                   >
                     Sim
                   </button>
@@ -608,11 +613,29 @@ function Lancamentos() {
                     type="number"
                     min="2"
                     max="120"
+                    step="1"
                     placeholder="Número de parcelas"
                     value={formData.num_parcelas}
-                    onChange={(e) => setFormData({...formData, num_parcelas: e.target.value})}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      // Remover zeros à esquerda e caracteres não numéricos
+                      val = val.replace(/^0+/, '');
+                      if (val === '' || (!val.includes('.') && !val.includes(','))) {
+                        setFormData({...formData, num_parcelas: val});
+                      }
+                    }}
                     required={formData.parcelado}
                   />
+                  {parseInt(formData.num_parcelas) > 1 && (
+                    <small className="help-text" style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                      O valor total (R$ {formData.valor || '0,00'}) será dividido em {formData.num_parcelas} parcelas de R$ {(Math.floor((parseFloat(formData.valor || 0) / (parseInt(formData.num_parcelas) || 1)) * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+                    </small>
+                  )}
+                  {(!formData.num_parcelas || parseInt(formData.num_parcelas) < 2) && (
+                    <small className="help-text" style={{ display: 'block', marginTop: '5px', color: '#dc2626' }}>
+                      ⚠️ Mínimo de 2 parcelas.
+                    </small>
+                  )}
                 </div>
               )}
 
@@ -654,8 +677,8 @@ function Lancamentos() {
                 </div>
               )}
 
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-cancel">Cancelar</button>
+               <div className="modal-actions">
+                <button type="button" onClick={handleCloseModal} className="btn-cancel">Cancelar</button>
                 <button type="submit" className="btn-save">Salvar Lançamento</button>
               </div>
             </form>

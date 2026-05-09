@@ -16,10 +16,19 @@ const options = {
   sandbox: process.env.EFI_SANDBOX === 'true',
   client_id: process.env.EFI_CLIENT_ID,
   client_secret: process.env.EFI_CLIENT_SECRET,
-  certificate: path.join(__dirname, '../../', process.env.EFI_CERT_PATH)
+  certificate: process.env.EFI_CERT_PATH ? path.join(__dirname, '../../', process.env.EFI_CERT_PATH) : null
 };
 
-const efipay = new EfiPay(options);
+let efipay;
+try {
+  if (options.client_id && options.client_secret && options.certificate) {
+    efipay = new EfiPay(options);
+  } else {
+    console.warn('⚠️ EFI Service: Credenciais ou certificado não configurados no .env');
+  }
+} catch (error) {
+  console.error('❌ Erro ao inicializar EFI Service:', error.message);
+}
 
 const generatePixCharge = async (userId, userEmail, userNome, valor) => {
   try {
@@ -33,6 +42,10 @@ const generatePixCharge = async (userId, userEmail, userNome, valor) => {
       chave: process.env.EFI_PIX_KEY,
       solicitacaoPagador: `Assinatura PRO - Sistema Financeiro (Usuário: ${userNome})`
     };
+
+    if (!efipay) {
+      throw new Error('Serviço EFI não inicializado. Verifique as configurações no .env');
+    }
 
     // Criar cobrança imediata
     const resCharge = await efipay.pixCreateImmediateCharge({}, body);
@@ -56,6 +69,10 @@ const generatePixCharge = async (userId, userEmail, userNome, valor) => {
 
 const checkPixStatus = async (txid) => {
   try {
+    if (!efipay) {
+      throw new Error('Serviço EFI não inicializado. Verifique as configurações no .env');
+    }
+
     const params = { txid: txid };
     const response = await efipay.pixDetailCharge(params);
     console.log(`Resposta bruta Efí (status):`, response.status);

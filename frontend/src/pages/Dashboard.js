@@ -145,6 +145,26 @@ function Dashboard() {
     loadEntradasProjetivas();
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingLancamento(null);
+    setQuickAddType(null);
+    setFormData({
+      descricao: '',
+      valor: '',
+      tipo: 'saida',
+      data: new Date().toISOString().split('T')[0],
+      conta_id: '',
+      conta_destino_id: '',
+      categoria_id: '',
+      subcategoria_id: '',
+      pago: false,
+      parcelado: false,
+      num_parcelas: 1
+    });
+    setSubcategorias([]);
+  };
+
   const loadSubPrice = async () => {
     try {
       const { getPublicSubscriptionConfig } = await import('../services/api');
@@ -420,19 +440,8 @@ function Dashboard() {
         await createLancamento(formData);
       }
       
-      setShowModal(false);
-      setEditingLancamento(null);
+      handleCloseModal();
       triggerToast(editingLancamento ? 'Lançamento atualizado!' : 'Lançamento criado!');
-      setFormData({
-        descricao: '',
-        valor: '',
-        tipo: 'saida',
-        data: new Date().toISOString().split('T')[0],
-        conta_id: '',
-        conta_destino_id: '',
-        categoria_id: '',
-        subcategoria_id: ''
-      });
       loadLancamentos();
       loadDashboard();
       loadContas();
@@ -1783,7 +1792,7 @@ function Dashboard() {
       {showModal && (
         <div className="modal">
           <div className="modal-content modal-lancamento premium-card">
-            <button className="btn-close-modal" onClick={() => { setShowModal(false); setEditingLancamento(null); setQuickAddType(null); }}>✕</button>
+            <button className="btn-close-modal" onClick={handleCloseModal}>✕</button>
             <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               
@@ -1854,7 +1863,7 @@ function Dashboard() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Valor (R$) *</label>
+                  <label>{formData.parcelado ? 'Valor Total (R$) *' : 'Valor (R$) *'}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1912,7 +1921,7 @@ function Dashboard() {
                     <button
                       type="button"
                       className={formData.parcelado ? 'active' : ''}
-                      onClick={() => setFormData({...formData, parcelado: true})}
+                      onClick={() => setFormData({...formData, parcelado: true, num_parcelas: parseInt(formData.num_parcelas) > 1 ? formData.num_parcelas : 2})}
                     >
                       Parcelado
                     </button>
@@ -1927,13 +1936,28 @@ function Dashboard() {
                     type="number"
                     min="2"
                     max="99"
+                    step="1"
                     value={formData.num_parcelas}
-                    onChange={(e) => setFormData({...formData, num_parcelas: parseInt(e.target.value)})}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      // Remover zeros à esquerda e caracteres não numéricos
+                      val = val.replace(/^0+/, '');
+                      if (val === '' || (!val.includes('.') && !val.includes(','))) {
+                        setFormData({...formData, num_parcelas: val});
+                      }
+                    }}
                     required
                   />
-                  <small className="help-text" style={{ display: 'block', marginTop: '5px', color: '#666' }}>
-                    O valor informado (R$ {formData.valor || '0,00'}) será o valor de CADA parcela.
-                  </small>
+                  {parseInt(formData.num_parcelas) > 1 && (
+                    <small className="help-text" style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                      O valor total (R$ {formData.valor || '0,00'}) será dividido em {formData.num_parcelas} parcelas de R$ {(Math.floor((parseFloat(formData.valor || 0) / (parseInt(formData.num_parcelas) || 1)) * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+                    </small>
+                  )}
+                  {(!formData.num_parcelas || parseInt(formData.num_parcelas) < 2) && (
+                    <small className="help-text" style={{ display: 'block', marginTop: '5px', color: '#dc2626' }}>
+                      ⚠️ Mínimo de 2 parcelas.
+                    </small>
+                  )}
                 </div>
               )}
 
@@ -2031,7 +2055,7 @@ function Dashboard() {
               )}
 
               <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={() => { setShowModal(false); setEditingLancamento(null); setQuickAddType(null); }}>Cancelar</button>
+                <button type="button" className="btn-cancel" onClick={handleCloseModal}>Cancelar</button>
                 <button type="submit" className="btn-primary">
                   {editingLancamento ? 'Salvar Alterações' : 'Confirmar Lançamento'}
                 </button>
