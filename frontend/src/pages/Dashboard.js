@@ -1070,7 +1070,21 @@ function Dashboard() {
           pointBackgroundColor: modoGraficoProjetivo ? '#8b5cf6' : '#10b981',
           borderWidth: 3,
           entradas: entradasPorDia,
-          saidas: saidasPorDia
+          saidas: saidasPorDia,
+          order: 1
+        },
+        {
+          label: 'Saídas do Dia',
+          data: saidasPorDia,
+          borderColor: '#ef4444',
+          backgroundColor: 'transparent',
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#ef4444',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          order: 2
         }
       ]
     };
@@ -1081,7 +1095,13 @@ function Dashboard() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false
+        display: true,
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: { size: 11, weight: '600' }
+        }
       },
       tooltip: {
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
