@@ -552,13 +552,26 @@
 }
 
 .legend-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.val-moeda {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.val-percent {
   font-size: 0.85rem;
   font-weight: 800;
   color: var(--text-main);
-  background: white;
+  background: #f1f5f9;
   padding: 2px 8px;
   border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  min-width: 45px;
+  text-align: center;
 }
 
 /* Empty States */

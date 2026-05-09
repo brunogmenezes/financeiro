@@ -924,26 +924,7 @@ function Dashboard() {
         display: false
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.98)',
-        titleColor: '#1e293b',
-        bodyColor: '#1e293b',
-        borderColor: '#e2e8f0',
-        borderWidth: 1,
-        padding: 12,
-        boxPadding: 8,
-        usePointStyle: true,
-        displayColors: true,
-        cornerRadius: 12,
-        caretSize: 6,
-        callbacks: {
-          label: function(context) {
-            const label = context.label || '';
-            const value = context.parsed;
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
-            return ` ${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
-          }
-        }
+        enabled: false
       }
     }
   };
@@ -1347,13 +1328,21 @@ function Dashboard() {
                       </div>
                       
                       <div className="custom-chart-legend">
-                        {processPieChartData().labels.map((label, index) => (
-                          <div key={index} className="legend-item">
-                            <span className="legend-dot" style={{ backgroundColor: processPieChartData().datasets[0].backgroundColor[index] }}></span>
-                            <span className="legend-label">{label}</span>
-                            <span className="legend-value">{((processPieChartData().datasets[0].data[index] / processPieChartData().datasets[0].data.reduce((a, b) => a + b, 0)) * 100).toFixed(0)}%</span>
-                          </div>
-                        ))}
+                        {processPieChartData().labels.map((label, index) => {
+                          const valor = processPieChartData().datasets[0].data[index];
+                          const total = processPieChartData().datasets[0].data.reduce((a, b) => a + b, 0);
+                          const percent = ((valor / total) * 100).toFixed(0);
+                          return (
+                            <div key={index} className="legend-item">
+                              <span className="legend-dot" style={{ backgroundColor: processPieChartData().datasets[0].backgroundColor[index] }}></span>
+                              <span className="legend-label">{label}</span>
+                              <span className="legend-value">
+                                <span className="val-moeda">R$ {formatarMoeda(valor)}</span>
+                                <span className="val-percent">{percent}%</span>
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1372,13 +1361,21 @@ function Dashboard() {
                       </div>
 
                       <div className="custom-chart-legend">
-                        {processPieChartDataPorConta().labels.map((label, index) => (
-                          <div key={index} className="legend-item">
-                            <span className="legend-dot" style={{ backgroundColor: processPieChartDataPorConta().datasets[0].backgroundColor[index] }}></span>
-                            <span className="legend-label">{label}</span>
-                            <span className="legend-value">{((processPieChartDataPorConta().datasets[0].data[index] / processPieChartDataPorConta().datasets[0].data.reduce((a, b) => a + b, 0)) * 100).toFixed(0)}%</span>
-                          </div>
-                        ))}
+                        {processPieChartDataPorConta().labels.map((label, index) => {
+                          const valor = processPieChartDataPorConta().datasets[0].data[index];
+                          const total = processPieChartDataPorConta().datasets[0].data.reduce((a, b) => a + b, 0);
+                          const percent = ((valor / total) * 100).toFixed(0);
+                          return (
+                            <div key={index} className="legend-item">
+                              <span className="legend-dot" style={{ backgroundColor: processPieChartDataPorConta().datasets[0].backgroundColor[index] }}></span>
+                              <span className="legend-label">{label}</span>
+                              <span className="legend-value">
+                                <span className="val-moeda">R$ {formatarMoeda(valor)}</span>
+                                <span className="val-percent">{percent}%</span>
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
