@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../components/Navbar';
 import { 
   adminGetUsers, 
   adminResetPassword, 
@@ -183,7 +182,6 @@ function Manager() {
 
   return (
     <div className="manager-container">
-      <Navbar />
       <div className="manager-content">
         <div className="manager-header-v2">
           <div className="header-text">

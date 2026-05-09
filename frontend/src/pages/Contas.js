@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getContas, createConta, updateConta, deleteConta, generatePixSubscription, checkSubscriptionStatus } from '../services/api';
-import Navbar from '../components/Navbar';
 import './Contas.css';
 
 function Contas() {
@@ -163,7 +162,6 @@ function Contas() {
 
   return (
     <div className="page-container">
-      <Navbar />
 
       <div className="content">
         <div className="header">

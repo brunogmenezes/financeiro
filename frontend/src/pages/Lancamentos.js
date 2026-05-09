@@ -12,7 +12,6 @@ import {
   generatePixSubscription,
   checkSubscriptionStatus
 } from '../services/api';
-import Navbar from '../components/Navbar';
 import { useRef } from 'react';
 import './Lancamentos.css';
 
@@ -309,7 +308,6 @@ function Lancamentos() {
 
   return (
     <div className="page-container">
-      <Navbar />
 
       <div className="content">
         <div className="header">
@@ -370,120 +368,173 @@ function Lancamentos() {
           )}
         </div>
 
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Descrição</th>
-                <th>Conta</th>
-                <th>Tipo</th>
-                <th>Pago</th>
-                <th>Valor</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                let filtrados = lancamentos;
+        <div className="lancamentos-main-area">
+          {(() => {
+            let filtrados = lancamentos;
 
-                if (filterMes !== 'TODOS') {
-                  filtrados = filtrados.filter(l => {
-                    const data = new Date(l.data);
-                    const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-                    return mesLancamento === filterMes;
-                  });
-                }
+            if (filterMes !== 'TODOS') {
+              filtrados = filtrados.filter(l => {
+                const data = new Date(l.data);
+                const mesLancamento = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+                return mesLancamento === filterMes;
+              });
+            }
 
-                if (filterTipo !== 'TODOS') {
-                  filtrados = filtrados.filter(l => l.tipo === filterTipo);
-                }
+            if (filterTipo !== 'TODOS') {
+              filtrados = filtrados.filter(l => l.tipo === filterTipo);
+            }
 
-                if (filterCategoria !== 'TODAS') {
-                  filtrados = filtrados.filter(l => String(l.categoria_id) === String(filterCategoria));
-                }
+            if (filterCategoria !== 'TODAS') {
+              filtrados = filtrados.filter(l => String(l.categoria_id) === String(filterCategoria));
+            }
 
-                if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
-                  filtrados = filtrados.filter(l => String(l.subcategoria_id) === String(filterSubcategoria));
-                }
+            if (filterSubcategoria !== 'TODAS' && filterCategoria !== 'TODAS') {
+              filtrados = filtrados.filter(l => String(l.subcategoria_id) === String(filterSubcategoria));
+            }
 
-                return filtrados.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{textAlign: 'center'}}>Nenhum lançamento encontrado</td>
-                  </tr>
-                ) : (
-                  filtrados.map(lancamento => (
-                  <tr key={lancamento.id}>
-                    <td data-label="Data">{new Date(lancamento.data).toLocaleDateString('pt-BR')}</td>
-                    <td data-label="Descrição">
-                      <div>
-                        <div>{lancamento.descricao}</div>
-                        {lancamento.categoria_nome && (
-                          <div className="categoria-badges-inline">
-                            <span 
-                              className="categoria-badge-small"
-                              style={{ backgroundColor: lancamento.categoria_cor || '#7c3aed' }}
-                              title={lancamento.categoria_nome}
-                            >
-                              {lancamento.categoria_nome}
+            // Agrupar por data
+            const agrupadoPorData = {};
+            filtrados.forEach(lancamento => {
+              const data = new Date(lancamento.data).toLocaleDateString('pt-BR');
+              if (!agrupadoPorData[data]) {
+                agrupadoPorData[data] = [];
+              }
+              agrupadoPorData[data].push(lancamento);
+            });
+
+            // Ordenar datas decrescente
+            const datasOrdenadas = Object.keys(agrupadoPorData).sort((a, b) => {
+              const [diaA, mesA, anoA] = a.split('/');
+              const [diaB, mesB, anoB] = b.split('/');
+              return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA);
+            });
+
+            return datasOrdenadas.length > 0 ? (
+              <div className="lancamentos-by-date">
+                <div className="lancamentos-list-header">
+                  <div className="header-col">Tipo</div>
+                  <div className="header-col">Descrição</div>
+                  <div className="header-col">Conta</div>
+                  <div className="header-col">Valor</div>
+                  <div className="header-col">Status</div>
+                  <div className="header-col">Ações</div>
+                </div>
+                
+                <div className="lancamentos-list-content">
+                  {datasOrdenadas.map(data => {
+                    const lancamentosDoDay = agrupadoPorData[data];
+                    const totalEntrada = lancamentosDoDay
+                      .filter(l => l.tipo === 'entrada')
+                      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+                    const totalSaida = lancamentosDoDay
+                      .filter(l => l.tipo === 'saida')
+                      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+                    const saldoDia = totalEntrada - totalSaida;
+
+                    return (
+                      <div key={data} className="day-group">
+                        <div className="day-header">
+                          <div className="day-info">
+                            <span className="day-date">{data}</span>
+                            <span className={`day-balance ${saldoDia >= 0 ? 'positivo' : 'negativo'}`}>
+                              Saldo: R$ {formatarMoeda(Math.abs(saldoDia))}
                             </span>
-                            {lancamento.subcategoria_nome && (
-                              <span 
-                                className="subcategoria-badge-small"
-                                style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
-                                title={lancamento.subcategoria_nome}
-                              >
-                                {lancamento.subcategoria_nome}
-                              </span>
-                            )}
                           </div>
-                        )}
+                          <div className="day-totals">
+                            <span className="entrada">↑ Entrada: R$ {formatarMoeda(totalEntrada)}</span>
+                            <span className="saida">↓ Saída: R$ {formatarMoeda(totalSaida)}</span>
+                          </div>
+                        </div>
+                        <div className="day-items">
+                          {lancamentosDoDay.map(lancamento => (
+                            <div key={lancamento.id} className={`lancamento-item ${lancamento.tipo}`}>
+                              <div className="item-tipo">
+                                <span className={`badge ${lancamento.tipo}`}>
+                                  {lancamento.tipo === 'entrada' ? '↑ Entrada' : 
+                                   lancamento.tipo === 'saida' ? '↓ Saída' : 
+                                   lancamento.tipo === 'transferencia' ? '⇄ Transfer' : 
+                                   lancamento.tipo === 'pagamento_fatura' ? '💳 Pagar Fatura' : '⊝ Neutro'}
+                                </span>
+                              </div>
+                              <div className="item-descricao">
+                                <div className="descricao-text">
+                                  {lancamento.descricao}
+                                  {(lancamento.tipo === 'transferencia' || lancamento.tipo === 'pagamento_fatura') && (
+                                    <span className="transfer-info-small">
+                                      ({lancamento.conta_nome} → {contas.find(c => Number(c.id) === Number(lancamento.conta_destino_id))?.nome || 'Conta Destino'})
+                                    </span>
+                                  )}
+                                </div>
+                                {lancamento.categoria_nome && (
+                                  <div className="categoria-badges-inline">
+                                    <span 
+                                      className="categoria-badge-small"
+                                      style={{ backgroundColor: lancamento.categoria_cor || '#7c3aed' }}
+                                    >
+                                      {lancamento.categoria_nome}
+                                    </span>
+                                    {lancamento.subcategoria_nome && (
+                                      <span 
+                                        className="subcategoria-badge-small"
+                                        style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
+                                      >
+                                        {lancamento.subcategoria_nome}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="item-conta">
+                                <span>{lancamento.conta_nome || '-'}</span>
+                              </div>
+                              <div className={`item-valor ${lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
+                                R$ {formatarMoeda(Number(lancamento.valor) || 0)}
+                              </div>
+                              <div className="item-pago">
+                                {lancamento.tipo === 'saida' && lancamento.conta_tipo !== 'Cartão de Crédito' && (
+                                  <button 
+                                    className={`btn-toggle-pago-item ${lancamento.pago ? 'pago' : 'pendente'}`}
+                                    onClick={() => handleTogglePago(lancamento)}
+                                  >
+                                    <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
+                                      {lancamento.pago ? '✓ Pago' : '○ Não pago'}
+                                    </span>
+                                  </button>
+                                )}
+                                {lancamento.conta_tipo === 'Cartão de Crédito' && (
+                                  <span className="badge-pago card-cc-badge">
+                                    💳 Cartão
+                                  </span>
+                                )}
+                              </div>
+                              <div className="item-actions">
+                                <button className="btn-action-edit" onClick={() => handleEdit(lancamento)} title="Editar">✏️</button>
+                                <button className="btn-action-delete" onClick={() => handleDelete(lancamento.id)} title="Excluir">🗑️</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </td>
-                    <td data-label="Conta">{lancamento.conta_nome || '-'}</td>
-                    <td data-label="Tipo">
-                      <span className={`badge ${lancamento.tipo}`}>
-                        {lancamento.tipo === 'entrada' ? '↑ Entrada' : lancamento.tipo === 'saida' ? '↓ Saída' : '⊝ Neutro'}
-                      </span>
-                    </td>
-                    <td data-label="Pago">
-                      {lancamento.tipo === 'saida' ? (
-                        <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
-                          {lancamento.pago ? 'Pago' : 'Não pago'}
-                        </span>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td data-label="Valor" className={lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}>
-                      R$ {formatarMoeda(lancamento.valor)}
-                    </td>
-                    <td data-label="Ações">
-                      {lancamento.tipo === 'saida' && (
-                        <button 
-                          className="btn-toggle-pago"
-                          onClick={() => handleTogglePago(lancamento)}
-                        >
-                          {lancamento.pago ? 'Marcar não pago' : 'Marcar pago'}
-                        </button>
-                      )}
-                      <button className="btn-edit" onClick={() => handleEdit(lancamento)}>Editar</button>
-                      <button className="btn-delete" onClick={() => handleDelete(lancamento.id)}>Excluir</button>
-                    </td>
-                  </tr>
-                  ))
-                );
-              })()}
-            </tbody>
-          </table>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="empty-state-card" style={{ marginTop: '20px' }}>
+                <div className="empty-state-icon">🔍</div>
+                <p>Nenhum lançamento encontrado com os filtros aplicados.</p>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
       {showModal && (
         <div className="modal">
           <div className="modal-content modal-lancamento">
-            <button className="btn-close-modal" onClick={handleCloseModal} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
-            <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
+            <button className="btn-close-modal" onClick={handleCloseModal}>✕</button>
+            <div className="modal-body">
+              <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               {/* Direção do lançamento */}
               <div className="form-group">
@@ -682,6 +733,7 @@ function Lancamentos() {
                 <button type="submit" className="btn-save">Salvar Lançamento</button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
@@ -690,12 +742,15 @@ function Lancamentos() {
       {showDeleteModal && (
         <div className="modal">
           <div className="modal-content delete-modal">
-            <div className="modal-icon warning">⚠️</div>
-            <h3>Excluir Lançamento?</h3>
-            <p>Deseja realmente excluir este lançamento permanentemente?</p>
+            <button className="btn-close-modal" onClick={() => setShowDeleteModal(false)}>✕</button>
+            <div className="modal-body">
+              <div className="modal-icon warning">⚠️</div>
+              <h3>Excluir Lançamento?</h3>
+              <p>Deseja realmente excluir este lançamento permanentemente?</p>
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
               <button className="btn-delete-confirm" onClick={confirmDelete}>Sim, Excluir</button>
+            </div>
             </div>
           </div>
         </div>
@@ -716,11 +771,11 @@ function Lancamentos() {
         <div className="modal">
           <div className="modal-content premium-card pro-limit-modal checkout-modal">
             <button className="btn-close-modal" onClick={() => setShowProLimitModal(false)}>✕</button>
-            
-            {!pixData ? (
-              <>
-                <div className="modal-icon diamond">💎</div>
-                <h3>Limite Atingido</h3>
+            <div className="modal-body">
+              {!pixData ? (
+                <>
+                  <div className="modal-icon diamond">💎</div>
+                  <h3>Limite Atingido</h3>
                 <div className="pro-limit-content">
                   <p>{proLimitMessage || 'Acesse recursos ilimitados e impulsione sua gestão financeira.'}</p>
                   <div className="pro-benefit-box">
@@ -781,6 +836,7 @@ function Lancamentos() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSubscriptionHistory } from '../services/api';
-import Navbar from '../components/Navbar';
 import './Assinatura.css';
 
 function Assinatura() {
@@ -68,7 +67,6 @@ function Assinatura() {
   if (loading) {
     return (
       <div className="page-container">
-        <Navbar />
         <div className="loading-container">
           <div className="spinner"></div>
           <p>Carregando informações da assinatura...</p>
@@ -81,7 +79,6 @@ function Assinatura() {
 
   return (
     <div className="page-container">
-      <Navbar />
 
       <div className="content subscription-page">
         <div className="header-subscription">

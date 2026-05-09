@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAuditoria } from '../services/api';
-import Navbar from '../components/Navbar';
 import './Auditoria.css';
 
 function Auditoria() {
@@ -75,7 +74,6 @@ function Auditoria() {
 
   return (
     <div className="page-container">
-      <Navbar />
 
       <div className="content">
         <div className="header">

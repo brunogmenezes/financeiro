@@ -12,7 +12,6 @@ import {
   saveLimiteCategoria,
   saveLimiteSubcategoria
 } from '../services/api';
-import Navbar from '../components/Navbar';
 import './Categorias.css';
 
 function Categorias() {
@@ -217,7 +216,6 @@ function Categorias() {
 
   return (
     <div className="page-container">
-      <Navbar />
 
       <div className="content">
         <div className="categorias-layout">

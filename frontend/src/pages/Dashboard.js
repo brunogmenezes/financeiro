@@ -14,7 +14,6 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
-import Navbar from '../components/Navbar';
 import WelcomeWizard from '../components/WelcomeWizard';
 import { 
   getDashboard, 
@@ -703,8 +702,8 @@ function Dashboard() {
     if (filterTipo !== 'TODOS') {
       filtrados = filtrados.filter(l => l.tipo === filterTipo);
     } else {
-      // Excluir transferências e neutros por padrão (são neutros)
-      filtrados = filtrados.filter(l => l.tipo !== 'transferencia' && l.tipo !== 'neutro');
+      // Excluir transferências, neutros e pagamentos de fatura por padrão (são neutros no balanço de categorias)
+      filtrados = filtrados.filter(l => l.tipo !== 'transferencia' && l.tipo !== 'neutro' && l.tipo !== 'pagamento_fatura');
     }
 
     // Aplicar filtro de categoria
@@ -1125,7 +1124,6 @@ function Dashboard() {
 
   return (
     <div className="dashboard-container">
-      <Navbar />
 
       <div className="dashboard-content">
         <div className="dashboard-welcome">
@@ -1668,7 +1666,16 @@ function Dashboard() {
 
             return datasOrdenadas.length > 0 ? (
               <div className="lancamentos-by-date">
-                {datasOrdenadas.map(data => {
+                <div className="lancamentos-list-header">
+                  <div className="header-col">Tipo</div>
+                  <div className="header-col">Descrição</div>
+                  <div className="header-col">Conta</div>
+                  <div className="header-col">Valor</div>
+                  <div className="header-col">Status</div>
+                  <div className="header-col">Ações</div>
+                </div>
+                <div className="lancamentos-scroll-area">
+                  {datasOrdenadas.map(data => {
                   const lancamentosDoDay = agrupadoPorData[data];
                   const totalEntrada = lancamentosDoDay
                     .filter(l => l.tipo === 'entrada')
@@ -1766,7 +1773,8 @@ function Dashboard() {
                       </div>
                     </div>
                   );
-                })}
+                  })}
+                </div>
               </div>
             ) : (
               <div className="empty-state-card" style={{ marginTop: '20px' }}>
@@ -1793,7 +1801,8 @@ function Dashboard() {
         <div className="modal">
           <div className="modal-content modal-lancamento premium-card">
             <button className="btn-close-modal" onClick={handleCloseModal}>✕</button>
-            <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
+            <div className="modal-body">
+              <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               
               <div className="form-group">
@@ -2061,17 +2070,20 @@ function Dashboard() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
       {showModalProjetivas && (
         <div className="modal">
           <div className="modal-content modal-projetivas premium-card" style={{ maxWidth: '750px', width: '95%' }}>
-            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div className="header-info">
-                <h3 style={{ margin: 0 }}>Gerenciar Entradas Projetivas</h3>
-                <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>Apenas o dia será considerado.</p>
-              </div>
+            <button className="btn-close-modal" onClick={() => setShowModalProjetivas(false)}>✕</button>
+            <div className="modal-body">
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div className="header-info">
+                  <h3 style={{ margin: 0 }}>Gerenciar Entradas Projetivas</h3>
+                  <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>Apenas o dia será considerado.</p>
+                </div>
               <div className="total-badge-projetivas" style={{ background: '#f5f3ff', padding: '10px 20px', borderRadius: '12px', textAlign: 'right' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase' }}>Total Projetado:</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#5b21b6' }}>R$ {totalProjetivas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
@@ -2107,8 +2119,8 @@ function Dashboard() {
             <div className="projetivas-novas" style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h4 style={{ margin: 0 }}>Adicionar Novas Projeções</h4>
-                <button type="button" className="btn-secondary" onClick={handleAddProjetivaRow} style={{ padding: '5px 12px', fontSize: '0.8rem', fontWeight: 700 }}>
-                  + Linha
+                <button type="button" className="btn-add-line" onClick={handleAddProjetivaRow}>
+                  <span>+</span> Adicionar Linha
                 </button>
               </div>
 
@@ -2132,6 +2144,7 @@ function Dashboard() {
                 Salvar Projeções
               </button>
             </div>
+            </div>
           </div>
         </div>
       )}
@@ -2139,8 +2152,10 @@ function Dashboard() {
       {showPagoModal && pagoItem && (
         <div className="modal">
           <div className="modal-content payment-modal premium-card">
-            <div className="modal-icon info">💳</div>
-            <h3>Confirmar Status?</h3>
+            <button className="btn-close-modal" onClick={() => setShowPagoModal(false)}>✕</button>
+            <div className="modal-body">
+              <div className="modal-icon info">💳</div>
+              <h3>Confirmar Status?</h3>
             <p className="payment-warning">
               Deseja alterar o status para <strong>{!pagoItem.pago ? 'PAGO' : 'PENDENTE'}</strong>?
             </p>
@@ -2168,6 +2183,7 @@ function Dashboard() {
               >
                 {!pagoItem.pago ? 'Sim, Marcar como Pago' : 'Sim, Marcar como Pendente'}
               </button>
+            </div>
             </div>
           </div>
         </div>

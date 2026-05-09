@@ -9,6 +9,8 @@ import Categorias from './pages/Categorias';
 import Manager from './pages/Manager';
 import Assinatura from './pages/Assinatura';
 
+import Layout from './components/Layout';
+
 function App() {
   const isAuthenticated = () => {
     return localStorage.getItem('token') !== null;
@@ -35,42 +37,46 @@ function App() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={
-          <UserRoute>
-            <Dashboard />
-          </UserRoute>
-        } />
-        <Route path="/contas" element={
-          <UserRoute>
-            <Contas />
-          </UserRoute>
-        } />
-        <Route path="/lancamentos" element={
-          <UserRoute>
-            <Lancamentos />
-          </UserRoute>
-        } />
-        <Route path="/auditoria" element={
-          <PrivateRoute>
-            <Auditoria />
-          </PrivateRoute>
-        } />
+        
+        {/* Rotas com Sidebar */}
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={
+            <UserRoute>
+              <Dashboard />
+            </UserRoute>
+          } />
+          <Route path="/contas" element={
+            <UserRoute>
+              <Contas />
+            </UserRoute>
+          } />
+          <Route path="/lancamentos" element={
+            <UserRoute>
+              <Lancamentos />
+            </UserRoute>
+          } />
+          <Route path="/auditoria" element={
+            <PrivateRoute>
+              <Auditoria />
+            </PrivateRoute>
+          } />
 
-        <Route path="/categorias" element={
-          <PrivateRoute>
-            <Categorias />
-          </PrivateRoute>
-        } />
-        <Route path="/manager" element={
-          <AdminRoute>
-            <Manager />
-          </AdminRoute>
-        } />
-        <Route path="/assinatura" element={
-          <UserRoute>
-            <Assinatura />
-          </UserRoute>
-        } />
+          <Route path="/categorias" element={
+            <PrivateRoute>
+              <Categorias />
+            </PrivateRoute>
+          } />
+          <Route path="/manager" element={
+            <AdminRoute>
+              <Manager />
+            </AdminRoute>
+          } />
+          <Route path="/assinatura" element={
+            <UserRoute>
+              <Assinatura />
+            </UserRoute>
+          } />
+        </Route>
       </Routes>
     </Router>
   );
