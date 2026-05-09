@@ -205,8 +205,12 @@ function Contas() {
                     </td>
                     <td className="actions-column">
                       <div className="actions-cell">
-                        <button className="btn-edit" onClick={() => handleEdit(conta)}>Editar</button>
-                        <button className="btn-delete" onClick={() => handleDelete(conta)}>Excluir</button>
+                        <button className="btn-edit" onClick={() => handleEdit(conta)} title="Editar Conta">
+                          ✏️
+                        </button>
+                        <button className="btn-delete" onClick={() => handleDelete(conta)} title="Excluir Conta">
+                          🗑️
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -220,86 +224,89 @@ function Contas() {
       {showModal && (
         <div className="modal">
           <div className="modal-content">
-            <h3>{editingConta ? 'Editar Conta' : 'Nova Conta'}</h3>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Nome *</label>
-                <input
-                  type="text"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                  required
-                />
-              </div>
+            <button className="btn-close-modal" onClick={() => setShowModal(false)}>✕</button>
+            <div className="modal-body">
+              <h3>{editingConta ? 'Editar Conta' : 'Nova Conta'}</h3>
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label>Nome *</label>
+                  <input
+                    type="text"
+                    value={formData.nome}
+                    onChange={(e) => setFormData({...formData, nome: e.target.value})}
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Tipo *</label>
-                <select
-                  value={formData.tipo}
-                  onChange={(e) => setFormData({...formData, tipo: e.target.value})}
-                  required
-                >
-                  <option value="Conta Corrente">Conta Corrente</option>
-                  <option value="Conta Poupança">Conta Poupança</option>
-                  <option value="Conta Investimento">Conta Investimento</option>
-                  <option value="Cartão de Crédito">Cartão de Crédito</option>
-                  <option value="Dinheiro">Dinheiro</option>
-                </select>
-              </div>
+                <div className="form-group">
+                  <label>Tipo *</label>
+                  <select
+                    value={formData.tipo}
+                    onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                    required
+                  >
+                    <option value="Conta Corrente">Conta Corrente</option>
+                    <option value="Conta Poupança">Conta Poupança</option>
+                    <option value="Conta Investimento">Conta Investimento</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                  </select>
+                </div>
 
-              <div className="form-group">
-                <label>Descrição</label>
-                <textarea
-                  value={formData.descricao}
-                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                  rows="3"
-                />
-              </div>
+                <div className="form-group">
+                  <label>Descrição</label>
+                  <textarea
+                    value={formData.descricao}
+                    onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                    rows="3"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>{formData.tipo === 'Cartão de Crédito' ? 'Fatura Atual' : 'Saldo Inicial'} {editingConta && '(não editável)'}</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.saldo_inicial}
-                  onChange={(e) => setFormData({...formData, saldo_inicial: e.target.value})}
-                  disabled={!!editingConta}
-                  style={editingConta ? {backgroundColor: '#f0f0f0', cursor: 'not-allowed'} : {}}
-                />
-              </div>
+                <div className="form-group">
+                  <label>{formData.tipo === 'Cartão de Crédito' ? 'Fatura Atual' : 'Saldo Inicial'} {editingConta && '(não editável)'}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.saldo_inicial}
+                    onChange={(e) => setFormData({...formData, saldo_inicial: e.target.value})}
+                    disabled={!!editingConta}
+                    style={editingConta ? {backgroundColor: '#f0f0f0', cursor: 'not-allowed'} : {}}
+                  />
+                </div>
 
-              {formData.tipo === 'Cartão de Crédito' && (
-                <>
-                  <div className="form-group">
-                    <label>Limite Total *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.limite_total}
-                      onChange={(e) => setFormData({...formData, limite_total: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Dia do Vencimento *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      placeholder="Ex: 10"
-                      value={formData.dia_vencimento}
-                      onChange={(e) => setFormData({...formData, dia_vencimento: e.target.value})}
-                      required
-                    />
-                  </div>
-                </>
-              )}
+                {formData.tipo === 'Cartão de Crédito' && (
+                  <>
+                    <div className="form-group">
+                      <label>Limite Total *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.limite_total}
+                        onChange={(e) => setFormData({...formData, limite_total: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Dia do Vencimento *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        placeholder="Ex: 10"
+                        value={formData.dia_vencimento}
+                        onChange={(e) => setFormData({...formData, dia_vencimento: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </>
+                )}
 
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-cancel">Cancelar</button>
-                <button type="submit" className="btn-save">Salvar Conta</button>
-              </div>
-            </form>
+                <div className="modal-actions">
+                  <button type="button" onClick={() => setShowModal(false)} className="btn-cancel">Cancelar</button>
+                  <button type="submit" className="btn-save">Salvar Conta</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
