@@ -485,7 +485,10 @@ function Lancamentos() {
                                 )}
                               </div>
                               <div className="item-conta">
-                                <span>{lancamento.conta_nome || '-'}</span>
+                                <div className="conta-pill">
+                                  <span className="conta-icon">🏦</span>
+                                  <span className="conta-nome">{lancamento.conta_nome || '-'}</span>
+                                </div>
                               </div>
                               <div className={`item-valor ${lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
                                 R$ {formatarMoeda(Number(lancamento.valor) || 0)}
