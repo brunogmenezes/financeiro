@@ -121,12 +121,6 @@ function Categorias() {
   const handleSaveLimit = async (e) => {
     e.preventDefault();
     
-    const valorNum = parseFloat(limitValue);
-    if (valorNum >= mediaGasto) {
-      triggerToast('O limite deve ser sempre abaixo da média de gastos!', 'error');
-      return;
-    }
-
     try {
       if (targetForLimit.type === 'cat') {
         await saveLimiteCategoria(targetForLimit.item.id, limitValue);
@@ -473,9 +467,39 @@ function Categorias() {
                   R$ {Number(mediaGasto).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                 </strong>
               </div>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '5px' }}>
-                * Seu limite deve ser definido <strong>abaixo</strong> deste valor.
-              </p>
+              
+              {limitValue && mediaGasto > 0 && (
+                <div style={{ marginTop: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '5px' }}>
+                    <span style={{ color: '#64748b' }}>Comparação com a média:</span>
+                    <span style={{ 
+                      fontWeight: 'bold', 
+                      color: (limitValue / mediaGasto) > 1 ? '#ef4444' : (limitValue / mediaGasto) > 0.8 ? '#f59e0b' : '#10b981' 
+                    }}>
+                      {((limitValue / mediaGasto) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div style={{ 
+                    width: '100%', 
+                    height: '8px', 
+                    background: '#e2e8f0', 
+                    borderRadius: '4px', 
+                    overflow: 'hidden' 
+                  }}>
+                    <div style={{ 
+                      width: `${Math.min((limitValue / mediaGasto) * 100, 100)}%`, 
+                      height: '100%', 
+                      background: (limitValue / mediaGasto) > 1 ? '#ef4444' : (limitValue / mediaGasto) > 0.8 ? '#f59e0b' : '#10b981',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  {(limitValue / mediaGasto) > 1 && (
+                    <p style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '5px', fontWeight: '500' }}>
+                      ⚠️ Este limite ultrapassa sua média em {(((limitValue / mediaGasto) - 1) * 100).toFixed(1)}%.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleSaveLimit}>
@@ -485,7 +509,6 @@ function Categorias() {
                   type="number" 
                   step="0.01" 
                   min="0"
-                  max={mediaGasto > 0 ? mediaGasto - 0.01 : 0}
                   value={limitValue} 
                   onChange={(e) => setLimitValue(e.target.value)} 
                   placeholder="Ex: 500.00"
