@@ -10,7 +10,9 @@ import {
   updateSubcategoria,
   deleteSubcategoria,
   saveLimiteCategoria,
-  saveLimiteSubcategoria
+  saveLimiteSubcategoria,
+  getMediaGastoCategoria,
+  getMediaGastoSubcategoria
 } from '../services/api';
 import './Categorias.css';
 
@@ -42,6 +44,7 @@ function Categorias() {
     cor: '#7c3aed'
   });
   const [limitValue, setLimitValue] = useState('');
+  const [mediaGasto, setMediaGasto] = useState(0);
 
   const navigate = useNavigate();
 
@@ -117,6 +120,13 @@ function Categorias() {
 
   const handleSaveLimit = async (e) => {
     e.preventDefault();
+    
+    const valorNum = parseFloat(limitValue);
+    if (valorNum >= mediaGasto) {
+      triggerToast('O limite deve ser sempre abaixo da média de gastos!', 'error');
+      return;
+    }
+
     try {
       if (targetForLimit.type === 'cat') {
         await saveLimiteCategoria(targetForLimit.item.id, limitValue);
@@ -191,9 +201,20 @@ function Categorias() {
     setShowSubModal(true);
   };
 
-  const handleOpenLimitModal = (type, item) => {
+  const handleOpenLimitModal = async (type, item) => {
     setTargetForLimit({ type, item });
     setLimitValue(item.meta_mensal || '');
+    
+    try {
+      const response = type === 'cat' 
+        ? await getMediaGastoCategoria(item.id)
+        : await getMediaGastoSubcategoria(item.id);
+      setMediaGasto(response.data.media || 0);
+    } catch (error) {
+      console.error('Erro ao buscar média:', error);
+      setMediaGasto(0);
+    }
+
     setShowLimitModal(true);
   };
 
@@ -445,6 +466,18 @@ function Categorias() {
             <h3>Definir Limite Mensal</h3>
             <p>Defina seu limite de gastos para: <strong>{targetForLimit.item.nome}</strong></p>
             
+            <div className="info-box-average" style={{ background: '#f1f5f9', padding: '15px', borderRadius: '12px', marginTop: '15px', borderLeft: '4px solid #7c3aed' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Média já gasta no período:</span>
+                <strong style={{ color: '#1e293b', fontSize: '1.1rem' }}>
+                  R$ {Number(mediaGasto).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                </strong>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '5px' }}>
+                * Seu limite deve ser definido <strong>abaixo</strong> deste valor.
+              </p>
+            </div>
+
             <form onSubmit={handleSaveLimit}>
               <div className="form-group" style={{ marginTop: '20px' }}>
                 <label>Valor do Limite (R$)</label>
@@ -452,9 +485,11 @@ function Categorias() {
                   type="number" 
                   step="0.01" 
                   min="0"
+                  max={mediaGasto > 0 ? mediaGasto - 0.01 : 0}
                   value={limitValue} 
                   onChange={(e) => setLimitValue(e.target.value)} 
                   placeholder="Ex: 500.00"
+                  required
                   autoFocus
                 />
                 <small style={{ color: '#64748b', marginTop: '8px', display: 'block' }}>

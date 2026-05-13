@@ -258,3 +258,50 @@ exports.saveLimiteSubcategoria = async (req, res) => {
     res.status(500).json({ error: 'Erro ao salvar limite' });
   }
 };
+
+// Buscar média de gastos de todo o período por categoria
+exports.getMediaGasto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuarioId = req.userId;
+
+    const result = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM')) = 0 THEN 0
+          ELSE SUM(valor) / COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM'))
+        END as media
+      FROM lancamentos
+      WHERE categoria_id = $1 AND usuario_id = $2 AND tipo = 'saida'
+    `, [id, usuarioId]);
+
+    res.json({ media: parseFloat(result.rows[0].media || 0) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao calcular média de gastos' });
+  }
+};
+
+// Buscar média de gastos de todo o período por subcategoria
+exports.getMediaGastoSubcategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuarioId = req.userId;
+
+    const result = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM')) = 0 THEN 0
+          ELSE SUM(valor) / COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM'))
+        END as media
+      FROM lancamentos
+      WHERE subcategoria_id = $1 AND usuario_id = $2 AND tipo = 'saida'
+    `, [id, usuarioId]);
+
+    res.json({ media: parseFloat(result.rows[0].media || 0) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao calcular média de gastos' });
+  }
+};
+

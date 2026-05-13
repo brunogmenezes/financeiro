@@ -13,6 +13,8 @@ router.delete('/:id', auth, adminAuth, categoriasController.delete);
 // Rotas de Limites (Uso pessoal)
 router.post('/:id/limite', auth, categoriasController.saveLimiteCategoria);
 router.post('/subcategorias/:id/limite', auth, categoriasController.saveLimiteSubcategoria);
+router.get('/:id/media', auth, categoriasController.getMediaGasto);
+router.get('/subcategorias/:id/media', auth, categoriasController.getMediaGastoSubcategoria);
 
 // Rotas de subcategorias
 router.get('/:categoriaId/subcategorias', auth, categoriasController.getSubcategorias);

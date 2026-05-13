@@ -53,6 +53,8 @@ export const updateSubcategoria = (id, data) => api.put(`/categorias/subcategori
 export const deleteSubcategoria = (id) => api.delete(`/categorias/subcategorias/${id}`);
 export const saveLimiteCategoria = (id, valor_limite) => api.post(`/categorias/${id}/limite`, { valor_limite });
 export const saveLimiteSubcategoria = (id, valor_limite) => api.post(`/categorias/subcategorias/${id}/limite`, { valor_limite });
+export const getMediaGastoCategoria = (id) => api.get(`/categorias/${id}/media`);
+export const getMediaGastoSubcategoria = (id) => api.get(`/categorias/subcategorias/${id}/media`);
 
 // WhatsApp / Evolution
 export const getWhatsappStatus = () => api.get('/whatsapp/status');
