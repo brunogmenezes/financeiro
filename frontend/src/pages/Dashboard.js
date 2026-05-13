@@ -642,16 +642,40 @@ function Dashboard() {
       filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
     }
 
+    // Aplicar filtro de conta
+    if (filterConta !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.conta_id == filterConta || l.conta_destino_id == filterConta);
+    }
+
+    // Aplicar filtro de atraso
+    if (filterAtraso) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      filtrados = filtrados.filter(l => {
+        if (l.tipo !== 'saida' || l.pago) return false;
+        const dataLancamento = new Date(l.data);
+        return dataLancamento < hoje;
+      });
+    }
+
     // Calcular totais
     const totalEntradas = filtrados
       .filter(l => l.tipo === 'entrada')
       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
 
-    const totalSaidas = filtrados
-      .filter(l => l.tipo === 'saida')
+    const saidas = filtrados.filter(l => l.tipo === 'saida');
+    
+    const totalSaidas = saidas.reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+    const totalSaidasPagos = saidas
+      .filter(l => l.pago)
       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
 
-    return { totalEntradas, totalSaidas };
+    const totalSaidasPendentes = saidas
+      .filter(l => !l.pago)
+      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+    return { totalEntradas, totalSaidas, totalSaidasPagos, totalSaidasPendentes };
   };
 
   const calcularEmAtraso = () => {
@@ -1393,6 +1417,20 @@ function Dashboard() {
                         <div className="card-value">
                           {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
                         </div>
+                        {mostrarValores && (
+                          <div className="card-sub-values">
+                            <div className="sub-value-item pagos" title="Total já pago">
+                              <span className="dot"></span>
+                              <span className="label">Pagos:</span>
+                              <span className="value">R$ {formatarMoeda(calcularTotaisFiltrados().totalSaidasPagos)}</span>
+                            </div>
+                            <div className="sub-value-item pendentes" title="Total pendente de pagamento">
+                              <span className="dot"></span>
+                              <span className="label">Pendentes:</span>
+                              <span className="value">R$ {formatarMoeda(calcularTotaisFiltrados().totalSaidasPendentes)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="total-card total-atraso">
                         <div className="card-label">⚠️ Em Atraso</div>
