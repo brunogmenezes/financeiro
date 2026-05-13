@@ -105,9 +105,19 @@ function Dashboard() {
     parcelado: false,
     num_parcelas: 1
   });
+  const [selectedContaInfo, setSelectedContaInfo] = useState(null);
   const [quickAddType, setQuickAddType] = useState(null); // 'entrada' ou 'saida'
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    if (formData.conta_id) {
+      const conta = contas.find(c => String(c.id) === String(formData.conta_id));
+      setSelectedContaInfo(conta || null);
+    } else {
+      setSelectedContaInfo(null);
+    }
+  }, [formData.conta_id, contas]);
 
   const triggerToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -2022,6 +2032,11 @@ function Dashboard() {
                     onChange={(e) => setFormData({...formData, data: e.target.value})}
                     required
                   />
+                  {formData.tipo === 'saida' && selectedContaInfo?.tipo === 'Cartão de Crédito' && selectedContaInfo?.dia_vencimento && (
+                    <small className="help-text" style={{ color: '#7c3aed', fontWeight: 600, marginTop: '4px', display: 'block' }}>
+                      💡 A data será ajustada para o dia {selectedContaInfo.dia_vencimento} (vencimento do cartão).
+                    </small>
+                  )}
                 </div>
               </div>
 

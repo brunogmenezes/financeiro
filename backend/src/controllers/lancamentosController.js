@@ -60,9 +60,25 @@ exports.create = async (req, res) => {
     const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, parcelado, num_parcelas, pago } = req.body;
     const pagoStatus = pago !== undefined ? pago : false;
 
-    // Verificar se o usuário é PRO ou ADMIN (usando dados do middleware)
-    const { is_pro, is_admin } = req.user;
+    // Verificar se a conta é Cartão de Crédito para ajustar a data
+    const contaInfo = await pool.query('SELECT tipo, dia_vencimento FROM contas WHERE id = $1', [conta_id]);
+    const contaObj = contaInfo.rows[0];
+    
+    let dataFinal = data;
+    const isCartao = contaObj?.tipo === 'Cartão de Crédito';
 
+    // Se for saída no cartão, a data sempre será o dia de vencimento do cartão naquele mês/ano
+    if (tipo === 'saida' && isCartao && contaObj?.dia_vencimento) {
+      const d = new Date(data);
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth();
+      // Criar a data no dia do vencimento (usando UTC para evitar problemas de timezone)
+      const novaData = new Date(Date.UTC(year, month, contaObj.dia_vencimento));
+      dataFinal = novaData.toISOString().split('T')[0];
+    }
+
+    // Verificar se o usuário é PRO ou ADMIN
+    const { is_pro, is_admin } = req.user;
     if (!is_pro && !is_admin) {
       const lancamentosCount = await pool.query('SELECT COUNT(*) FROM lancamentos WHERE usuario_id = $1', [req.userId]);
       const totalFuturo = parseInt(lancamentosCount.rows[0].count) + (parcelado ? parseInt(num_parcelas) : 1);
@@ -75,28 +91,35 @@ exports.create = async (req, res) => {
     // Se for parcelado, criar múltiplos lançamentos
     if (parcelado && num_parcelas > 1) {
       const lancamentosCriados = [];
-      const dataInicial = new Date(data);
-      
       const totalValue = parseFloat(valor);
       const installmentValue = Math.floor((totalValue / num_parcelas) * 100) / 100;
       const lastInstallmentValue = (totalValue - (installmentValue * (num_parcelas - 1))).toFixed(2);
       
       for (let i = 0; i < num_parcelas; i++) {
-        const dataLancamento = new Date(dataInicial);
-        dataLancamento.setMonth(dataLancamento.getMonth() + i);
+        let dataLancamentoStr;
+        
+        if (tipo === 'saida' && isCartao && contaObj?.dia_vencimento) {
+          // Para cada parcela, mantemos o dia de vencimento mas incrementamos o mês
+          const dBase = new Date(data);
+          const year = dBase.getUTCFullYear();
+          const month = dBase.getUTCMonth() + i;
+          const novaData = new Date(Date.UTC(year, month, contaObj.dia_vencimento));
+          dataLancamentoStr = novaData.toISOString().split('T')[0];
+        } else {
+          const d = new Date(data);
+          d.setMonth(d.getMonth() + i);
+          dataLancamentoStr = d.toISOString().split('T')[0];
+        }
         
         const currentInstallmentValue = (i === num_parcelas - 1) ? lastInstallmentValue : installmentValue.toFixed(2);
         const descricaoParcelada = `${descricao} (${i + 1}/${num_parcelas})`;
         
         const result = await pool.query(
           'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-          [descricaoParcelada, currentInstallmentValue, tipo, dataLancamento.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
+          [descricaoParcelada, currentInstallmentValue, tipo, dataLancamentoStr, conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, num_parcelas, i + 1]
         );
         
-        // Atualizar saldo da conta (com a nova lógica de Cartão)
-        const contaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
-        const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
-
+        // Atualizar saldo da conta
         if (tipo === 'entrada') {
           await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentInstallmentValue, conta_id]);
         } else if (tipo === 'saida') {
@@ -111,66 +134,38 @@ exports.create = async (req, res) => {
       }
       
       const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-      await registrarLog(
-        req.userId,
-        user.rows[0]?.nome || 'Usuário',
-        'CRIAR',
-        'lancamentos',
-        null,
-        `Lançamento parcelado "${descricao}" criado (${num_parcelas}x de R$ ${valor})`
-      );
+      await registrarLog(req.userId, user.rows[0]?.nome || 'Usuário', 'CRIAR', 'lancamentos', null, `Lançamento parcelado "${descricao}" criado (${num_parcelas}x)`);
       
-      return res.status(201).json({ message: `${num_parcelas} lançamentos criados com sucesso`, lancamentos: lancamentosCriados });
+      return res.status(201).json({ message: `${num_parcelas} lançamentos criados`, lancamentos: lancamentosCriados });
     }
 
-    // Lançamento único (não parcelado)
+    // Lançamento único
     const result = await pool.query(
       'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, conta_destino_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
-      [descricao, valor, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, parcelado || false, num_parcelas || 1, req.body.parcela_atual || 1]
+      [descricao, valor, tipo, dataFinal, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, parcelado || false, num_parcelas || 1, req.body.parcela_atual || 1]
     );
 
-    // Atualizar saldo da conta
-    const contaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
-    const isCartao = contaResult.rows[0]?.tipo === 'Cartão de Crédito';
-
+    // Atualizar saldo
     if (tipo === 'entrada') {
-      // Entrada em qualquer conta soma ao saldo
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
     } else if (tipo === 'pagamento_fatura') {
       const { conta_destino_id } = req.body;
-      if (!conta_destino_id) return res.status(400).json({ error: 'Conta de destino (Cartão) é obrigatória' });
-      // Origem: sempre subtrai
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-      // Destino (Cartão): sempre soma (reduz dívida)
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
     } else if (tipo === 'saida') {
       if (isCartao) {
-        // Compra no cartão subtrai do saldo (fica negativo) mesmo se não marcado como pago
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
       } else if (pagoStatus) {
-        // Para outras contas, só desconta se estiver pago
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
       }
     } else if (tipo === 'transferencia') {
       const { conta_destino_id } = req.body;
-      if (!conta_destino_id) return res.status(400).json({ error: 'Conta de destino é obrigatória' });
-      
-      // Origem: sempre subtrai
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
-      
-      // Destino: sempre soma
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
     }
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
-    await registrarLog(
-      req.userId,
-      user.rows[0]?.nome || 'Usuário',
-      'CRIAR',
-      'lancamentos',
-      result.rows[0].id,
-      `Lançamento "${descricao}" criado (${tipo.toUpperCase()}: R$ ${valor})`
-    );
+    await registrarLog(req.userId, user.rows[0]?.nome || 'Usuário', 'CRIAR', 'lancamentos', result.rows[0].id, `Lançamento "${descricao}" criado`);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -197,6 +192,20 @@ exports.update = async (req, res) => {
 
     const antigo = lancamentoAntigo.rows[0];
     const pagoStatus = pago !== undefined ? pago : antigo.pago;
+
+    // Buscar info da nova conta para possível ajuste de data
+    const contaInfo = await pool.query('SELECT tipo, dia_vencimento FROM contas WHERE id = $1', [conta_id]);
+    const contaObj = contaInfo.rows[0];
+    const isCartaoNovo = contaObj?.tipo === 'Cartão de Crédito';
+    
+    let dataFinal = data;
+    if (tipo === 'saida' && isCartaoNovo && contaObj?.dia_vencimento) {
+      const d = new Date(data);
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth();
+      const novaData = new Date(Date.UTC(year, month, contaObj.dia_vencimento));
+      dataFinal = novaData.toISOString().split('T')[0];
+    }
 
     // Reverter o valor do lançamento antigo
     const contaAntigaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [antigo.conta_id]);
@@ -238,13 +247,10 @@ exports.update = async (req, res) => {
     // Atualizar lançamento atual
     const result = await pool.query(
       'UPDATE lancamentos SET descricao = $1, valor = $2, tipo = $3, data = $4, conta_id = $5, conta_destino_id = $6, categoria_id = $7, subcategoria_id = $8, pago = $9, parcelado = $10, num_parcelas = $11, parcela_atual = $12 WHERE id = $13 AND usuario_id = $14 RETURNING *',
-      [descricao, currentVal, tipo, data, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, parcelado || false, numParcelasInt, req.body.parcela_atual || 1, id, req.userId]
+      [descricao, currentVal, tipo, dataFinal, conta_id, req.body.conta_destino_id || null, categoria_id || null, subcategoria_id || null, pagoStatus, parcelado || false, numParcelasInt, req.body.parcela_atual || 1, id, req.userId]
     );
 
     // Aplicar o novo valor ao saldo da conta
-    const contaNovaResult = await pool.query('SELECT tipo FROM contas WHERE id = $1', [conta_id]);
-    const isCartaoNovo = contaNovaResult.rows[0]?.tipo === 'Cartão de Crédito';
-
     if (tipo === 'entrada') {
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentVal, conta_id]);
     } else if (tipo === 'pagamento_fatura') {
@@ -278,15 +284,25 @@ exports.update = async (req, res) => {
       // Ajustar descrição do primeiro (já atualizado acima)
       await pool.query('UPDATE lancamentos SET descricao = $1 WHERE id = $2', [`${descricao} (1/${numParcelasInt})`, id]);
 
-      const dataInicial = new Date(data);
       for (let i = 1; i < numParcelasInt; i++) {
-        const dataParcela = new Date(dataInicial);
-        dataParcela.setMonth(dataParcela.getMonth() + i);
+        let dataParcelaStr;
+        if (tipo === 'saida' && isCartaoNovo && contaObj?.dia_vencimento) {
+          const dBase = new Date(data);
+          const year = dBase.getUTCFullYear();
+          const month = dBase.getUTCMonth() + i;
+          const novaData = new Date(Date.UTC(year, month, contaObj.dia_vencimento));
+          dataParcelaStr = novaData.toISOString().split('T')[0];
+        } else {
+          const d = new Date(data);
+          d.setMonth(d.getMonth() + i);
+          dataParcelaStr = d.toISOString().split('T')[0];
+        }
+        
         const valParcela = (i === numParcelasInt - 1) ? lastInstallmentValue : installmentValue;
         
         await pool.query(
           'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-          [`${descricao} (${i + 1}/${numParcelasInt})`, valParcela, tipo, dataParcela.toISOString().split('T')[0], conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, numParcelasInt, i + 1]
+          [`${descricao} (${i + 1}/${numParcelasInt})`, valParcela, tipo, dataParcelaStr, conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, true, numParcelasInt, i + 1]
         );
 
         if (tipo === 'entrada') {
