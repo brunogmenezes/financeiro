@@ -1101,6 +1101,10 @@ function Dashboard() {
   const areaChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         display: true,
@@ -1112,13 +1116,17 @@ function Dashboard() {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        titleColor: '#1f2937',
-        bodyColor: '#1f2937',
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        titleColor: '#111827',
+        titleFont: { size: 14, weight: '700' },
+        bodyColor: '#4b5563',
+        bodyFont: { size: 13 },
         borderColor: '#e5e7eb',
         borderWidth: 1,
-        padding: 12,
+        padding: 16,
+        boxPadding: 8,
         usePointStyle: true,
+        cornerRadius: 12,
         callbacks: {
           label: function(context) {
             let label = context.dataset.label || '';
@@ -1129,10 +1137,21 @@ function Dashboard() {
             return label;
           },
           afterLabel: function(context) {
+            // Apenas mostra o resumo uma vez (no primeiro dataset do loop do modo index)
+            if (context.datasetIndex !== 0) return null;
+
             const index = context.dataIndex;
-            const entries = context.dataset.entradas[index];
-            const exits = context.dataset.saidas[index];
-            return `\nEntrada: R$ ${entries.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nSaída: R$ ${exits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            const mainDataset = context.chart.data.datasets[0];
+            const entries = mainDataset.entradas[index];
+            const exits = mainDataset.saidas[index];
+            
+            return [
+              '',
+              `📊 MOVIMENTAÇÃO DO DIA:`,
+              `🟢 Entradas: R$ ${entries.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              `🔴 Saídas: R$ ${exits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              `────────────────────────`
+            ];
           }
         }
       }
