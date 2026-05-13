@@ -76,6 +76,7 @@ function Dashboard() {
   const [entradasProjetivas, setEntradasProjetivas] = useState([]);
   const [showModalProjetivas, setShowModalProjetivas] = useState(false);
   const [modoGraficoProjetivo, setModoGraficoProjetivo] = useState(false);
+  const [usarSaldoAnterior, setUsarSaldoAnterior] = useState(false);
   const [projetivasList, setProjetivasList] = useState([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
   
   const totalProjetivas = entradasProjetivas.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
@@ -1021,6 +1022,26 @@ function Dashboard() {
     const saidasPorDia = [];
     
     let saldoAtual = 0;
+
+    if (usarSaldoAnterior) {
+      // Calcular saldo de todos os lançamentos anteriores ao mês selecionado
+      const lancamentosAnteriores = lancamentos.filter(l => {
+        const dataLanc = new Date(l.data).toISOString().slice(0, 7);
+        // Consideramos apenas entradas e saídas que já foram liquidadas (pagas) ou todas?
+        // Geralmente para saldo real, usamos o que impactou a conta.
+        return dataLanc < mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida');
+      });
+
+      const entradasAnteriores = lancamentosAnteriores
+        .filter(l => l.tipo === 'entrada')
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+      const saidasAnteriores = lancamentosAnteriores
+        .filter(l => l.tipo === 'saida')
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+      saldoAtual = entradasAnteriores - saidasAnteriores;
+    }
     
     const lancamentosDoMes = lancamentos.filter(l => {
         const dataLanc = new Date(l.data).toISOString().slice(0, 7);
@@ -1327,13 +1348,23 @@ function Dashboard() {
               <div className="chart-container chart-area">
                 <div className="chart-header-compact">
                   <h4>Evolução Diária do Fluxo de Caixa {filterMes === 'TODOS' && '(Mês Atual)'}</h4>
-                  <div 
-                    className={`toggle-projetivo-container ${modoGraficoProjetivo ? 'projetivo' : 'real'}`}
-                    onClick={() => setModoGraficoProjetivo(!modoGraficoProjetivo)}
-                  >
-                    <div className="toggle-slider"></div>
-                    <span className="span-real">Real</span>
-                    <span className="span-projetivo">Projetivo</span>
+                  <div className="chart-controls">
+                    <div 
+                      className={`toggle-projetivo-container ${modoGraficoProjetivo ? 'projetivo' : 'real'}`}
+                      onClick={() => setModoGraficoProjetivo(!modoGraficoProjetivo)}
+                      title="Alternar entre dados reais e projetivos"
+                    >
+                      <div className="toggle-slider"></div>
+                      <span className="span-real">Real</span>
+                      <span className="span-projetivo">Projetivo</span>
+                    </div>
+
+                    <button 
+                      className={`btn-saldo-anterior ${usarSaldoAnterior ? 'active' : ''}`}
+                      onClick={() => setUsarSaldoAnterior(!usarSaldoAnterior)}
+                    >
+                      {usarSaldoAnterior ? '💰 Com Saldo Anterior' : '⚪ Sem Saldo Anterior'}
+                    </button>
                   </div>
                 </div>
                 <div className="chart-content-area" style={{ height: '350px' }}>
