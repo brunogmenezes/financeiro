@@ -12,11 +12,7 @@
   gap: 24px;
 }
 
-@media (max-width: 768px) {
-  .dashboard-content {
-    padding: 20px 16px;
-  }
-}
+
 
 /* Welcome Section */
 .dashboard-welcome {
@@ -281,6 +277,25 @@
   transform: translateY(-5px);
 }
 
+@media (max-width: 768px) {
+  .tipo-item {
+    min-width: calc(50% - 4px);
+    padding: 12px 8px;
+    flex: 1 1 calc(50% - 4px);
+    align-items: center;
+  }
+  
+  .tipo-item:last-child:nth-child(odd) {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .tipo-item {
+    min-width: 100%;
+  }
+}
+
 .tipo-badge {
   font-size: 0.65rem;
   font-weight: 800;
@@ -306,6 +321,13 @@
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 24px;
   margin-bottom: 40px;
+}
+
+@media (max-width: 768px) {
+  .contas-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .conta-card {
@@ -437,6 +459,13 @@
   border-radius: 28px;
   border: 1px solid rgba(0,0,0,0.04);
   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
 }
 
 .chart-line {
@@ -664,6 +693,13 @@
   gap: 32px;
 }
 
+@media (max-width: 1024px) {
+  .chart-pie-section {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
 .totals-cards {
   display: grid;
   grid-template-columns: 1fr;
@@ -795,6 +831,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 32px;
+}
+
+@media (max-width: 768px) {
+  .category-bars-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
 }
 
 .category-bar-group {
@@ -2499,4 +2542,58 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 20px auto;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE (MOBILE)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .dashboard-content { padding: 16px !important; gap: 16px !important; }
+  .dashboard-welcome { flex-direction: column !important; align-items: center !important; text-align: center !important; gap: 20px !important; padding: 0 !important; }
+  .quick-actions-btns { width: 100% !important; flex-direction: column !important; gap: 10px !important; }
+  .btn-quick { width: 100% !important; justify-content: center !important; padding: 14px !important; }
+  
+  .saldo-total-card { padding: 24px 16px !important; border-radius: 20px !important; align-items: center !important; text-align: center !important; width: 100% !important; margin: 0 auto !important; }
+  .saldo-total-header { width: 100% !important; margin-bottom: 20px !important; justify-content: center !important; align-items: center !important; }
+  .saldo-label-group { width: 100% !important; align-items: center !important; }
+  .btn-toggle-valores-card { top: 12px !important; right: 12px !important; width: 32px !important; height: 32px !important; font-size: 0.9rem !important; }
+  
+  .saldo-total-valor { font-size: 2rem !important; margin-bottom: 24px !important; width: 100% !important; display: block !important; }
+  .saldo-por-tipo { gap: 8px !important; width: 100% !important; justify-content: center !important; }
+  .tipo-item { min-width: calc(50% - 4px) !important; padding: 12px 8px !important; flex: 1 1 calc(50% - 4px) !important; align-items: center !important; }
+  .tipo-item:last-child:nth-child(odd) { min-width: 100% !important; }
+  
+  .contas-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .chart-container { padding: 20px 12px !important; border-radius: 20px !important; }
+  .chart-pie-section { grid-template-columns: 1fr !important; gap: 20px !important; }
+  .chart-wrapper-pie { width: 160px !important; height: 160px !important; margin: 0 auto !important; }
+  
+  .category-bars-container { grid-template-columns: 1fr !important; gap: 20px !important; }
+  .bar-label { flex-direction: column !important; align-items: center !important; gap: 8px !important; text-align: center !important; }
+  .bar-categoria { justify-content: center !important; }
+  .bar-valor { width: 100% !important; justify-content: center !important; flex-wrap: wrap !important; }
+  
+  .title-with-filter { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+  .btn-toggle-filters { width: 100% !important; justify-content: center !important; }
+  .filters-grid { grid-template-columns: 1fr !important; }
+
+  .lancamento-item {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    padding: 15px !important;
+    height: auto !important;
+    align-items: flex-start !important;
+  }
+  
+  .item-descricao { grid-column: span 2 !important; font-size: 1rem !important; margin-bottom: 4px; }
+  .item-categoria { grid-column: span 1 !important; order: 3; }
+  .item-valor { grid-column: span 1 !important; text-align: right !important; order: 2; font-size: 1.1rem !important; }
+  .item-pago { grid-column: span 2 !important; margin-top: 8px; }
+  .item-acoes { grid-column: span 2 !important; justify-content: flex-end !important; margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 10px; }
+}
+
+@media (max-width: 480px) {
+  .saldo-total-valor { font-size: 1.8rem !important; }
+  .tipo-item { min-width: 100% !important; }
 }
