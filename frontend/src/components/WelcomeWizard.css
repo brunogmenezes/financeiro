@@ -18,7 +18,7 @@
   max-width: 500px;
   background: white;
   border-radius: 24px;
-  padding: 40px;
+  padding: 30px 24px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -72,47 +72,131 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  animation: slideUp 0.4s ease-out;
+  animation: slideIn 0.4s ease-out;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px;
 }
 
-.step-icon {
-  font-size: 4rem;
+/* Custom scrollbar for wizard step */
+.wizard-step::-webkit-scrollbar {
+  width: 6px;
+}
+.wizard-step::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.projetivas-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
+.projetiva-item {
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.form-row .form-group {
+  flex: 1;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.form-row .form-group.group-day {
+  flex: 0.4;
+}
+
+.btn-remove-projetiva {
+  background: #fee2e2;
+  color: #ef4444;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s;
+  margin-bottom: 5px;
+}
+
+.btn-remove-projetiva:hover {
+  background: #fecaca;
+  transform: scale(1.1);
+}
+
+.btn-add-projetiva {
+  background: transparent;
+  color: #6366f1;
+  border: 2px dashed #e2e8f0;
+  padding: 8px;
+  border-radius: 12px;
+  width: 100%;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.btn-add-projetiva:hover {
+  background: #f1f5f9;
+  border-color: #6366f1;
+}
+
+.step-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
 .wizard-step h2 {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   color: #1e293b;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
   font-weight: 800;
 }
 
 .wizard-step p {
   color: #64748b;
-  line-height: 1.6;
-  margin-bottom: 25px;
+  line-height: 1.5;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
 }
 
 .wizard-step .form-group {
   width: 100%;
   text-align: left;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .wizard-step label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #475569;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .wizard-step input {
   width: 100%;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: all 0.2s;
   box-sizing: border-box;
 }

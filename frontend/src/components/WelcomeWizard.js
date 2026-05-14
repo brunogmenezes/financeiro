@@ -11,10 +11,10 @@ function WelcomeWizard({ onFinish }) {
   const [whatsapp, setWhatsapp] = useState('');
   
   // Passo 2: Conta
-  const [conta, setConta] = useState({ nome: '', saldo_inicial: '0' });
+  const [conta, setConta] = useState({ nome: '' });
   
   // Passo 3: Entrada Projetiva
-  const [projetiva, setProjetiva] = useState({ descricao: 'Salário Mensal', valor: '', dia_vencimento: '5' });
+  const [projetivas, setProjetivas] = useState([{ descricao: 'Salário Mensal', valor: '', dia_vencimento: '5' }]);
 
   const nextStep = () => {
     setError('');
@@ -29,7 +29,14 @@ function WelcomeWizard({ onFinish }) {
     if (!whatsapp) return nextStep(); // Opcional
     setLoading(true);
     try {
-      await updatePerfil({ whatsapp });
+      let finalWhatsapp = whatsapp;
+      // Se tiver 10 ou 11 dígitos, provavelmente é DDD + Número sem o 55
+      if (whatsapp.length === 10 || whatsapp.length === 11) {
+        if (!whatsapp.startsWith('55')) {
+          finalWhatsapp = '55' + whatsapp;
+        }
+      }
+      await updatePerfil({ whatsapp: finalWhatsapp });
       nextStep();
     } catch (err) {
       const serverError = err.response?.data?.error || 'Erro ao salvar WhatsApp';
@@ -43,7 +50,7 @@ function WelcomeWizard({ onFinish }) {
     if (!conta.nome) return setError('Dê um nome para sua conta (ex: Carteira, Banco X)');
     setLoading(true);
     try {
-      await createConta({ ...conta, tipo: 'Conta Corrente', cor: '#7c3aed' });
+      await createConta({ ...conta, tipo: 'Conta Corrente', cor: '#7c3aed', saldo_inicial: 0 });
       nextStep();
     } catch (err) {
       const serverError = err.response?.data?.error || 'Erro ao criar conta';
@@ -53,25 +60,45 @@ function WelcomeWizard({ onFinish }) {
     }
   };
 
+  const handleAddProjetiva = () => {
+    setProjetivas([...projetivas, { descricao: '', valor: '', dia_vencimento: '5' }]);
+  };
+
+  const handleRemoveProjetiva = (index) => {
+    const newProjetivas = projetivas.filter((_, i) => i !== index);
+    setProjetivas(newProjetivas);
+  };
+
+  const handleProjetivaChange = (index, field, value) => {
+    const newProjetivas = [...projetivas];
+    newProjetivas[index][field] = value;
+    setProjetivas(newProjetivas);
+  };
+
   const handleFinishStep3 = async () => {
-    if (!projetiva.valor) return nextStep(); // Opcional
+    const validProjetivas = projetivas.filter(p => p.valor && p.descricao);
+    if (validProjetivas.length === 0) return nextStep(); // Opcional
+
     setLoading(true);
     try {
-      // Gerar data válida (YYYY-MM-DD) baseada no dia informado
       const hoje = new Date();
       const ano = hoje.getFullYear();
       const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-      const dia = String(projetiva.dia_vencimento || '05').padStart(2, '0');
-      const dataCompleta = `${ano}-${mes}-${dia}`;
 
-      await createEntradasProjetivasBulk([{ 
-        descricao: projetiva.descricao, 
-        valor: projetiva.valor, 
-        data: dataCompleta 
-      }]);
+      const payloads = validProjetivas.map(p => {
+        const dia = String(p.dia_vencimento || '05').padStart(2, '0');
+        const dataCompleta = `${ano}-${mes}-${dia}`;
+        return {
+          descricao: p.descricao,
+          valor: p.valor,
+          data: dataCompleta
+        };
+      });
+
+      await createEntradasProjetivasBulk(payloads);
       nextStep();
     } catch (err) {
-      const serverError = err.response?.data?.error || 'Erro ao criar entrada projetiva';
+      const serverError = err.response?.data?.error || 'Erro ao criar entradas projetivas';
       setError(serverError);
     } finally {
       setLoading(false);
@@ -110,15 +137,15 @@ function WelcomeWizard({ onFinish }) {
             <h2>Boas-vindas! Vamos começar?</h2>
             <p>Primeiro, informe seu WhatsApp para receber lembretes de contas que estão vencendo. Assim você nunca mais esquece de pagar nada!</p>
             <div className="form-group">
-              <label>Seu WhatsApp (apenas números com DDD)</label>
+              <label>Seu WhatsApp (com DDD)</label>
               <input 
                 type="tel" 
-                placeholder="Ex: 5511999999999" 
+                placeholder="Ex: 11999999999" 
                 value={whatsapp} 
                 maxLength={13}
                 onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
               />
-              <small className="input-tip">Use o formato: 55 + DDD + Número</small>
+              <small className="input-tip">Informe apenas o DDD + Número. O sistema cuidará do resto!</small>
             </div>
             <div className="wizard-actions">
               <button className="btn-wizard-next" onClick={handleFinishStep1} disabled={loading}>
@@ -142,14 +169,6 @@ function WelcomeWizard({ onFinish }) {
                 onChange={(e) => setConta({...conta, nome: e.target.value})}
               />
             </div>
-            <div className="form-group">
-              <label>Saldo Atual (R$)</label>
-              <input 
-                type="number" 
-                value={conta.saldo_inicial} 
-                onChange={(e) => setConta({...conta, saldo_inicial: e.target.value})}
-              />
-            </div>
             <div className="wizard-actions">
               <button className="btn-wizard-back" onClick={prevStep}>Voltar</button>
               <button className="btn-wizard-next" onClick={handleFinishStep2} disabled={loading}>
@@ -163,24 +182,52 @@ function WelcomeWizard({ onFinish }) {
           <div className="wizard-step">
             <div className="step-icon">📈</div>
             <h2>Previsão de Receita</h2>
-            <p>O que você costuma receber todo mês? Cadastrar uma Entrada Projetiva ajuda o sistema a prever seu saldo no final do mês.</p>
-            <div className="form-group">
-              <label>Descrição</label>
-              <input 
-                type="text" 
-                value={projetiva.descricao} 
-                onChange={(e) => setProjetiva({...projetiva, descricao: e.target.value})}
-              />
+            <p>O que você costuma receber todo mês? Adicione uma ou mais previsões para ajudarmos a prever seu saldo futuro.</p>
+            
+            <div className="projetivas-list">
+              {projetivas.map((p, index) => (
+                <div key={index} className="projetiva-item">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Descrição</label>
+                      <input 
+                        type="text" 
+                        placeholder="Ex: Salário"
+                        value={p.descricao} 
+                        onChange={(e) => handleProjetivaChange(index, 'descricao', e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Valor (R$)</label>
+                      <input 
+                        type="number" 
+                        placeholder="0.00"
+                        value={p.valor} 
+                        onChange={(e) => handleProjetivaChange(index, 'valor', e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group group-day">
+                      <label>Dia</label>
+                      <input 
+                        type="number" 
+                        min="1" 
+                        max="31"
+                        value={p.dia_vencimento} 
+                        onChange={(e) => handleProjetivaChange(index, 'dia_vencimento', e.target.value)}
+                      />
+                    </div>
+                    {projetivas.length > 1 && (
+                      <button className="btn-remove-projetiva" onClick={() => handleRemoveProjetiva(index)}>×</button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="form-group">
-              <label>Valor Médio (R$)</label>
-              <input 
-                type="number" 
-                placeholder="Ex: 3000.00"
-                value={projetiva.valor} 
-                onChange={(e) => setProjetiva({...projetiva, valor: e.target.value})}
-              />
-            </div>
+
+            <button className="btn-add-projetiva" onClick={handleAddProjetiva}>
+              <span>+ Adicionar outra receita</span>
+            </button>
+
             <div className="wizard-actions">
               <button className="btn-wizard-back" onClick={prevStep}>Voltar</button>
               <button className="btn-wizard-next" onClick={handleFinishStep3} disabled={loading}>

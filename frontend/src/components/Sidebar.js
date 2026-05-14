@@ -9,6 +9,7 @@ function Sidebar() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [profileOpen, setProfileOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const profileRef = useRef(null);
 
   const handleLogout = () => {
@@ -18,6 +19,7 @@ function Sidebar() {
 
   const handleNavigate = (path) => {
     navigate(path);
+    setIsMobileOpen(false);
   };
 
   useEffect(() => {
@@ -41,7 +43,23 @@ function Sidebar() {
 
   return (
     <>
-      <aside className="sidebar">
+      {/* Mobile Toggle Button */}
+      <button 
+        className={`mobile-toggle-btn ${isMobileOpen ? 'active' : ''}`}
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        aria-label="Toggle Menu"
+      >
+        <span className="hamburger-box">
+          <span className="hamburger-inner"></span>
+        </span>
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsMobileOpen(false)}></div>
+      )}
+
+      <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="brand-content">
             <div className="logo-badge">💎</div>

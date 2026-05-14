@@ -253,8 +253,107 @@
   }
 }
 
+/* Mobile styles */
+.mobile-toggle-btn {
+  display: none;
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 1100;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hamburger-box {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
+  width: 20px;
+  height: 2px;
+  background-color: #6366f1;
+  position: absolute;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.hamburger-inner::before { content: ""; top: -6px; }
+.hamburger-inner::after { content: ""; top: 6px; }
+
+.mobile-toggle-btn.active .hamburger-inner { background-color: transparent; }
+.mobile-toggle-btn.active .hamburger-inner::before { transform: translateY(6px) rotate(45deg); }
+.mobile-toggle-btn.active .hamburger-inner::after { transform: translateY(-6px) rotate(-45deg); }
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 768px) {
+  .mobile-toggle-btn {
+    display: flex;
+  }
+
   .sidebar {
-    display: none; /* Hide on mobile for now, will need a hamburger menu */
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    display: flex !important;
+  }
+
+  /* Show all elements when sidebar is open on mobile */
+  .sidebar.mobile-open .brand-text,
+  .sidebar.mobile-open .profile-info,
+  .sidebar.mobile-open .nav-item span:not(.nav-icon),
+  .sidebar.mobile-open .brand-tagline,
+  .sidebar.mobile-open .profile-arrow,
+  .sidebar.mobile-open .profile-role {
+    display: flex;
+  }
+
+  .sidebar.mobile-open .sidebar-header,
+  .sidebar.mobile-open .sidebar-footer {
+    padding: 30px 24px;
+    justify-content: flex-start;
+  }
+
+  .sidebar.mobile-open .nav-item {
+    justify-content: flex-start;
+    padding: 12px 16px;
+  }
+
+  .sidebar.mobile-open .logo-badge {
+    margin: 0;
+  }
+
+  .sidebar.mobile-open .profile-toggle {
+    padding: 10px;
+    justify-content: flex-start;
   }
 }
