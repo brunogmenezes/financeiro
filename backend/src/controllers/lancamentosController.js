@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { registrarLog } = require('./logsController');
+const geminiService = require('../services/geminiService');
 
 // Listar todos os lançamentos do usuário
 exports.getAll = async (req, res) => {
@@ -482,5 +483,167 @@ exports.togglePago = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao alternar status de pagamento' });
+  }
+};
+
+// Analisar fatura com IA
+exports.analyzeInvoice = async (req, res) => {
+  try {
+    const { conta_id } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    }
+
+    if (!conta_id) {
+      return res.status(400).json({ error: 'ID da conta não informado' });
+    }
+
+    // Extrair dados com Gemini
+    const extractedTransactions = await geminiService.extractTransactions(file.buffer, file.mimetype);
+
+    if (extractedTransactions.length === 0) {
+      return res.json({ message: 'Nenhum lançamento encontrado na fatura.', transactions: [], summary: { total: 0, new: 0, duplicates: 0 } });
+    }
+
+    // Buscar lançamentos existentes para esta conta para comparação
+    const existingResult = await pool.query(
+      'SELECT descricao, valor, data FROM lancamentos WHERE usuario_id = $1 AND conta_id = $2',
+      [req.userId, conta_id]
+    );
+    const existing = existingResult.rows;
+
+    // Lógica de comparação simplificada
+    const results = extractedTransactions.map(extracted => {
+      const dataExtraida = extracted.data;
+      const valorExtraido = parseFloat(extracted.valor);
+
+      const isDuplicate = existing.some(ex => {
+        const dataEx = new Date(ex.data).toISOString().split('T')[0];
+        const valorEx = parseFloat(ex.valor);
+        
+        const sameValue = Math.abs(valorEx - valorExtraido) < 0.01;
+        const sameDate = dataEx === dataExtraida;
+        const similarDesc = ex.descricao.toLowerCase().includes(extracted.descricao.toLowerCase()) || 
+                            extracted.descricao.toLowerCase().includes(ex.descricao.toLowerCase());
+
+        return sameValue && (sameDate || similarDesc);
+      });
+
+      return {
+        ...extracted,
+        isDuplicate
+      };
+    });
+
+    res.json({
+      transactions: results,
+      summary: {
+        total: results.length,
+        new: results.filter(r => !r.isDuplicate).length,
+        duplicates: results.filter(r => r.isDuplicate).length
+      }
+    });
+
+  } catch (error) {
+    console.error('Erro ao analisar fatura:', error);
+    res.status(500).json({ error: error.message || 'Erro ao analisar fatura com IA' });
+  }
+};
+
+// Confirmar importação em massa
+exports.confirmImport = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { transactions, conta_id, target_month } = req.body;
+
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+      return res.status(400).json({ error: 'Nenhum lançamento para importar' });
+    }
+
+    // Buscar informações da conta para verificar se é cartão e pegar o vencimento
+    const contaRes = await client.query('SELECT tipo, dia_vencimento FROM contas WHERE id = $1', [conta_id]);
+    const contaObj = contaRes.rows[0];
+    const isCartao = contaObj?.tipo === 'Cartão de Crédito';
+
+    await client.query('BEGIN');
+
+    const created = [];
+    for (const t of transactions) {
+      let dataFinal = t.data;
+      const originalDate = new Date(t.data);
+      
+      let year = originalDate.getUTCFullYear();
+      let month = originalDate.getUTCMonth();
+      let day = originalDate.getUTCDate();
+
+      // Se o usuário informou um mês de referência (YYYY-MM), sobrescrevemos ano e mês
+      if (target_month) {
+        const [targetYear, targetMonthNum] = target_month.split('-').map(Number);
+        year = targetYear;
+        month = targetMonthNum - 1; // JS months are 0-11
+      }
+
+      // Se for cartão, o dia sempre será o dia do vencimento
+      if (isCartao && contaObj?.dia_vencimento) {
+        day = contaObj.dia_vencimento;
+      }
+
+      const novaData = new Date(Date.UTC(year, month, day));
+      dataFinal = novaData.toISOString().split('T')[0];
+
+      // Inserir lançamento
+      const result = await client.query(
+        'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, usuario_id, pago) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [t.descricao, t.valor, 'saida', dataFinal, conta_id, req.userId, false]
+      );
+      
+      // Atualizar saldo da conta
+      await client.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [t.valor, conta_id]);
+      
+      created.push(result.rows[0]);
+    }
+
+    await client.query('COMMIT');
+
+    const userRes = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+    await registrarLog(req.userId, userRes.rows[0]?.nome || 'Usuário', 'CRIAR', 'lancamentos', null, `${created.length} lançamentos importados via fatura IA`);
+
+    res.status(201).json({ message: `${created.length} lançamentos importados com sucesso`, transactions: created });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao importar faturas:', error);
+    res.status(500).json({ error: 'Erro ao importar lançamentos' });
+  } finally {
+    client.release();
+  }
+};
+
+// Apagar todos os lançamentos do usuário
+exports.deleteAll = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Apagar todos os lançamentos
+    await client.query('DELETE FROM lancamentos WHERE usuario_id = $1', [req.userId]);
+
+    // 2. Resetar o saldo de todas as contas do usuário para zero
+    await client.query('UPDATE contas SET saldo_inicial = 0 WHERE usuario_id = $1', [req.userId]);
+
+    await client.query('COMMIT');
+
+    const userRes = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+    await registrarLog(req.userId, userRes.rows[0]?.nome || 'Usuário', 'EXCLUIR', 'lancamentos', null, 'Todos os lançamentos foram apagados pelo usuário');
+
+    res.json({ message: 'Todos os lançamentos foram removidos com sucesso.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao apagar todos os lançamentos:', error);
+    res.status(500).json({ error: 'Erro ao apagar todos os lançamentos' });
+  } finally {
+    client.release();
   }
 };

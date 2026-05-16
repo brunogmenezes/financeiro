@@ -10,7 +10,8 @@ import {
   getSubcategorias,
   togglePagoLancamento,
   generatePixSubscription,
-  checkSubscriptionStatus
+  checkSubscriptionStatus,
+  deleteAllLancamentos
 } from '../services/api';
 import { useRef } from 'react';
 import './Lancamentos.css';
@@ -25,6 +26,7 @@ function Lancamentos() {
   const [showProLimitModal, setShowProLimitModal] = useState(false);
   const [proLimitMessage, setProLimitMessage] = useState('');
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   
   // Checkout PRO
   const [pixData, setPixData] = useState(null);
@@ -288,6 +290,17 @@ function Lancamentos() {
     }
   };
 
+  const confirmDeleteAll = async () => {
+    try {
+      await deleteAllLancamentos();
+      triggerToast('Todos os lançamentos foram apagados!');
+      setShowDeleteAllModal(false);
+      loadLancamentos();
+    } catch (error) {
+      triggerToast('Erro ao apagar lançamentos', 'error');
+    }
+  };
+
   const handleNew = () => {
     setEditingLancamento(null);
     setFormData({
@@ -312,7 +325,12 @@ function Lancamentos() {
       <div className="content">
         <div className="header">
           <h2>Lançamentos</h2>
-          <button className="btn-new" onClick={handleNew}>+ Novo Lançamento</button>
+          <div className="header-actions">
+            <button className="btn-delete-all-outline" onClick={() => setShowDeleteAllModal(true)}>
+              🗑️ Limpar Tudo
+            </button>
+            <button className="btn-new" onClick={handleNew}>+ Novo Lançamento</button>
+          </div>
         </div>
 
         <div className="filters-section">
@@ -839,6 +857,29 @@ function Lancamentos() {
                 </div>
               </div>
             )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão de Tudo */}
+      {showDeleteAllModal && (
+        <div className="modal">
+          <div className="modal-content delete-modal">
+            <button className="btn-close-modal" onClick={() => setShowDeleteAllModal(false)}>✕</button>
+            <div className="modal-body">
+              <div className="modal-icon danger">🛑</div>
+              <h3 style={{ color: '#dc2626' }}>Apagar Tudo?</h3>
+              <p><strong>Atenção!</strong> Esta ação irá remover <b>TODOS</b> os seus lançamentos permanentemente.</p>
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '10px' }}>
+                Este processo não poderá ser desfeito. Os saldos das contas não serão alterados automaticamente.
+              </p>
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={() => setShowDeleteAllModal(false)}>Cancelar</button>
+                <button className="btn-delete-confirm" style={{ backgroundColor: '#dc2626' }} onClick={confirmDeleteAll}>
+                  Sim, Apagar Tudo
+                </button>
+              </div>
             </div>
           </div>
         </div>

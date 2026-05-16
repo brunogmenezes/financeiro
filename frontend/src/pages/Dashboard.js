@@ -15,6 +15,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import WelcomeWizard from '../components/WelcomeWizard';
+import InvoiceImportModal from '../components/InvoiceImportModal';
 import { 
   getDashboard, 
   getLancamentos, 
@@ -64,6 +65,7 @@ function Dashboard() {
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [pagoItem, setPagoItem] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   
   // Checkout PRO
   const [pixData, setPixData] = useState(null);
@@ -1212,6 +1214,9 @@ function Dashboard() {
           <div className="quick-actions-btns">
             <button className="btn-quick btn-secondary-action" onClick={() => setShowModalProjetivas(true)} style={{ backgroundColor: '#8b5cf6', color: 'white' }}>
               <span>+</span> Gerenciar Entradas Projetivas
+            </button>
+            <button className="btn-quick btn-import-action" onClick={() => setShowImportModal(true)} style={{ backgroundColor: '#a855f7', color: 'white' }}>
+              <span>🤖</span> Importar Fatura (IA)
             </button>
             <button className="btn-quick btn-primary-action" onClick={() => { setQuickAddType(null); setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''}); setShowModal(true); }}>
               <span>+</span> Adicionar Lançamento
@@ -2512,6 +2517,13 @@ function Dashboard() {
       )}
       {/* Wizard de Boas-vindas */}
       {showWizard && <WelcomeWizard onFinish={handleFinishWizard} />}
+
+      {/* Modal de Importação de Fatura */}
+      <InvoiceImportModal 
+        isOpen={showImportModal} 
+        onClose={() => setShowImportModal(false)} 
+        onSuccess={(msg) => { triggerToast(msg); loadDashboard(); loadLancamentos(); loadContas(); }} 
+      />
     </div>
   );
 }
