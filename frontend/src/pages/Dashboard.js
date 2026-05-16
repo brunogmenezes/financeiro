@@ -77,12 +77,12 @@ function Dashboard() {
   const [showModalProjetivas, setShowModalProjetivas] = useState(false);
   const [modoGraficoProjetivo, setModoGraficoProjetivo] = useState(false);
   const [usarSaldoAnterior, setUsarSaldoAnterior] = useState(false);
-  const [projetivasList, setProjetivasList] = useState([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
+  const [projetivasList, setProjetivasList] = useState([{ data: new Date().toLocaleDateString('en-CA'), valor: '', descricao: '' }]);
   
   const totalProjetivas = entradasProjetivas.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
   
   // Define o mês atual como filtro padrão (YYYY-MM)
-  const mesAtual = new Date().toISOString().slice(0, 7);
+  const mesAtual = new Date().toLocaleDateString('en-CA').slice(0, 7);
   const [filterMes, setFilterMes] = useState(mesAtual);
   const [filterTipo, setFilterTipo] = useState('TODOS');
   const [filterCategoria, setFilterCategoria] = useState('TODAS');
@@ -96,7 +96,7 @@ function Dashboard() {
     descricao: '',
     valor: '',
     tipo: 'saida',
-    data: new Date().toISOString().split('T')[0],
+    data: new Date().toLocaleDateString('en-CA'),
     conta_id: '',
     conta_destino_id: '',
     categoria_id: '',
@@ -163,7 +163,7 @@ function Dashboard() {
       descricao: '',
       valor: '',
       tipo: 'saida',
-      data: new Date().toISOString().split('T')[0],
+      data: new Date().toLocaleDateString('en-CA'),
       conta_id: '',
       conta_destino_id: '',
       categoria_id: '',
@@ -469,7 +469,7 @@ function Dashboard() {
 
   // Handlers para Entradas Projetivas
   const handleAddProjetivaRow = () => {
-    setProjetivasList([...projetivasList, { data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
+    setProjetivasList([...projetivasList, { data: new Date().toLocaleDateString('en-CA'), valor: '', descricao: '' }]);
   };
   
   const handleRemoveProjetivaRow = (index) => {
@@ -493,7 +493,7 @@ function Dashboard() {
         loadEntradasProjetivas();
       }
       setShowModalProjetivas(false);
-      setProjetivasList([{ data: new Date().toISOString().split('T')[0], valor: '', descricao: '' }]);
+      setProjetivasList([{ data: new Date().toLocaleDateString('en-CA'), valor: '', descricao: '' }]);
     } catch (e) {
       triggerToast('Erro ao salvar entradas projetivas', 'error');
     }
@@ -516,7 +516,7 @@ function Dashboard() {
   };
 
   const calcularFaturaMes = (contaId) => {
-    const mesParaFiltro = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    const mesParaFiltro = filterMes !== 'TODOS' ? filterMes : new Date().toLocaleDateString('en-CA').slice(0, 7);
     let totalGasto = 0;
     let totalPago = 0;
 
@@ -902,7 +902,7 @@ function Dashboard() {
 
   // Processar dados para o gráfico de pizza (saídas por categoria do mês filtrado)
   const processPieChartData = () => {
-    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toLocaleDateString('en-CA').slice(0, 7);
     const saidasPorCategoria = {};
     const coresCategoria = {};
     
@@ -966,7 +966,7 @@ function Dashboard() {
 
   // Processar dados para o gráfico de pizza (saídas por conta do mês filtrado)
   const processPieChartDataPorConta = () => {
-    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toLocaleDateString('en-CA').slice(0, 7);
     const saidasPorConta = {};
     
     // Cores para as contas (já que não possuem cor definida no banco)
@@ -1020,7 +1020,7 @@ function Dashboard() {
 
   // Processar dados para o gráfico de Área (Evolução Diária)
   const processAreaChartData = () => {
-    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toISOString().slice(0, 7);
+    const mesParaGrafico = filterMes !== 'TODOS' ? filterMes : new Date().toLocaleDateString('en-CA').slice(0, 7);
     const [ano, mes] = mesParaGrafico.split('-');
     
     // Obter número de dias no mês
@@ -1223,12 +1223,11 @@ function Dashboard() {
         
         {/* Seção de Contas */}
         <div className="contas-section">
-        <div className="contas-section">
           {/* Card de Saldo Total */}
           <div className="saldo-total-card">
 
             <div className="saldo-total-content">
-            <div className="saldo-total-header">
+              <div className="saldo-total-header">
                 <div className="saldo-label-group">
                   <span className="saldo-total-label">Patrimônio Total</span>
                   <span className="saldo-total-subtitle">Soma de todas as suas contas</span>
@@ -1266,75 +1265,107 @@ function Dashboard() {
             </div>
           </div>
           
-          <div className="contas-grid">
-            {contas.map(conta => (
-              <div key={conta.id} className="conta-card" data-tipo={conta.tipo}>
-                <div className="conta-header">
-                  <div className="conta-info">
-                    <h4>{conta.nome}</h4>
+          <div className="contas-grouped-container">
+            {Object.entries(contas.reduce((acc, conta) => {
+              const tipo = conta.tipo || 'Outros';
+              if (!acc[tipo]) acc[tipo] = [];
+              acc[tipo].push(conta);
+              return acc;
+            }, {})).sort(([a], [b]) => {
+              const order = { 'Conta Corrente': 1, 'Cartão de Crédito': 2, 'Conta Poupança': 3, 'Conta Investimento': 4, 'Dinheiro': 5 };
+              return (order[a] || 99) - (order[b] || 99);
+            }).map(([tipo, contasDoTipo]) => {
+              const contasOrdenadas = [...contasDoTipo].sort((a, b) => {
+                const getSaldo = (conta) => {
+                  if (conta.tipo === 'Cartão de Crédito') {
+                    return calcularFaturaMes(conta.id).saldoRestante;
+                  }
+                  return parseFloat(conta.saldo_inicial) || 0;
+                };
+                return getSaldo(b) - getSaldo(a);
+              });
+
+              return (
+                <div key={tipo} className="contas-group">
+                  <h3 className="group-title">
+                    {tipo === 'Cartão de Crédito' ? '💳 Cartões de Crédito' : 
+                     tipo === 'Conta Corrente' ? '🏦 Contas Correntes' : 
+                     tipo === 'Conta Poupança' ? '💰 Poupança' : 
+                     tipo === 'Conta Investimento' ? '📈 Investimentos' : 
+                     tipo === 'Dinheiro' ? '💵 Dinheiro' : tipo}
+                  </h3>
+                  <div className="contas-grid">
+                    {contasOrdenadas.map(conta => (
+                      <div key={conta.id} className="conta-card" data-tipo={conta.tipo}>
+                        <div className="conta-header">
+                          <div className="conta-info">
+                            <h4>{conta.nome}</h4>
+                          </div>
+                          {conta.tipo && (
+                            <span className={`conta-tipo-badge badge-${conta.tipo.toLowerCase().replace(' ', '-')}`}>
+                              {conta.tipo}
+                            </span>
+                          )}
+                        </div>
+                        <div className="conta-saldo">
+                          {mostrarValores ? (
+                            <>
+                              {conta.tipo === 'Cartão de Crédito' ? (
+                                <div className="cc-invoice-details">
+                                  <div className="cc-detail-item">
+                                    <span className="cc-detail-label">Gasto:</span>
+                                    <span className="cc-detail-valor">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalGasto)}</span>
+                                  </div>
+                                  <div className="cc-detail-item">
+                                    <span className="cc-detail-label">Pago:</span>
+                                    <span className="cc-detail-valor pago">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalPago)}</span>
+                                  </div>
+                                  <div className="cc-detail-item total">
+                                    <span className="cc-detail-label">Fatura:</span>
+                                    <span className="cc-detail-valor fatura">R$ {formatarMoeda(calcularFaturaMes(conta.id).saldoRestante)}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="label">Saldo:</span>
+                                  <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
+                                    R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
+                                  </span>
+                                </>
+                              )}
+                              
+                              {conta.tipo === 'Cartão de Crédito' && (
+                                <div className="limite-container">
+                                  <div className="limite-info">
+                                    <span>Limite: R$ {formatarMoeda(conta.limite_total)}</span>
+                                    <span>{((Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100).toFixed(1)}%</span>
+                                  </div>
+                                  <div className="limite-bar-bg">
+                                    <div 
+                                      className="limite-bar-fill" 
+                                      style={{ 
+                                        width: `${Math.min(100, (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100)}%`,
+                                        backgroundColor: (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) > 0.8 ? '#ef4444' : '#3b82f6'
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="valor-oculto">R$ ••••••</span>
+                          )}
+                        </div>
+                        {conta.descricao && (
+                          <div className="conta-descricao">{conta.descricao}</div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {conta.tipo && (
-                    <span className={`conta-tipo-badge badge-${conta.tipo.toLowerCase().replace(' ', '-')}`}>
-                      {conta.tipo}
-                    </span>
-                  )}
                 </div>
-                <div className="conta-saldo">
-                  {mostrarValores ? (
-                    <>
-                      {conta.tipo === 'Cartão de Crédito' ? (
-                        <div className="cc-invoice-details">
-                          <div className="cc-detail-item">
-                            <span className="cc-detail-label">Gasto:</span>
-                            <span className="cc-detail-valor">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalGasto)}</span>
-                          </div>
-                          <div className="cc-detail-item">
-                            <span className="cc-detail-label">Pago:</span>
-                            <span className="cc-detail-valor pago">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalPago)}</span>
-                          </div>
-                          <div className="cc-detail-item total">
-                            <span className="cc-detail-label">Fatura:</span>
-                            <span className="cc-detail-valor fatura">R$ {formatarMoeda(calcularFaturaMes(conta.id).saldoRestante)}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="label">Saldo:</span>
-                          <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
-                            R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
-                          </span>
-                        </>
-                      )}
-                      
-                      {conta.tipo === 'Cartão de Crédito' && (
-                        <div className="limite-container">
-                          <div className="limite-info">
-                            <span>Limite: R$ {formatarMoeda(conta.limite_total)}</span>
-                            <span>{((Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100).toFixed(1)}%</span>
-                          </div>
-                          <div className="limite-bar-bg">
-                            <div 
-                              className="limite-bar-fill" 
-                              style={{ 
-                                width: `${Math.min(100, (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100)}%`,
-                                backgroundColor: (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) > 0.8 ? '#ef4444' : '#3b82f6'
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <span className="valor-oculto">R$ ••••••</span>
-                  )}
-                </div>
-                {conta.descricao && (
-                  <div className="conta-descricao">{conta.descricao}</div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
         
         {dashboardData.length > 0 ? (
           <div className="charts-container">
