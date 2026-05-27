@@ -3016,3 +3016,28 @@
   z-index: 1;
   pointer-events: none;
 }
+
+/* Correção dos cards de totais espremidos no desktop */
+@media (min-width: 1025px) {
+  .chart-pie-section {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .chart-pie-section .right-section {
+    grid-column: span 2 !important;
+  }
+  .totals-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .totals-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .totals-cards {
+    grid-template-columns: 1fr !important;
+  }
+}
