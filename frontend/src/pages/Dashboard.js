@@ -80,6 +80,7 @@ function Dashboard() {
   const [modoGraficoProjetivo, setModoGraficoProjetivo] = useState(false);
   const [usarSaldoAnterior, setUsarSaldoAnterior] = useState(false);
   const [projetivasList, setProjetivasList] = useState([{ data: new Date().toLocaleDateString('en-CA'), valor: '', descricao: '' }]);
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   
   const totalProjetivas = entradasProjetivas.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
   
@@ -485,6 +486,77 @@ function Dashboard() {
     list[index][field] = value;
     setProjetivasList(list);
   };
+
+  const handleCalendarDayClick = (dateString) => {
+    if (selectedCalendarDay === dateString) {
+      setSelectedCalendarDay(null);
+    } else {
+      setSelectedCalendarDay(dateString);
+      const mesDoDia = dateString.slice(0, 7);
+      if (filterMes === 'TODOS') {
+        setFilterMes(mesDoDia);
+      }
+      if (!showFilters) {
+        setShowFilters(true);
+      }
+    }
+  };
+
+  const calcularScoreSaudeFinanceira = () => {
+    let score = 100;
+    const { totalEntradas, totalSaidas } = calcularTotaisFiltrados();
+    const emAtraso = calcularEmAtraso();
+
+    if (emAtraso.quantidade > 0) {
+      score -= Math.min(40, emAtraso.quantidade * 10);
+    }
+
+    if (totalEntradas > 0) {
+      const taxaPoupança = ((totalEntradas - totalSaidas) / totalEntradas) * 100;
+      if (taxaPoupança < 0) {
+        score -= 30;
+      } else if (taxaPoupança < 20) {
+        score -= 10;
+      }
+    } else if (totalSaidas > 0) {
+      score -= 40;
+    }
+
+    const categoriasValores = calcularValoresPorCategoria();
+    let categoriasEstouradas = 0;
+    categoriasValores.forEach(c => {
+      if (c.meta && c.total > c.meta) {
+        categoriasEstouradas++;
+      }
+    });
+    if (categoriasEstouradas > 0) {
+      score -= Math.min(20, categoriasEstouradas * 10);
+    }
+
+    score = Math.max(0, Math.min(100, score));
+
+    let status = 'excelente';
+    let cor = '#10b981';
+    let recomendacao = 'Excelente! Seu orçamento está sob controle e você está poupando dinheiro. Que tal investir o excedente? 🚀';
+
+    if (score < 50) {
+      status = 'critico';
+      cor = '#ef4444';
+      recomendacao = 'Atenção! Você está gastando mais do que ganha ou tem contas vencidas. É crucial cortar despesas e renegociar metas. ⚠️';
+    } else if (score < 80) {
+      status = 'alerta';
+      cor = '#f59e0b';
+      recomendacao = 'Alerta! Suas despesas estão elevadas ou há contas pendentes. Evite compras supérfluas e acompanhe suas metas por categoria. 🔍';
+    }
+
+    return { score, status, cor, recomendacao };
+  };
+
+  const calcularTaxaPoupanca = () => {
+    const { totalEntradas, totalSaidas } = calcularTotaisFiltrados();
+    if (totalEntradas <= 0) return 0;
+    return ((totalEntradas - totalSaidas) / totalEntradas) * 100;
+  };
   
   const handleSaveProjetivas = async () => {
     try {
@@ -515,6 +587,7 @@ function Dashboard() {
     setFilterConta('TODAS');
     setFilterAtraso(false);
     setSubcategorias([]);
+    setSelectedCalendarDay(null);
   };
 
   const calcularFaturaMes = (contaId) => {
@@ -585,28 +658,51 @@ function Dashboard() {
 
   const gerarCalendario = () => {
     const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = hoje.getMonth();
+    let ano = hoje.getFullYear();
+    let mes = hoje.getMonth();
+    
+    if (filterMes !== 'TODOS') {
+      const [fAno, fMes] = filterMes.split('-');
+      ano = parseInt(fAno, 10);
+      mes = parseInt(fMes, 10) - 1;
+    }
+    
     const primeiroDia = new Date(ano, mes, 1).getDay();
     const ultimoDia = new Date(ano, mes + 1, 0).getDate();
     
     const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     
     const dias = [];
     
-    // Dias vazios antes do primeiro dia do mês
     for (let i = 0; i < primeiroDia; i++) {
       dias.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
     }
     
-    // Dias do mês
     for (let dia = 1; dia <= ultimoDia; dia++) {
-      const ehHoje = dia === hoje.getDate();
+      const ehHoje = dia === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear();
+      const dataChave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+      const ehSelecionado = selectedCalendarDay === dataChave;
+
+      const lancamentosDoDia = lancamentos.filter(l => l.data.split('T')[0] === dataChave);
+      const temEntrada = lancamentosDoDia.some(l => l.tipo === 'entrada');
+      const saídas = lancamentosDoDia.filter(l => l.tipo === 'saida');
+      const temSaidaPaga = saídas.some(l => l.pago || l.conta_tipo === 'Cartão de Crédito');
+      const temSaidaPendente = saídas.some(l => !l.pago && l.conta_tipo !== 'Cartão de Crédito');
+
       dias.push(
-        <div key={dia} className={`calendar-day ${ehHoje ? 'hoje' : ''}`}>
-          {dia}
+        <div 
+          key={dia} 
+          className={`calendar-day ${ehHoje ? 'hoje' : ''} ${ehSelecionado ? 'selected' : ''} ${lancamentosDoDia.length > 0 ? 'has-events' : ''}`}
+          onClick={() => handleCalendarDayClick(dataChave)}
+        >
+          <span className="day-number">{dia}</span>
+          <div className="day-dots">
+            {temEntrada && <span className="dot-green"></span>}
+            {temSaidaPaga && <span className="dot-red"></span>}
+            {temSaidaPendente && <span className="dot-yellow"></span>}
+          </div>
         </div>
       );
     }
@@ -614,7 +710,19 @@ function Dashboard() {
     return (
       <div className="calendar-widget">
         <div className="calendar-header">
-          {meses[mes]} {ano}
+          <span>{mesesNomes[mes]} {ano}</span>
+          {selectedCalendarDay && (
+            <button 
+              className="btn-clear-calendar-filter" 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setSelectedCalendarDay(null); 
+              }}
+              title="Limpar filtro de data"
+            >
+              Limpar
+            </button>
+          )}
         </div>
         <div className="calendar-weekdays">
           {diasSemana.map(dia => (
@@ -1075,9 +1183,8 @@ function Dashboard() {
       if (modoGraficoProjetivo) {
         // Filtra projetivas que coincidem com o dia do mês atual (independente de ano/mês do cadastro)
         const projetivasDoDia = entradasProjetivasGlobais.filter(l => {
-          const dataProj = new Date(l.data);
           // Usamos getUTCDate ou split para pegar o dia exato da string YYYY-MM-DD
-          const diaProj = parseInt(l.data.split('-')[2].substring(0, 2));
+          const diaProj = parseInt(l.data.split('-')[2].substring(0, 2), 10);
           return diaProj === dia;
         });
         entradasDia = projetivasDoDia.reduce((sum, l) => sum + parseFloat(l.valor), 0);
@@ -1224,10 +1331,10 @@ function Dashboard() {
           </div>
         </div>
 
-        </div>
-        
-        {/* Seção de Contas */}
-        <div className="contas-section">
+        <div className="dashboard-main-grid">
+          <div className="dashboard-left-column">
+            {/* Seção de Contas */}
+            <div className="contas-section">
           {/* Card de Saldo Total */}
           <div className="saldo-total-card">
 
@@ -1535,6 +1642,27 @@ function Dashboard() {
                           {mostrarValores ? `R$ ${formatarMoeda(calcularEmAtraso().valorTotal)}` : 'R$ ••••••'}
                         </div>
                       </div>
+                      <div className="total-card total-poupanca">
+                        <div className="card-label">Taxa de Poupança</div>
+                        <div className="card-value">
+                          {mostrarValores ? `${calcularTaxaPoupanca().toFixed(1)}%` : '•••%'}
+                        </div>
+                        <div className="poupanca-progress-container">
+                          <div className="poupanca-progress-bar">
+                            <div 
+                              className="poupanca-progress-fill" 
+                              style={{ 
+                                width: `${Math.max(0, Math.min(100, calcularTaxaPoupanca()))}%`,
+                                backgroundColor: calcularTaxaPoupanca() >= 20 ? '#10b981' : calcularTaxaPoupanca() >= 0 ? '#f59e0b' : '#ef4444'
+                              }}
+                            ></div>
+                          </div>
+                          <span className="poupanca-help-text">
+                            {calcularTaxaPoupanca() >= 20 ? 'Excelente poupança! 🏆' : 
+                             calcularTaxaPoupanca() >= 0 ? 'Bom, tente poupar 20%.' : 'Alerta: Déficit mensal! ⚠️'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1821,6 +1949,10 @@ function Dashboard() {
               });
             }
 
+            if (selectedCalendarDay) {
+              filtrados = filtrados.filter(l => l.data.split('T')[0] === selectedCalendarDay);
+            }
+
             // Agrupar por data
             const agrupadoPorData = {};
             filtrados.forEach(lancamento => {
@@ -1965,14 +2097,67 @@ function Dashboard() {
                   setFilterSubcategoria('TODAS');
                   setFilterConta('TODAS');
                   setFilterAtraso(false);
+                  setSelectedCalendarDay(null);
                 }} style={{ marginTop: '10px' }}>
                   Limpar Filtros
                 </button>
               </div>
             );
           })()}
-        </div>
-      </div>
+          </div> {/* Fim de lancamentos-section */}
+          </div> {/* Fim de contas-section */}
+          </div> {/* Fim de dashboard-left-column */}
+          
+          <div className="dashboard-right-sidebar">
+            {/* Card de Saúde Financeira */}
+            {(() => {
+              const scoreData = calcularScoreSaudeFinanceira();
+              const radius = 40;
+              const circumference = 2 * Math.PI * radius;
+              const strokeDashoffset = circumference - (scoreData.score / 100) * circumference;
+
+              return (
+                <div className="health-score-card">
+                  <div className="health-score-header">
+                    <h4>Saúde Financeira</h4>
+                    <span className={`health-status-pill ${scoreData.status}`}>
+                      {scoreData.status.toUpperCase()}
+                    </span>
+                  </div>
+                  
+                  <div className="health-score-content">
+                    <div className="score-circle-wrapper">
+                      <svg className="score-circle-svg" viewBox="0 0 100 100">
+                        <circle className="score-circle-bg" cx="50" cy="50" r={radius} />
+                        <circle 
+                          className="score-circle-progress" 
+                          cx="50" 
+                          cy="50" 
+                          r={radius} 
+                          stroke={scoreData.cor}
+                          strokeDasharray={circumference}
+                          strokeDashoffset={strokeDashoffset}
+                        />
+                      </svg>
+                      <div className="score-text-overlay">
+                        <span className="score-num">{scoreData.score}</span>
+                        <span className="score-pts">pontos</span>
+                      </div>
+                    </div>
+                    
+                    <p className="health-recommendation">
+                      {scoreData.recomendacao}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Calendário Financeiro */}
+            {gerarCalendario()}
+          </div> {/* Fim de dashboard-right-sidebar */}
+        </div> {/* Fim de dashboard-main-grid */}
+      </div> {/* Fim de dashboard-content */}
 
       {showModal && (
         <div className="modal">
