@@ -320,7 +320,7 @@ function Lancamentos() {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container lancamentos-page-container">
 
       <div className="content">
         <div className="header">
