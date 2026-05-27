@@ -933,31 +933,43 @@ function Dashboard() {
           label: 'Saldo do Mês',
           data: balanco,
           borderColor: '#6366f1',
-          borderWidth: 3,
-          pointBackgroundColor: '#6366f1',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#6366f1',
+          pointBorderWidth: 2,
           pointRadius: 4,
+          pointHoverRadius: 6,
           tension: 0.4,
           fill: true,
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
-          order: 1
+          backgroundColor: 'rgba(99, 102, 241, 0.08)',
+          order: 0,
+          yAxisID: 'y',
         },
         {
           type: 'bar',
           label: 'Entradas',
           data: entradas,
-          backgroundColor: 'rgba(34, 197, 94, 0.7)',
-          borderRadius: 6,
-          barThickness: 25,
-          order: 2
+          backgroundColor: 'rgba(34, 197, 94, 0.75)',
+          hoverBackgroundColor: 'rgba(34, 197, 94, 0.95)',
+          borderRadius: { topLeft: 6, topRight: 6 },
+          borderSkipped: false,
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+          order: 1,
+          yAxisID: 'y',
         },
         {
           type: 'bar',
           label: 'Saídas',
           data: saidas,
           backgroundColor: 'rgba(239, 68, 68, 0.7)',
-          borderRadius: 6,
-          barThickness: 25,
-          order: 2
+          hoverBackgroundColor: 'rgba(239, 68, 68, 0.95)',
+          borderRadius: { topLeft: 6, topRight: 6 },
+          borderSkipped: false,
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+          order: 1,
+          yAxisID: 'y',
         },
       ],
     };
@@ -966,6 +978,10 @@ function Dashboard() {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         position: 'top',
@@ -976,14 +992,15 @@ function Dashboard() {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        titleColor: '#1f2937',
-        bodyColor: '#1f2937',
-        borderColor: '#e5e7eb',
+        backgroundColor: 'rgba(255, 255, 255, 0.97)',
+        titleColor: '#1e293b',
+        bodyColor: '#475569',
+        borderColor: '#e2e8f0',
         borderWidth: 1,
-        padding: 12,
+        padding: 14,
         boxPadding: 6,
         usePointStyle: true,
+        cornerRadius: 12,
         callbacks: {
           label: function(context) {
             let label = context.dataset.label || '';
@@ -998,13 +1015,29 @@ function Dashboard() {
     },
     scales: {
       x: {
-        grid: { display: false }
+        grid: { display: false },
+        ticks: {
+          font: { size: 11, weight: '600' },
+          color: '#64748b',
+          maxRotation: 45,
+          minRotation: 0,
+        },
+        border: { display: false },
       },
       y: {
         beginAtZero: true,
-        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+        stacked: false,
+        grid: { color: 'rgba(0, 0, 0, 0.04)', drawBorder: false },
+        border: { display: false },
         ticks: {
-          callback: value => 'R$ ' + value.toLocaleString('pt-BR')
+          font: { size: 11 },
+          color: '#94a3b8',
+          callback: value => {
+            if (Math.abs(value) >= 1000) {
+              return 'R$ ' + (value / 1000).toFixed(0) + 'k';
+            }
+            return 'R$ ' + value.toLocaleString('pt-BR');
+          }
         }
       }
     }
@@ -1493,9 +1526,12 @@ function Dashboard() {
                     </button>
                   </div>
                 )}
-                <Bar data={processChartData()} options={chartOptions} />
+                <div style={{ height: '380px', width: '100%' }}>
+                  <Bar data={processChartData()} options={chartOptions} />
+                </div>
               </div>
             </div>
+
             
             {lancamentos.length > 0 && (
               <div className="chart-container chart-area">
@@ -1692,22 +1728,24 @@ function Dashboard() {
                           <div key={idx} className="category-bar-group">
                             <div className="category-bar-main">
                               <div className="bar-label">
-                                <span className="bar-categoria" style={{ color: categoria.cor }}>
-                                  ● {categoria.nome}
-                                  {categoria.meta && (
-                                    <span title="Meta Mensal Definida" style={{ marginLeft: '6px', fontSize: '0.85rem' }}>🎯</span>
-                                  )}
-                                </span>
-                                <span className="bar-valor">
-                                  {mostrarValores ? `R$ ${formatarMoeda(categoria.total)}` : 'R$ ••••••'}
-                                  {categoria.meta && mostrarValores && (
-                                    <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '4px' }}>
-                                      / R$ {formatarMoeda(Number(categoria.meta))}
-                                    </span>
-                                  )}
+                                <div className="bar-label-top">
+                                  <span className="bar-categoria" style={{ color: categoria.cor }}>
+                                    ● {categoria.nome}
+                                    {categoria.meta && (
+                                      <span title="Meta Mensal Definida" style={{ marginLeft: '4px', fontSize: '0.75rem' }}>🎯</span>
+                                    )}
+                                  </span>
                                   <span className="percentage-pill" style={{ backgroundColor: isOverBudget ? '#fef2f2' : `${categoria.cor}22`, color: isOverBudget ? '#ef4444' : categoria.cor }}>
                                     {((categoria.meta ? (categoria.total / categoria.meta) * 100 : (categoria.total / maxValor) * 100)).toFixed(1)}%
                                   </span>
+                                </div>
+                                <span className="bar-valor">
+                                  <span className="val-moeda">
+                                    {mostrarValores ? `R$ ${formatarMoeda(categoria.total)}` : 'R$ ••••••'}
+                                  </span>
+                                  {categoria.meta && mostrarValores && (
+                                    <span className="val-meta">/ R$ {formatarMoeda(Number(categoria.meta))}</span>
+                                  )}
                                 </span>
                               </div>
                               <div className="bar-container">
@@ -1742,22 +1780,24 @@ function Dashboard() {
                                   return (
                                     <div key={subIdx} className="subcategory-bar">
                                       <div className="bar-label subcategory-label">
-                                        <span className="bar-subcategoria">
-                                          └─ {subcategoria.nome}
-                                          {subcategoria.meta && (
-                                            <span title="Meta Mensal Definida" style={{ marginLeft: '4px', fontSize: '0.75rem' }}>🎯</span>
-                                          )}
-                                        </span>
-                                        <span className="bar-valor">
-                                          {mostrarValores ? `R$ ${formatarMoeda(subcategoria.total)}` : 'R$ ••••••'}
-                                          {subcategoria.meta && mostrarValores && (
-                                            <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '4px' }}>
-                                              / R$ {formatarMoeda(Number(subcategoria.meta))}
-                                            </span>
-                                          )}
+                                        <div className="bar-label-top">
+                                          <span className="bar-subcategoria">
+                                            └─ {subcategoria.nome}
+                                            {subcategoria.meta && (
+                                              <span title="Meta Mensal Definida" style={{ marginLeft: '3px', fontSize: '0.7rem' }}>🎯</span>
+                                            )}
+                                          </span>
                                           <span className="percentage-pill small" style={{ backgroundColor: isSubOverBudget ? '#fef2f2' : `${categoria.cor}22`, color: isSubOverBudget ? '#ef4444' : categoria.cor }}>
                                             {((subcategoria.meta ? (subcategoria.total / subcategoria.meta) * 100 : (subcategoria.total / categoria.total) * 100)).toFixed(1)}%
                                           </span>
+                                        </div>
+                                        <span className="bar-valor">
+                                          <span className="val-moeda">
+                                            {mostrarValores ? `R$ ${formatarMoeda(subcategoria.total)}` : 'R$ ••••••'}
+                                          </span>
+                                          {subcategoria.meta && mostrarValores && (
+                                            <span className="val-meta">/ R$ {formatarMoeda(Number(subcategoria.meta))}</span>
+                                          )}
                                         </span>
                                       </div>
                                       <div className="bar-container subcategory-container">
@@ -2070,8 +2110,19 @@ function Dashboard() {
                               )}
                             </div>
                             <div className="item-actions">
-                              <button className="btn-action-edit" onClick={() => handleEdit(lancamento)} title="Editar">✏️</button>
-                              <button className="btn-action-delete" onClick={() => handleDelete(lancamento)} title="Excluir">🗑️</button>
+                              <button className="btn-action-edit" onClick={() => handleEdit(lancamento)} title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 20h9"/>
+                                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                </svg>
+                              </button>
+                              <button className="btn-action-delete" onClick={() => handleDelete(lancamento)} title="Excluir">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18"/>
+                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                </svg>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -2112,16 +2163,22 @@ function Dashboard() {
               const circumference = 2 * Math.PI * radius;
               const strokeDashoffset = circumference - (scoreData.score / 100) * circumference;
 
+              const isProUser = user.is_pro || user.is_admin;
+
               return (
                 <div className="health-score-card">
                   <div className="health-score-header">
                     <h4>Saúde Financeira</h4>
-                    <span className={`health-status-pill ${scoreData.status}`}>
-                      {scoreData.status.toUpperCase()}
-                    </span>
+                    {!isProUser ? (
+                      <span className="health-status-pill pro-tag">💎 PRO</span>
+                    ) : (
+                      <span className={`health-status-pill ${scoreData.status}`}>
+                        {scoreData.status.toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   
-                  <div className="health-score-content">
+                  <div className="health-score-content" style={!isProUser ? { filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none' } : {}}>
                     <div className="score-circle-wrapper">
                       <svg className="score-circle-svg" viewBox="0 0 100 100">
                         <circle className="score-circle-bg" cx="50" cy="50" r={radius} />
@@ -2145,6 +2202,17 @@ function Dashboard() {
                       {scoreData.recomendacao}
                     </p>
                   </div>
+
+                  {!isProUser && (
+                    <div className="health-score-lock-overlay">
+                      <div className="lock-icon">💎</div>
+                      <h5>Diagnóstico Bloqueado</h5>
+                      <p>Ative o plano PRO para ter acesso ao score e orientações da sua saúde financeira.</p>
+                      <button className="btn-upgrade-score" onClick={handleUpgradeClick}>
+                        <span>✨</span> Seja PRO Agora
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })()}
