@@ -10,7 +10,12 @@ import {
   getEvolutionConfig,
   updateEvolutionConfig,
   getWhatsappStatus,
-  sendRemindersNow
+  sendRemindersNow,
+  getSmtpConfig,
+  updateSmtpConfig,
+  sendTestEmail,
+  getEmailTemplates,
+  updateEmailTemplate
 } from '../services/api';
 import './Manager.css';
 
@@ -26,6 +31,21 @@ function Manager() {
   const [configLoading, setConfigLoading] = useState(false);
   const [remindersLoading, setRemindersLoading] = useState(false);
 
+  // SMTP / Email Config
+  const [smtpConfig, setSmtpConfig] = useState({ host: '', port: 465, username: '', password: '', secure: true, from_email: '', from_name: '' });
+  const [smtpLoading, setSmtpLoading] = useState(false);
+  const [testEmailDest, setTestEmailDest] = useState('');
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+
+  // Templates de E-mail
+  const [templates, setTemplates] = useState([]);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [activeTemplateTab, setActiveTemplateTab] = useState('');
+  const [activeWorkTab, setActiveWorkTab] = useState('edit');
+  const [editingTemplate, setEditingTemplate] = useState({ subject: '', body: '' });
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const textareaRef = React.useRef(null);
+
   const [showResetModal, setShowResetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -37,7 +57,7 @@ function Manager() {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      await Promise.all([loadUsers(), loadConfigs(), loadEvolutionConfig(), fetchWhatsappStatus()]);
+      await Promise.all([loadUsers(), loadConfigs(), loadEvolutionConfig(), fetchWhatsappStatus(), loadSmtpConfig()]);
     };
     loadInitialData();
     // eslint-disable-next-line
@@ -88,6 +108,109 @@ function Manager() {
     } finally {
       setRemindersLoading(false);
     }
+  };
+
+  const loadSmtpConfig = async () => {
+    try {
+      const response = await getSmtpConfig();
+      if (response.data?.data) {
+        setSmtpConfig(response.data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar config SMTP:', error);
+    }
+  };
+
+  const handleSaveSmtpConfig = async () => {
+    setSmtpLoading(true);
+    try {
+      await updateSmtpConfig(smtpConfig);
+      triggerToast('Configuração de e-mail salva! 📧');
+    } catch (error) {
+      triggerToast(error.response?.data?.error || 'Erro ao salvar configuração de e-mail', 'error');
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testEmailDest) {
+      return triggerToast('Informe o e-mail de destino para o teste', 'error');
+    }
+    setTestEmailLoading(true);
+    try {
+      await sendTestEmail(testEmailDest);
+      triggerToast('E-mail de teste enviado! Verifique sua caixa de entrada 📩');
+    } catch (error) {
+      triggerToast(error.response?.data?.error || 'Erro ao enviar e-mail de teste', 'error');
+    } finally {
+      setTestEmailLoading(false);
+    }
+  };
+
+  const handleOpenTemplatesModal = async () => {
+    setTemplatesLoading(true);
+    try {
+      const response = await getEmailTemplates();
+      if (response.data?.data) {
+        setTemplates(response.data.data);
+        const first = response.data.data[0];
+        if (first) {
+          setActiveTemplateTab(first.slug);
+          setEditingTemplate({ subject: first.subject, body: first.body });
+        }
+      }
+      setShowTemplatesModal(true);
+    } catch (error) {
+      triggerToast('Erro ao carregar modelos de e-mail', 'error');
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const handleSwitchTemplateTab = (slug) => {
+    const found = templates.find(t => t.slug === slug);
+    if (found) {
+      setActiveTemplateTab(slug);
+      setEditingTemplate({ subject: found.subject, body: found.body });
+      setActiveWorkTab('edit');
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    try {
+      const response = await updateEmailTemplate(activeTemplateTab, {
+        subject: editingTemplate.subject,
+        body: editingTemplate.body
+      });
+      if (response.data?.ok) {
+        triggerToast('Modelo de e-mail atualizado! 💾');
+        setTemplates(prev => prev.map(t => t.slug === activeTemplateTab ? { ...t, subject: editingTemplate.subject, body: editingTemplate.body } : t));
+      }
+    } catch (error) {
+      triggerToast('Erro ao salvar modelo de e-mail', 'error');
+    }
+  };
+
+  const insertAtCursor = (textToInsert) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentText = editingTemplate.body;
+    
+    const newText = currentText.substring(0, start) + textToInsert + currentText.substring(end);
+    
+    setEditingTemplate({
+      ...editingTemplate,
+      body: newText
+    });
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
+    }, 50);
   };
 
   const loadUsers = async (search = '') => {
@@ -188,75 +311,178 @@ function Manager() {
             <h1>Gestão de Clientes</h1>
             <p>Administração exclusiva do Controle Financeiro</p>
           </div>
-          
-          <div className="config-card premium-card">
-            <div className="config-item">
-              <label>Preço da Mensalidade (Global)</label>
-              <div className="price-input-group">
-                <span>R$</span>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  value={configs.preco_assinatura} 
-                  onChange={(e) => setConfigs({...configs, preco_assinatura: e.target.value})}
-                />
-                <button 
-                  onClick={updateGlobalPrice} 
-                  disabled={isUpdatingPrice}
-                  className="btn-save-config"
-                >
-                  {isUpdatingPrice ? '...' : 'Salvar'}
+        </div>
+
+        <div className="manager-configs-container">
+          <div className="configs-left-column">
+            <div className="config-card premium-card price-config-card">
+              <div className="config-item">
+                <label>Preço da Mensalidade (Global)</label>
+                <div className="price-input-group">
+                  <span>R$</span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    value={configs.preco_assinatura} 
+                    onChange={(e) => setConfigs({...configs, preco_assinatura: e.target.value})}
+                  />
+                  <button 
+                    onClick={updateGlobalPrice} 
+                    disabled={isUpdatingPrice}
+                    className="btn-save-config"
+                  >
+                    {isUpdatingPrice ? '...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="config-card premium-card evolution-config-section">
+              <div className="config-header-row">
+                <h3>WhatsApp / API Evolution</h3>
+                <div className={`wa-status-badge ${waStatus.state === 'Conectado ✅' ? 'active' : 'inactive'}`}>
+                  {waStatus.state}
+                </div>
+              </div>
+              
+              <div className="evolution-grid">
+                <div className="form-group-mini">
+                  <label>URL da API</label>
+                  <input 
+                    type="text" 
+                    value={evolutionConfig.url} 
+                    onChange={(e) => setEvolutionConfig({...evolutionConfig, url: e.target.value})}
+                    placeholder="https://sua-api.com"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>Instância</label>
+                  <input 
+                    type="text" 
+                    value={evolutionConfig.instancia} 
+                    onChange={(e) => setEvolutionConfig({...evolutionConfig, instancia: e.target.value})}
+                    placeholder="nome-instancia"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>Token</label>
+                  <input 
+                    type="password" 
+                    value={evolutionConfig.token} 
+                    onChange={(e) => setEvolutionConfig({...evolutionConfig, token: e.target.value})}
+                    placeholder="API Key"
+                  />
+                </div>
+              </div>
+
+              <div className="evolution-actions">
+                <button className="btn-refresh-mini" onClick={fetchWhatsappStatus}>🔄 Status</button>
+                <button className="btn-save-mini" onClick={handleSaveEvolutionConfig} disabled={configLoading}>
+                  {configLoading ? 'Salvando...' : 'Salvar Config'}
+                </button>
+                <button className="btn-reminders-mini" onClick={handleSendRemindersNow} disabled={remindersLoading}>
+                  {remindersLoading ? 'Disparando...' : '🚀 Disparar Lembretes'}
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="config-card premium-card evolution-config-section">
-            <div className="config-header-row">
-              <h3>WhatsApp / API Evolution</h3>
-              <div className={`wa-status-badge ${waStatus.state === 'Conectado ✅' ? 'active' : 'inactive'}`}>
-                {waStatus.state}
+          <div className="configs-right-column">
+            <div className="config-card premium-card email-config-section">
+              <div className="config-header-row">
+                <h3>Servidor de E-mail (SMTP)</h3>
+                <span className="info-badge">Hostgator Titan / Outros</span>
               </div>
-            </div>
-            
-            <div className="evolution-grid">
-              <div className="form-group-mini">
-                <label>URL da API</label>
-                <input 
-                  type="text" 
-                  value={evolutionConfig.url} 
-                  onChange={(e) => setEvolutionConfig({...evolutionConfig, url: e.target.value})}
-                  placeholder="https://sua-api.com"
-                />
+              
+              <div className="evolution-grid">
+                <div className="form-group-mini">
+                  <label>Servidor SMTP (Host)</label>
+                  <input 
+                    type="text" 
+                    value={smtpConfig.host} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, host: e.target.value})}
+                    placeholder="smtp.titan.email"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>Porta</label>
+                  <input 
+                    type="number" 
+                    value={smtpConfig.port} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, port: parseInt(e.target.value) || 0})}
+                    placeholder="465"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>Conexão Segura (SSL/TLS)</label>
+                  <div className="toggle-container-mini">
+                    <input 
+                      type="checkbox" 
+                      id="smtp-secure"
+                      checked={smtpConfig.secure} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, secure: e.target.checked})}
+                    />
+                    <label htmlFor="smtp-secure">{smtpConfig.secure ? 'SSL Ativo' : 'Desativado'}</label>
+                  </div>
+                </div>
+                <div className="form-group-mini">
+                  <label>Usuário (E-mail)</label>
+                  <input 
+                    type="email" 
+                    value={smtpConfig.username} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, username: e.target.value})}
+                    placeholder="exemplo@dominio.com.br"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>Senha</label>
+                  <input 
+                    type="password" 
+                    value={smtpConfig.password} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, password: e.target.value})}
+                    placeholder="Sua senha de e-mail"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>Nome do Remetente</label>
+                  <input 
+                    type="text" 
+                    value={smtpConfig.from_name} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, from_name: e.target.value})}
+                    placeholder="Controle Financeiro"
+                  />
+                </div>
+                <div className="form-group-mini">
+                  <label>E-mail do Remetente</label>
+                  <input 
+                    type="email" 
+                    value={smtpConfig.from_email} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, from_email: e.target.value})}
+                    placeholder="exemplo@dominio.com.br"
+                  />
+                </div>
               </div>
-              <div className="form-group-mini">
-                <label>Instância</label>
-                <input 
-                  type="text" 
-                  value={evolutionConfig.instancia} 
-                  onChange={(e) => setEvolutionConfig({...evolutionConfig, instancia: e.target.value})}
-                  placeholder="nome-instancia"
-                />
-              </div>
-              <div className="form-group-mini">
-                <label>Token</label>
-                <input 
-                  type="password" 
-                  value={evolutionConfig.token} 
-                  onChange={(e) => setEvolutionConfig({...evolutionConfig, token: e.target.value})}
-                  placeholder="API Key"
-                />
-              </div>
-            </div>
 
-            <div className="evolution-actions">
-              <button className="btn-refresh-mini" onClick={fetchWhatsappStatus}>🔄 Status</button>
-              <button className="btn-save-mini" onClick={handleSaveEvolutionConfig} disabled={configLoading}>
-                {configLoading ? 'Salvando...' : 'Salvar Config'}
-              </button>
-              <button className="btn-reminders-mini" onClick={handleSendRemindersNow} disabled={remindersLoading}>
-                {remindersLoading ? 'Disparando...' : '🚀 Disparar Lembretes'}
-              </button>
+              <div className="email-test-row">
+                <input 
+                  type="email" 
+                  placeholder="Enviar e-mail de teste para..." 
+                  value={testEmailDest} 
+                  onChange={(e) => setTestEmailDest(e.target.value)}
+                />
+                <button className="btn-test-email" onClick={handleSendTestEmail} disabled={testEmailLoading}>
+                  {testEmailLoading ? 'Enviando...' : '✉️ Testar Envios'}
+                </button>
+              </div>
+
+              <div className="evolution-actions email-actions-row">
+                <button type="button" className="btn-edit-templates" onClick={handleOpenTemplatesModal} disabled={templatesLoading}>
+                  {templatesLoading ? 'Carregando...' : '✏️ Modelos de E-mail'}
+                </button>
+                <button className="btn-save-mini" onClick={handleSaveSmtpConfig} disabled={smtpLoading}>
+                  {smtpLoading ? 'Salvando...' : 'Salvar Config'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -423,6 +649,136 @@ function Manager() {
             <div className="modal-actions">
               <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Não</button>
               <button className="btn-delete-confirm" onClick={confirmDelete}>Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Modelos de E-mail */}
+      {showTemplatesModal && (
+        <div className="modal email-templates-modal-wrapper">
+          <div className="modal-content templates-modal premium-card">
+            <div className="modal-header">
+              <h3>Modelos de E-mail HTML ({templates.length})</h3>
+              <button className="btn-close" onClick={() => setShowTemplatesModal(false)}>✕</button>
+            </div>
+
+            {/* Abas dos templates */}
+            <div className="templates-tabs-bar">
+              {templates.length === 0 && (
+                <div style={{ padding: '15px 10px', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                  Carregando abas...
+                </div>
+              )}
+              {templates.map(t => (
+                <button 
+                  key={t.slug} 
+                  type="button"
+                  className={`template-tab-btn ${activeTemplateTab === t.slug ? 'active' : ''}`}
+                  onClick={() => handleSwitchTemplateTab(t.slug)}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Corpo do editor */}
+            <div className="templates-editor-body">
+              <div className="form-group">
+                <label className="editor-label">Assunto do E-mail</label>
+                <input 
+                  type="text" 
+                  className="template-subject-input"
+                  value={editingTemplate.subject} 
+                  onChange={(e) => setEditingTemplate({...editingTemplate, subject: e.target.value})}
+                  placeholder="Assunto do e-mail..."
+                />
+              </div>
+
+              {/* Sub-abas: Editar / Visualizar */}
+              <div className="editor-work-tabs">
+                <button 
+                  type="button"
+                  className={`work-tab-btn ${activeWorkTab === 'edit' ? 'active' : ''}`}
+                  onClick={() => setActiveWorkTab('edit')}
+                >
+                  📝 Editar HTML
+                </button>
+                <button 
+                  type="button"
+                  className={`work-tab-btn ${activeWorkTab === 'preview' ? 'active' : ''}`}
+                  onClick={() => setActiveWorkTab('preview')}
+                >
+                  👁️ Visualizar Preview
+                </button>
+              </div>
+
+              {activeWorkTab === 'edit' ? (
+                <div className="editor-edit-pane">
+                  {/* Barra de Formatação */}
+                  <div className="html-toolbar">
+                    <button type="button" onClick={() => insertAtCursor('<strong>Negrito</strong>')} title="Negrito"><b>B</b></button>
+                    <button type="button" onClick={() => insertAtCursor('<em>Itálico</em>')} title="Itálico"><i>I</i></button>
+                    <button type="button" onClick={() => insertAtCursor('<h2>Título</h2>')} title="Título">H2</button>
+                    <button type="button" onClick={() => insertAtCursor('<p>Parágrafo</p>')} title="Parágrafo">P</button>
+                    <button type="button" onClick={() => insertAtCursor('<a href="https://..." style="color: #7c3aed; font-weight: bold; text-decoration: underline;">Link</a>')} title="Link">Link</button>
+                    <button type="button" onClick={() => insertAtCursor('<br />')} title="Quebra de Linha">Quebra</button>
+                    
+                    <span className="toolbar-divider">|</span>
+                    
+                    <span className="variables-label">Tags:</span>
+                    {(() => {
+                      const activeObj = templates.find(t => t.slug === activeTemplateTab);
+                      const vars = activeObj?.variables || [];
+                      return vars.map(v => (
+                        <button 
+                          key={v}
+                          type="button" 
+                          className="var-badge-btn"
+                          onClick={() => insertAtCursor(`{{${v}}}`)}
+                          title={`Inserir tag dinâmica {{${v}}}`}
+                        >
+                          {`{{${v}}}`}
+                        </button>
+                      ));
+                    })()}
+                  </div>
+
+                  <textarea 
+                    ref={textareaRef}
+                    className="template-html-textarea"
+                    value={editingTemplate.body}
+                    onChange={(e) => setEditingTemplate({...editingTemplate, body: e.target.value})}
+                    placeholder="Escreva seu código HTML aqui..."
+                    spellCheck="false"
+                  />
+                </div>
+              ) : (
+                <div className="editor-preview-pane">
+                  <div className="preview-subject-header">
+                    <strong>Assunto:</strong> {editingTemplate.subject || '(Sem assunto)'}
+                  </div>
+                  <div 
+                    className="preview-html-content"
+                    dangerouslySetInnerHTML={{ 
+                      __html: editingTemplate.body 
+                        ? editingTemplate.body
+                            .replace(/\{\{nome\}\}/g, 'Fulano de Tal')
+                            .replace(/\{\{data_hora\}\}/g, new Date().toLocaleString('pt-BR'))
+                            .replace(/\{\{data_vencimento\}\}/g, new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString('pt-BR'))
+                            .replace(/\{\{dias_restantes\}\}/g, '7')
+                            .replace(/\{\{dias_inativo\}\}/g, '15')
+                            .replace(/\{\{email\}\}/g, 'usuario@exemplo.com')
+                        : '<p style="color: #888; text-align: center; padding: 20px;">Escreva algum HTML na aba Editar para ver o preview.</p>' 
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-cancel" onClick={() => setShowTemplatesModal(false)}>Fechar</button>
+              <button type="button" className="btn-save" onClick={handleSaveTemplate}>Salvar Modelo</button>
             </div>
           </div>
         </div>

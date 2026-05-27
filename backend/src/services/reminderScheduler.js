@@ -71,6 +71,60 @@ async function sendReminder(reminderDate) {
   }
 }
 
+async function sendAutomatedEmails() {
+  console.log('⏰ Iniciando verificação de e-mails automatizados diários...');
+  
+  // 1. E-mail de Inatividade (Exatamente 15 dias sem login/atividade)
+  try {
+    const inactivityResult = await pool.query(
+      `SELECT nome, email FROM usuarios 
+       WHERE DATE(COALESCE(ultima_atividade, created_at)) = CURRENT_DATE - INTERVAL '15 days'`
+    );
+    if (inactivityResult.rows.length > 0) {
+      console.log(`🔍 Inatividade: ${inactivityResult.rows.length} usuário(s) elegível(is).`);
+      const { sendEmailTemplate } = require('./emailService');
+      for (const u of inactivityResult.rows) {
+        await sendEmailTemplate({
+          to: u.email,
+          templateSlug: 'inactivity',
+          variables: { nome: u.nome, dias_inativo: '15' }
+        });
+        console.log(`✉️ E-mail de inatividade enviado para ${u.email}`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erro ao verificar e-mails de inatividade:', error.message);
+  }
+  
+  // 2. E-mail de Aviso de Vencimento de Assinatura (Exatamente 3 dias antes)
+  try {
+    const expirationResult = await pool.query(
+      `SELECT nome, email, pro_expires_at FROM usuarios 
+       WHERE is_pro = true 
+         AND DATE(pro_expires_at) = CURRENT_DATE + INTERVAL '3 days'`
+    );
+    if (expirationResult.rows.length > 0) {
+      console.log(`🔍 Vencimento de Assinatura: ${expirationResult.rows.length} usuário(s) elegível(is).`);
+      const { sendEmailTemplate } = require('./emailService');
+      for (const u of expirationResult.rows) {
+        const dataFormatada = new Date(u.pro_expires_at).toLocaleDateString('pt-BR');
+        await sendEmailTemplate({
+          to: u.email,
+          templateSlug: 'expiration',
+          variables: { 
+            nome: u.nome, 
+            data_vencimento: dataFormatada, 
+            dias_restantes: '3' 
+          }
+        });
+        console.log(`✉️ E-mail de aviso de vencimento enviado para ${u.email}`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erro ao verificar e-mails de vencimento de assinatura:', error.message);
+  }
+}
+
 function startReminderScheduler() {
   console.log(`⏰ Agendador de lembretes ativo para ${REMINDER_HOUR} (${TZ})`);
   setInterval(async () => {
@@ -85,6 +139,9 @@ function startReminderScheduler() {
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
         await sendReminder(tomorrow);
+        
+        // Enviar e-mails diários de inatividade e vencimento
+        await sendAutomatedEmails();
       } catch (error) {
         console.error('Erro no agendador de lembretes:', error.message);
       }
@@ -92,4 +149,4 @@ function startReminderScheduler() {
   }, 60 * 1000);
 }
 
-module.exports = { startReminderScheduler, sendReminder };
+module.exports = { startReminderScheduler, sendReminder, sendAutomatedEmails };

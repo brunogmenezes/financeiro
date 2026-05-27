@@ -68,6 +68,13 @@ export const updateEvolutionConfig = (data) => api.post('/whatsapp/config', data
 export const sendTestMessage = (whatsapp) => api.post('/whatsapp/test-message', { whatsapp });
 export const sendRemindersNow = () => api.post('/whatsapp/send-reminders-now');
 
+// Email / SMTP
+export const getSmtpConfig = () => api.get('/email/config');
+export const updateSmtpConfig = (data) => api.post('/email/config', data);
+export const sendTestEmail = (to) => api.post('/email/test-email', { to });
+export const getEmailTemplates = () => api.get('/email/templates');
+export const updateEmailTemplate = (slug, data) => api.put(`/email/templates/${slug}`, data);
+
 // Entradas Projetivas
 export const getEntradasProjetivas = () => api.get('/entradas-projetivas');
 export const createEntradaProjetiva = (data) => api.post('/entradas-projetivas', data);

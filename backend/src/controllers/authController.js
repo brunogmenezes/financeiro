@@ -38,6 +38,14 @@ exports.googleLogin = async (req, res) => {
       
       // Registrar log
       await registrarLog(user.id, user.nome, 'CRIAR', 'usuarios', user.id, `Novo usuário via Google: ${email}`);
+
+      // Enviar e-mail de boas-vindas
+      const { sendEmailTemplate } = require('../services/emailService');
+      sendEmailTemplate({
+        to: email,
+        templateSlug: 'welcome',
+        variables: { nome, email }
+      }).catch(err => console.error('Erro ao enviar e-mail de boas-vindas Google:', err.message));
     } else {
       user = userResult.rows[0];
       // Se o usuário existia mas não tinha google_id vinculado, vincular agora
@@ -103,6 +111,14 @@ exports.register = async (req, res) => {
       result.rows[0].id,
       `Novo usuário registrado: ${nome} (${email})`
     );
+
+    // Enviar e-mail de boas-vindas
+    const { sendEmailTemplate } = require('../services/emailService');
+    sendEmailTemplate({
+      to: email,
+      templateSlug: 'welcome',
+      variables: { nome, email }
+    }).catch(err => console.error('Erro ao enviar e-mail de boas-vindas:', err.message));
 
     res.status(201).json({ message: 'Usuário criado com sucesso', user: result.rows[0] });
   } catch (error) {

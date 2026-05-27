@@ -12,7 +12,9 @@ const whatsappRoutes = require('./routes/whatsapp');
 const entradasProjetivasRoutes = require('./routes/entradasProjetivas');
 const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
+const emailRoutes = require('./routes/email');
 const { ensureOptionalColumns } = require('./config/migrations');
+const { createEmailTemplates } = require('./config/createEmailTemplates');
 const { startReminderScheduler } = require('./services/reminderScheduler');
 
 const app = express();
@@ -31,6 +33,7 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/entradas-projetivas', entradasProjetivasRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/email', emailRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {
@@ -42,5 +45,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   await ensureOptionalColumns();
+  await createEmailTemplates().catch(err => console.error('Erro ao migrar templates:', err));
   startReminderScheduler();
 });
