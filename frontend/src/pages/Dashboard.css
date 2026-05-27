@@ -2737,6 +2737,12 @@
     grid-template-columns: 2.3fr 1fr;
     align-items: start;
   }
+  
+  .dashboard-right-sidebar {
+    position: sticky;
+    top: 24px;
+    height: max-content;
+  }
 }
 
 /* Health Score Card */
