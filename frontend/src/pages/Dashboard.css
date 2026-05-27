@@ -1391,13 +1391,18 @@
   margin-top: 4px;
 }
 
-.dashboard-container .categoria-badge-small {
+.dashboard-container .categoria-badge-small,
+.dashboard-container .subcategoria-badge-small {
   font-size: 0.65rem;
   padding: 4px 10px;
   border-radius: 8px;
   font-weight: 800;
   text-transform: uppercase;
   color: white;
+}
+
+.dashboard-container .subcategoria-badge-small {
+  opacity: 0.85;
 }
 
 .dashboard-container .conta-badge-inline {
