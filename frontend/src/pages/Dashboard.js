@@ -1679,7 +1679,7 @@ function Dashboard() {
                         </div>
                       </div>
                       <div className="total-card total-poupanca">
-                        <div className="card-label">Taxa de Poupança</div>
+                        <div className="card-label">Investimento no Período</div>
                         <div className="card-value">
                           {mostrarValores ? `${calcularTaxaPoupanca().toFixed(1)}%` : '•••%'}
                         </div>
