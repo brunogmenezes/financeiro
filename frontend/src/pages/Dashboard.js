@@ -1646,13 +1646,25 @@ function Dashboard() {
                   <div className="right-section">
                     <div className="totals-cards">
                       <div className="total-card total-entradas">
-                        <div className="card-label">Total de Entradas</div>
+                        <div className="card-label">
+                          <span>Total de Entradas</span>
+                          <div className="tooltip-container">
+                            <span className="tooltip-icon">ⓘ</span>
+                            <span className="tooltip-text">Soma de todas as suas receitas (entradas) recebidas no período selecionado.</span>
+                          </div>
+                        </div>
                         <div className="card-value">
                           {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalEntradas)}` : 'R$ ••••••'}
                         </div>
                       </div>
                       <div className="total-card total-saidas">
-                        <div className="card-label">Total de Saídas</div>
+                        <div className="card-label">
+                          <span>Total de Saídas</span>
+                          <div className="tooltip-container">
+                            <span className="tooltip-icon">ⓘ</span>
+                            <span className="tooltip-text">Soma de todas as suas despesas (saídas) liquidadas ou pendentes no período selecionado.</span>
+                          </div>
+                        </div>
                         <div className="card-value">
                           {mostrarValores ? `R$ ${formatarMoeda(calcularTotaisFiltrados().totalSaidas)}` : 'R$ ••••••'}
                         </div>
@@ -1672,14 +1684,26 @@ function Dashboard() {
                         )}
                       </div>
                       <div className="total-card total-atraso">
-                        <div className="card-label">⚠️ Em Atraso</div>
+                        <div className="card-label">
+                          <span>⚠️ Em Atraso</span>
+                          <div className="tooltip-container">
+                            <span className="tooltip-icon">ⓘ</span>
+                            <span className="tooltip-text">Quantidade e valor total de despesas (saídas) vencidas que ainda não foram pagas.</span>
+                          </div>
+                        </div>
                         <div className="card-count">{calcularEmAtraso().quantidade} lançamento{calcularEmAtraso().quantidade !== 1 ? 's' : ''}</div>
                         <div className="card-value">
                           {mostrarValores ? `R$ ${formatarMoeda(calcularEmAtraso().valorTotal)}` : 'R$ ••••••'}
                         </div>
                       </div>
                       <div className="total-card total-poupanca">
-                        <div className="card-label">Investimento no Período</div>
+                        <div className="card-label">
+                          <span>Investimento no Período</span>
+                          <div className="tooltip-container">
+                            <span className="tooltip-icon">ⓘ</span>
+                            <span className="tooltip-text">Percentual de dinheiro economizado e investido em relação às receitas totais do período.</span>
+                          </div>
+                        </div>
                         <div className="card-value">
                           {mostrarValores ? `${calcularTaxaPoupanca().toFixed(1)}%` : '•••%'}
                         </div>
