@@ -1020,7 +1020,7 @@
 
 .lancamentos-list-header {
   display: grid;
-  grid-template-columns: 100px 1fr 130px 110px 100px 70px;
+  grid-template-columns: 90px 1fr 110px 100px 70px;
   padding: 12px 16px;
   background: #f8fafc;
   border-radius: 10px;
@@ -1065,7 +1065,7 @@
 
 .lancamento-item {
   display: grid;
-  grid-template-columns: 100px 1fr 130px 110px 100px 70px;
+  grid-template-columns: 90px 1fr 110px 100px 70px;
   align-items: center;
   padding: 10px 16px;
   border-radius: 12px;
@@ -1342,7 +1342,7 @@
 
 .lancamento-item {
   display: grid;
-  grid-template-columns: 100px 1fr 130px 110px 100px 70px;
+  grid-template-columns: 90px 1fr 110px 100px 70px;
   align-items: center;
   padding: 20px 24px;
   border-radius: 20px;
@@ -1371,6 +1371,20 @@
   font-weight: 800;
   text-transform: uppercase;
   color: white;
+}
+
+.conta-badge-inline {
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .item-valor {

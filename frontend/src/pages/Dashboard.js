@@ -1975,7 +1975,6 @@ function Dashboard() {
                 <div className="lancamentos-list-header">
                   <div className="header-col">Tipo</div>
                   <div className="header-col">Descrição</div>
-                  <div className="header-col">Conta</div>
                   <div className="header-col">Valor</div>
                   <div className="header-col">Status</div>
                   <div className="header-col">Ações</div>
@@ -2025,8 +2024,8 @@ function Dashboard() {
                                   </span>
                                 )}
                               </div>
-                              {lancamento.categoria_nome && (
-                                <div className="categoria-badges-inline">
+                              <div className="categoria-badges-inline">
+                                {lancamento.categoria_nome && (
                                   <span 
                                     className="categoria-badge-small"
                                     style={{ backgroundColor: lancamento.categoria_cor || '#7c3aed' }}
@@ -2034,22 +2033,19 @@ function Dashboard() {
                                   >
                                     {lancamento.categoria_nome}
                                   </span>
-                                  {lancamento.subcategoria_nome && (
-                                    <span 
-                                      className="subcategoria-badge-small"
-                                      style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
-                                      title={lancamento.subcategoria_nome}
-                                    >
-                                      {lancamento.subcategoria_nome}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="item-conta">
-                              <div className="conta-pill">
-                                <span className="conta-icon">🏦</span>
-                                <span className="conta-nome">{lancamento.conta_nome || '-'}</span>
+                                )}
+                                {lancamento.subcategoria_nome && (
+                                  <span 
+                                    className="subcategoria-badge-small"
+                                    style={{ backgroundColor: lancamento.subcategoria_cor || '#7c3aed' }}
+                                    title={lancamento.subcategoria_nome}
+                                  >
+                                    {lancamento.subcategoria_nome}
+                                  </span>
+                                )}
+                                <span className="conta-badge-inline" title="Conta">
+                                  🏦 {lancamento.conta_nome || '-'}
+                                </span>
                               </div>
                             </div>
                             <div className={`item-valor ${lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
