@@ -558,7 +558,7 @@ function Lancamentos() {
               <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               {/* Direção do lançamento */}
-              <div className="form-group">
+              <div className="form-group col-span-2">
                 <label>Direção do lançamento *</label>
                 <div className="btn-group">
                   <button
@@ -679,7 +679,7 @@ function Lancamentos() {
               </div>
 
               {formData.parcelado && (
-                <div className="form-group">
+                <div className="form-group col-span-2">
                   <label>Número de parcelas *</label>
                   <input
                     type="number"
@@ -712,7 +712,7 @@ function Lancamentos() {
               )}
 
               {/* Classificação (Categorias) */}
-              <div className="form-group">
+              <div className="form-group col-span-2">
                 <label>Classificação</label>
                 <div className="categoria-buttons">
                   {categorias
@@ -735,7 +735,7 @@ function Lancamentos() {
 
               {/* Subcategorias */}
               {formData.categoria_id && subcategorias.length > 0 && (
-                <div className="form-group">
+                <div className="form-group col-span-2">
                   <label>Subcategoria</label>
                   <select
                     value={formData.subcategoria_id}

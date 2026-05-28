@@ -682,19 +682,21 @@
 }
 
 .legend-label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #475569;
   flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.25;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .legend-value {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .val-moeda {
@@ -826,8 +828,18 @@
   flex-direction: column;
   gap: 12px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.total-card:hover {
+  z-index: 10;
+}
+
+.card-label, .card-value, .card-count, .card-sub-values, .poupanca-progress-container {
+  position: relative;
+  z-index: 2;
 }
 
 @media (max-width: 1200px) {
@@ -844,19 +856,27 @@
 .total-saidas { border-left: 8px solid #ef4444; }
 .total-atraso { border-left: 8px solid #f59e0b; }
 
-.total-card::after {
-  content: '';
+.card-bg-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card-bg-icon {
   position: absolute;
   right: -20px;
   bottom: -20px;
   font-size: 5rem;
   opacity: 0.05;
   font-weight: 900;
+  line-height: 1;
 }
-
-.total-entradas::after { content: '↑'; }
-.total-saidas::after { content: '↓'; }
-.total-atraso::after { content: '⚠️'; }
 
 .card-label {
   font-size: 1rem;
@@ -3281,13 +3301,8 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Savings Rate Card Styling */
 .total-card.total-poupanca {
   border-left: 8px solid #8b5cf6;
-}
-
-.total-card.total-poupanca::after {
-  content: '📈';
 }
 
 .poupanca-progress-container {

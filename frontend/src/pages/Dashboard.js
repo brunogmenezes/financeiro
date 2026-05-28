@@ -861,6 +861,27 @@ function Dashboard() {
       filtrados = filtrados.filter(l => l.subcategoria_id == filterSubcategoria);
     }
 
+    // Aplicar filtro de conta
+    if (filterConta !== 'TODAS') {
+      filtrados = filtrados.filter(l => l.conta_id == filterConta || l.conta_destino_id == filterConta);
+    }
+
+    // Aplicar filtro de atraso
+    if (filterAtraso) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      filtrados = filtrados.filter(l => {
+        if (l.tipo !== 'saida' || l.pago) return false;
+        const dataLancamento = new Date(l.data);
+        return dataLancamento < hoje;
+      });
+    }
+
+    // Aplicar filtro de dia selecionado no calendário
+    if (selectedCalendarDay) {
+      filtrados = filtrados.filter(l => l.data.split('T')[0] === selectedCalendarDay);
+    }
+
     // Agrupar por categoria e subcategoria
     const grupos = {};
 
@@ -1290,40 +1311,45 @@ function Dashboard() {
       },
       tooltip: {
         backgroundColor: 'rgba(255, 255, 255, 0.98)',
-        titleColor: '#111827',
-        titleFont: { size: 14, weight: '700' },
-        bodyColor: '#4b5563',
-        bodyFont: { size: 13 },
-        borderColor: '#e5e7eb',
-        borderWidth: 1,
+        titleColor: '#1e293b',
+        titleFont: { family: "'Outfit', sans-serif", size: 14, weight: '700' },
+        bodyColor: '#475569',
+        bodyFont: { family: "'Inter', sans-serif", size: 13, weight: '500' },
+        borderColor: 'rgba(99, 102, 241, 0.15)',
+        borderWidth: 1.5,
         padding: 16,
         boxPadding: 8,
         usePointStyle: true,
-        cornerRadius: 12,
+        cornerRadius: 16,
+        displayColors: false,
         callbacks: {
-          label: function(context) {
-            let label = context.dataset.label || '';
-            if (label) label += ': ';
-            if (context.parsed.y !== null) {
-              label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
-            }
-            return label;
+          title: function(context) {
+            if (!context || !context[0]) return '';
+            const dateStr = context[0].label;
+            if (!dateStr.includes('/')) return dateStr;
+            const [dia, mes] = dateStr.split('/');
+            const mesesNomes = [
+              'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+              'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            const nomeMes = mesesNomes[parseInt(mes, 10) - 1] || mes;
+            return `📅 Dia ${dia} de ${nomeMes}`;
           },
-          afterLabel: function(context) {
-            // Apenas mostra o resumo uma vez (no primeiro dataset do loop do modo index)
+          label: function(context) {
             if (context.datasetIndex !== 0) return null;
 
             const index = context.dataIndex;
             const mainDataset = context.chart.data.datasets[0];
             const entries = mainDataset.entradas[index];
             const exits = mainDataset.saidas[index];
+            const cumulative = context.parsed.y;
             
+            const format = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
             return [
-              '',
-              `📊 MOVIMENTAÇÃO DO DIA:`,
-              `🟢 Entradas: R$ ${entries.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              `🔴 Saídas: R$ ${exits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              `────────────────────────`
+              `💼 Saldo Acumulado: ${format(cumulative)}`,
+              `🟢 Entradas do Dia: ${format(entries)}`,
+              `🔴 Saídas do Dia: ${format(exits)}`
             ];
           }
         }
@@ -1598,7 +1624,7 @@ function Dashboard() {
                           return (
                             <div key={index} className="legend-item">
                               <span className="legend-dot" style={{ backgroundColor: processPieChartData().datasets[0].backgroundColor[index] }}></span>
-                              <span className="legend-label">{label}</span>
+                              <span className="legend-label" title={label}>{label}</span>
                               <span className="legend-value">
                                 <span className="val-moeda">R$ {formatarMoeda(valor)}</span>
                                 <span className="val-percent">{percent}%</span>
@@ -1631,7 +1657,7 @@ function Dashboard() {
                           return (
                             <div key={index} className="legend-item">
                               <span className="legend-dot" style={{ backgroundColor: processPieChartDataPorConta().datasets[0].backgroundColor[index] }}></span>
-                              <span className="legend-label">{label}</span>
+                              <span className="legend-label" title={label}>{label}</span>
                               <span className="legend-value">
                                 <span className="val-moeda">R$ {formatarMoeda(valor)}</span>
                                 <span className="val-percent">{percent}%</span>
@@ -2255,7 +2281,7 @@ function Dashboard() {
               <h3>{editingLancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
             <form onSubmit={handleSubmit}>
               
-              <div className="form-group">
+              <div className="form-group col-span-2">
                 <label>Direção do lançamento *</label>
                 <div className="btn-group">
                   <button
@@ -2394,7 +2420,7 @@ function Dashboard() {
               )}
 
               {formData.tipo === 'saida' && formData.parcelado && (
-                <div className="form-group">
+                <div className="form-group col-span-2">
                   <label>Número de Parcelas *</label>
                   <input
                     type="number"
@@ -2425,7 +2451,7 @@ function Dashboard() {
                 </div>
               )}
 
-              <div className="form-group">
+              <div className={`form-group ${formData.tipo === 'transferencia' || formData.tipo === 'pagamento_fatura' ? 'col-span-2' : ''}`}>
                 <label>Descrição *</label>
                 <input
                   type="text"
@@ -2480,7 +2506,7 @@ function Dashboard() {
 
               {formData.tipo !== 'transferencia' && formData.tipo !== 'pagamento_fatura' && (
                 <>
-                  <div className="form-group">
+                  <div className="form-group col-span-2">
                     <label>Classificação</label>
                     <div className="categoria-buttons">
                       {categorias
@@ -2502,7 +2528,7 @@ function Dashboard() {
                   </div>
 
                   {formData.categoria_id && subcategorias.length > 0 && (
-                    <div className="form-group">
+                    <div className="form-group col-span-2">
                       <label>Subcategoria</label>
                       <select
                         value={formData.subcategoria_id}

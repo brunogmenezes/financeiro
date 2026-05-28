@@ -191,6 +191,18 @@ html {
   margin-bottom: 20px;
 }
 
+.delete-modal .modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 32px;
+  width: 100%;
+}
+
+.delete-modal .modal-actions button {
+  flex: 1;
+}
+
 .modal-actions {
   display: flex;
   justify-content: center;
@@ -302,4 +314,83 @@ html {
 @keyframes progress {
   from { width: 100%; }
   to { width: 0%; }
+}
+
+/* Modal de Lançamento Compacto e Responsivo */
+.modal-lancamento {
+  max-width: 650px !important;
+  padding: 16px 20px !important;
+}
+
+.modal-lancamento .modal-body {
+  padding: 0 !important;
+}
+
+.modal-lancamento h3 {
+  margin-bottom: 8px !important;
+  font-size: 1.3rem !important;
+}
+
+.modal-lancamento .form-group {
+  margin-bottom: 6px !important;
+}
+
+.modal-lancamento .form-group label {
+  margin-bottom: 4px !important;
+  font-size: 0.8rem !important;
+}
+
+.modal-lancamento input,
+.modal-lancamento select {
+  padding: 8px 12px !important;
+  font-size: 0.92rem !important;
+}
+
+.modal-lancamento .btn-group button {
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
+}
+
+.modal-lancamento .categoria-buttons {
+  margin-top: 4px !important;
+  gap: 6px !important;
+}
+
+.modal-lancamento .categoria-buttons button {
+  padding: 6px 12px !important;
+  font-size: 0.82rem !important;
+}
+
+.modal-lancamento .modal-actions {
+  margin-top: 14px !important;
+  display: flex !important;
+  width: 100% !important;
+  gap: 12px !important;
+}
+
+.modal-lancamento .modal-actions button {
+  flex: 1 !important;
+  padding: 10px 20px !important;
+  font-size: 0.95rem !important;
+}
+
+@media (min-width: 769px) {
+  .modal-lancamento form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    row-gap: 0;
+    align-items: start;
+  }
+  
+  .modal-lancamento form .form-group {
+    margin-bottom: 6px !important;
+  }
+  
+  /* Campos que devem ocupar a largura total de duas colunas */
+  .modal-lancamento form > .col-span-2,
+  .modal-lancamento form > .form-row,
+  .modal-lancamento form > .modal-actions {
+    grid-column: span 2;
+  }
 }
