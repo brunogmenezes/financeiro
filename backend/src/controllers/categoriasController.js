@@ -269,10 +269,10 @@ exports.getMediaGasto = async (req, res) => {
       SELECT 
         CASE 
           WHEN COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM')) = 0 THEN 0
-          ELSE SUM(valor) / COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM'))
+          ELSE (SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END) - SUM(CASE WHEN tipo = 'estorno' THEN valor ELSE 0 END)) / COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM'))
         END as media
       FROM lancamentos
-      WHERE categoria_id = $1 AND usuario_id = $2 AND tipo = 'saida'
+      WHERE categoria_id = $1 AND usuario_id = $2 AND tipo IN ('saida', 'estorno')
     `, [id, usuarioId]);
 
     res.json({ media: parseFloat(result.rows[0].media || 0) });
@@ -292,10 +292,10 @@ exports.getMediaGastoSubcategoria = async (req, res) => {
       SELECT 
         CASE 
           WHEN COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM')) = 0 THEN 0
-          ELSE SUM(valor) / COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM'))
+          ELSE (SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END) - SUM(CASE WHEN tipo = 'estorno' THEN valor ELSE 0 END)) / COUNT(DISTINCT TO_CHAR(data, 'YYYY-MM'))
         END as media
       FROM lancamentos
-      WHERE subcategoria_id = $1 AND usuario_id = $2 AND tipo = 'saida'
+      WHERE subcategoria_id = $1 AND usuario_id = $2 AND tipo IN ('saida', 'estorno')
     `, [id, usuarioId]);
 
     res.json({ media: parseFloat(result.rows[0].media || 0) });

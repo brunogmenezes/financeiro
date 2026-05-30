@@ -68,8 +68,8 @@ exports.create = async (req, res) => {
     let dataFinal = data;
     const isCartao = contaObj?.tipo === 'Cartão de Crédito';
 
-    // Se for saída no cartão, a data sempre será o dia de vencimento do cartão naquele mês/ano
-    if (tipo === 'saida' && isCartao && contaObj?.dia_vencimento) {
+    // Se for saída ou estorno no cartão, a data sempre será o dia de vencimento do cartão naquele mês/ano
+    if ((tipo === 'saida' || tipo === 'estorno') && isCartao && contaObj?.dia_vencimento) {
       const d = new Date(data);
       const year = d.getUTCFullYear();
       const month = d.getUTCMonth();
@@ -163,6 +163,8 @@ exports.create = async (req, res) => {
       const { conta_destino_id } = req.body;
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
       await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_destino_id]);
+    } else if (tipo === 'estorno') {
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
     }
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
@@ -200,7 +202,7 @@ exports.update = async (req, res) => {
     const isCartaoNovo = contaObj?.tipo === 'Cartão de Crédito';
     
     let dataFinal = data;
-    if (tipo === 'saida' && isCartaoNovo && contaObj?.dia_vencimento) {
+    if ((tipo === 'saida' || tipo === 'estorno') && isCartaoNovo && contaObj?.dia_vencimento) {
       const d = new Date(data);
       const year = d.getUTCFullYear();
       const month = d.getUTCMonth();
@@ -228,6 +230,8 @@ exports.update = async (req, res) => {
       if (antigo.conta_destino_id) {
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_destino_id]);
       }
+    } else if (antigo.tipo === 'estorno') {
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [antigo.valor, antigo.conta_id]);
     }
 
     // Calcular novo valor (dividir se for parcelado)
@@ -270,6 +274,8 @@ exports.update = async (req, res) => {
       if (conta_destino_id) {
         await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentVal, conta_destino_id]);
       }
+    } else if (tipo === 'estorno') {
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [currentVal, conta_id]);
     }
 
     // Se estiver convertendo para parcelado, criar as demais parcelas
@@ -384,6 +390,8 @@ exports.delete = async (req, res) => {
           await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_destino_id]);
         }
       }
+    } else if (lancamento.tipo === 'estorno') {
+      await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [lancamento.valor, lancamento.conta_id]);
     }
 
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);

@@ -178,6 +178,18 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
+.lancamentos-page-container .lancamento-item.entrada {
+  border-left: 4px solid #10b981 !important;
+}
+
+.lancamentos-page-container .lancamento-item.saida {
+  border-left: 4px solid #ef4444 !important;
+}
+
+.lancamentos-page-container .lancamento-item.estorno {
+  border-left: 4px solid #7c3aed !important;
+}
+
 .lancamentos-page-container .item-descricao .descricao-text {
   font-weight: 700;
   color: #1e293b;

@@ -613,6 +613,9 @@ function Dashboard() {
         // Gasto: saídas na conta do cartão
         if (l.tipo === 'saida' && Number(l.conta_id) === Number(contaId)) totalGasto += parseFloat(l.valor);
         
+        // Estorno: diminui o gasto do cartão
+        if (l.tipo === 'estorno' && Number(l.conta_id) === Number(contaId)) totalGasto -= parseFloat(l.valor);
+        
         // Pagamento: entradas na conta do cartão OU pagamento_fatura onde o destino é este cartão
         if (l.tipo === 'entrada' && Number(l.conta_id) === Number(contaId)) totalPago += parseFloat(l.valor);
         if (l.tipo === 'pagamento_fatura' && Number(l.conta_destino_id) === Number(contaId)) totalPago += parseFloat(l.valor);
@@ -784,13 +787,17 @@ function Dashboard() {
       .filter(l => l.tipo === 'entrada')
       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
 
+    const totalEstornos = filtrados
+      .filter(l => l.tipo === 'estorno')
+      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
     const saidas = filtrados.filter(l => l.tipo === 'saida');
     
-    const totalSaidas = saidas.reduce((sum, l) => sum + parseFloat(l.valor), 0);
+    const totalSaidas = Math.max(0, saidas.reduce((sum, l) => sum + parseFloat(l.valor), 0) - totalEstornos);
 
-    const totalSaidasPagos = saidas
+    const totalSaidasPagos = Math.max(0, saidas
       .filter(l => l.pago)
-      .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+      .reduce((sum, l) => sum + parseFloat(l.valor), 0) - totalEstornos);
 
     const totalSaidasPendentes = saidas
       .filter(l => !l.pago)
@@ -845,7 +852,11 @@ function Dashboard() {
 
     // Aplicar filtro de tipo
     if (filterTipo !== 'TODOS') {
-      filtrados = filtrados.filter(l => l.tipo === filterTipo);
+      if (filterTipo === 'saida') {
+        filtrados = filtrados.filter(l => l.tipo === 'saida' || l.tipo === 'estorno');
+      } else {
+        filtrados = filtrados.filter(l => l.tipo === filterTipo);
+      }
     } else {
       // Excluir transferências, neutros e pagamentos de fatura por padrão (são neutros no balanço de categorias)
       filtrados = filtrados.filter(l => l.tipo !== 'transferencia' && l.tipo !== 'neutro' && l.tipo !== 'pagamento_fatura');
@@ -903,7 +914,8 @@ function Dashboard() {
         };
       }
 
-      grupos[categoriaId].total += parseFloat(lancamento.valor);
+      const val = lancamento.tipo === 'estorno' ? -parseFloat(lancamento.valor) : parseFloat(lancamento.valor);
+      grupos[categoriaId].total += val;
 
       if (!grupos[categoriaId].subcategorias[subcategoriaId]) {
         grupos[categoriaId].subcategorias[subcategoriaId] = {
@@ -913,7 +925,7 @@ function Dashboard() {
         };
       }
 
-      grupos[categoriaId].subcategorias[subcategoriaId].total += parseFloat(lancamento.valor);
+      grupos[categoriaId].subcategorias[subcategoriaId].total += val;
     });
 
     // Converter para array e ordenar por valor total
@@ -937,7 +949,10 @@ function Dashboard() {
 
     const saidas = meses.map(mes => {
       const item = dashboardData.find(d => d.mes === mes && d.tipo === 'saida');
-      return item ? parseFloat(item.total) : 0;
+      const estorno = dashboardData.find(d => d.mes === mes && d.tipo === 'estorno');
+      const valSaida = item ? parseFloat(item.total) : 0;
+      const valEstorno = estorno ? parseFloat(estorno.total) : 0;
+      return Math.max(0, valSaida - valEstorno);
     });
 
     const balanco = meses.map((mes, i) => entradas[i] - saidas[i]);
@@ -1070,7 +1085,7 @@ function Dashboard() {
     const saidasPorCategoria = {};
     const coresCategoria = {};
     
-    let filtrados = lancamentos.filter(l => l.tipo === 'saida');
+    let filtrados = lancamentos.filter(l => l.tipo === 'saida' || l.tipo === 'estorno');
 
     if (filterCategoria !== 'TODAS') {
       filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
@@ -1090,7 +1105,8 @@ function Dashboard() {
           saidasPorCategoria[categoria] = 0;
           coresCategoria[categoria] = lancamento.categoria_cor || '#999999';
         }
-        saidasPorCategoria[categoria] += parseFloat(lancamento.valor);
+        const val = lancamento.tipo === 'estorno' ? -parseFloat(lancamento.valor) : parseFloat(lancamento.valor);
+        saidasPorCategoria[categoria] += val;
       }
     });
 
@@ -1138,7 +1154,7 @@ function Dashboard() {
     const coresConta = {};
     let colorIndex = 0;
 
-    let filtrados = lancamentos.filter(l => l.tipo === 'saida');
+    let filtrados = lancamentos.filter(l => l.tipo === 'saida' || l.tipo === 'estorno');
 
     if (filterCategoria !== 'TODAS') {
       filtrados = filtrados.filter(l => l.categoria_id == filterCategoria);
@@ -1159,7 +1175,8 @@ function Dashboard() {
           coresConta[contaNome] = coresDisponiveis[colorIndex % coresDisponiveis.length];
           colorIndex++;
         }
-        saidasPorConta[contaNome] += parseFloat(lancamento.valor);
+        const val = lancamento.tipo === 'estorno' ? -parseFloat(lancamento.valor) : parseFloat(lancamento.valor);
+        saidasPorConta[contaNome] += val;
       }
     });
 
@@ -1203,7 +1220,7 @@ function Dashboard() {
         const dataLanc = new Date(l.data).toISOString().slice(0, 7);
         // Consideramos apenas entradas e saídas que já foram liquidadas (pagas) ou todas?
         // Geralmente para saldo real, usamos o que impactou a conta.
-        return dataLanc < mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida');
+        return dataLanc < mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida' || l.tipo === 'estorno');
       });
 
       const entradasAnteriores = lancamentosAnteriores
@@ -1212,6 +1229,9 @@ function Dashboard() {
 
       const saidasAnteriores = lancamentosAnteriores
         .filter(l => l.tipo === 'saida')
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0) -
+        lancamentosAnteriores
+        .filter(l => l.tipo === 'estorno')
         .reduce((sum, l) => sum + parseFloat(l.valor), 0);
 
       saldoAtual = entradasAnteriores - saidasAnteriores;
@@ -1219,7 +1239,7 @@ function Dashboard() {
     
     const lancamentosDoMes = lancamentos.filter(l => {
         const dataLanc = new Date(l.data).toISOString().slice(0, 7);
-        return dataLanc === mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida');
+        return dataLanc === mesParaGrafico && (l.tipo === 'entrada' || l.tipo === 'saida' || l.tipo === 'estorno');
     });
 
     // Para as projetivas, não filtramos por mês/ano, pois elas valem para qualquer mês (apenas o dia importa)
@@ -1250,6 +1270,9 @@ function Dashboard() {
         
       const saidasDia = lancamentosDoDia
         .filter(l => l.tipo === 'saida')
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0) -
+        lancamentosDoDia
+        .filter(l => l.tipo === 'estorno')
         .reduce((sum, l) => sum + parseFloat(l.valor), 0);
         
       saldoAtual += (entradasDia - saidasDia);
@@ -1600,7 +1623,7 @@ function Dashboard() {
               </div>
             )}
 
-            {lancamentos.filter(l => l.tipo === 'saida').length > 0 && (
+            {lancamentos.filter(l => l.tipo === 'saida' || l.tipo === 'estorno').length > 0 && (
               <>
                 <div className="chart-pie-section">
                   <div className="chart-container chart-pie">
@@ -1936,6 +1959,7 @@ function Dashboard() {
                     <option value="saida">Saídas</option>
                     <option value="transferencia">Transferências</option>
                     <option value="neutro">Neutros</option>
+                    <option value="estorno">Estornos</option>
                   </select>
                 </div>
 
@@ -2073,10 +2097,13 @@ function Dashboard() {
                   {datasOrdenadas.map(data => {
                   const lancamentosDoDay = agrupadoPorData[data];
                   const totalEntrada = lancamentosDoDay
-                    .filter(l => l.tipo === 'entrada')
+                    .filter(l => l.tipo === 'entrada' || l.tipo === 'estorno')
                     .reduce((sum, l) => sum + parseFloat(l.valor), 0);
                   const totalSaida = lancamentosDoDay
                     .filter(l => l.tipo === 'saida')
+                    .reduce((sum, l) => sum + parseFloat(l.valor), 0) -
+                    lancamentosDoDay
+                    .filter(l => l.tipo === 'estorno')
                     .reduce((sum, l) => sum + parseFloat(l.valor), 0);
                   const saldoDia = totalEntrada - totalSaida;
 
@@ -2090,7 +2117,7 @@ function Dashboard() {
                           </span>
                         </div>
             <div className="day-totals">
-                          <span className="entrada">↑ Entrada: R$ {formatarMoeda(totalEntrada)}</span>
+                          <span className="entrada">↑ Entrada/Estorno: R$ {formatarMoeda(totalEntrada)}</span>
                           <span className="saida">↓ Saída: R$ {formatarMoeda(totalSaida)}</span>
                         </div>
                       </div>
@@ -2102,7 +2129,8 @@ function Dashboard() {
                                 {lancamento.tipo === 'entrada' ? '↑ Entrada' : 
                                  lancamento.tipo === 'saida' ? '↓ Saída' : 
                                  lancamento.tipo === 'transferencia' ? '⇄ Transfer' : 
-                                 lancamento.tipo === 'pagamento_fatura' ? '💳 Pagar Fatura' : '⊝ Neutro'}
+                                 lancamento.tipo === 'pagamento_fatura' ? '💳 Pagar Fatura' : 
+                                 lancamento.tipo === 'estorno' ? '↺ Estorno' : '⊝ Neutro'}
                               </span>
                             </div>
                             <div className="item-descricao">
@@ -2138,7 +2166,7 @@ function Dashboard() {
                                 </span>
                               </div>
                             </div>
-                            <div className={`item-valor ${lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
+                            <div className={`item-valor ${lancamento.tipo === 'entrada' || lancamento.tipo === 'estorno' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
                               {mostrarValores ? `R$ ${formatarMoeda(Number(lancamento.valor) || 0)}` : 'R$ ••••'}
                             </div>
                             <div className="item-pago">
@@ -2343,6 +2371,26 @@ function Dashboard() {
                   >
                     💳 Pagar Fatura
                   </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'estorno' ? 'active' : ''}
+                    onClick={() => {
+                      const firstCard = contas.find(c => c.tipo === 'Cartão de Crédito');
+                      setFormData({
+                        ...formData,
+                        tipo: 'estorno',
+                        categoria_id: '',
+                        subcategoria_id: '',
+                        conta_id: firstCard ? firstCard.id.toString() : '',
+                        conta_destino_id: '',
+                        pago: false
+                      });
+                      setQuickAddType(null);
+                    }}
+                    style={{ backgroundColor: formData.tipo === 'estorno' ? '#7c3aed' : '' }}
+                  >
+                    ↺ Estorno
+                  </button>
                 </div>
               </div>
 
@@ -2474,7 +2522,11 @@ function Dashboard() {
                 >
                   <option value="">Selecione uma conta</option>
                   {contas
-                    .filter(c => formData.tipo === 'pagamento_fatura' ? c.tipo !== 'Cartão de Crédito' : true)
+                    .filter(c => {
+                      if (formData.tipo === 'estorno') return c.tipo === 'Cartão de Crédito';
+                      if (formData.tipo === 'pagamento_fatura') return c.tipo !== 'Cartão de Crédito';
+                      return true;
+                    })
                     .map(conta => (
                       <option key={conta.id} value={conta.id}>{conta.nome} (R$ {formatarMoeda(Number(conta.saldo_inicial))})</option>
                     ))}
@@ -2510,7 +2562,7 @@ function Dashboard() {
                     <label>Classificação</label>
                     <div className="categoria-buttons">
                       {categorias
-                        .filter(cat => cat.tipo === formData.tipo)
+                        .filter(cat => formData.tipo === 'estorno' ? cat.tipo === 'saida' : cat.tipo === formData.tipo)
                         .map(categoria => (
                           <button
                             key={categoria.id}

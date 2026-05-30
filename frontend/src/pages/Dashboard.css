@@ -1347,6 +1347,10 @@
   border-left: 4px solid #ef4444 !important;
 }
 
+.dashboard-container .lancamento-item.estorno {
+  border-left: 4px solid #7c3aed !important;
+}
+
 .dashboard-container .lancamento-item:hover {
   background: white;
   border-color: rgba(0, 0, 0, 0.08);
@@ -2037,6 +2041,7 @@
 .badge.transferencia { background: #eff6ff; color: #2563eb; }
 .badge.neutro { background: #f1f5f9; color: #64748b; }
 .badge.pagamento_fatura { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+.badge.estorno { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
 
 .transfer-info-small {
   font-size: 0.8rem;

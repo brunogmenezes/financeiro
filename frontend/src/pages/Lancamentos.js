@@ -359,6 +359,7 @@ function Lancamentos() {
             <option value="entrada">Entradas</option>
             <option value="saida">Saídas</option>
             <option value="neutro">Neutros</option>
+            <option value="estorno">Estornos</option>
           </select>
 
           <select 
@@ -442,10 +443,13 @@ function Lancamentos() {
                   {datasOrdenadas.map(data => {
                     const lancamentosDoDay = agrupadoPorData[data];
                     const totalEntrada = lancamentosDoDay
-                      .filter(l => l.tipo === 'entrada')
+                      .filter(l => l.tipo === 'entrada' || l.tipo === 'estorno')
                       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
                     const totalSaida = lancamentosDoDay
                       .filter(l => l.tipo === 'saida')
+                      .reduce((sum, l) => sum + parseFloat(l.valor), 0) -
+                      lancamentosDoDay
+                      .filter(l => l.tipo === 'estorno')
                       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
                     const saldoDia = totalEntrada - totalSaida;
 
@@ -459,7 +463,7 @@ function Lancamentos() {
                             </span>
                           </div>
                           <div className="day-totals">
-                            <span className="entrada">↑ Entrada: R$ {formatarMoeda(totalEntrada)}</span>
+                            <span className="entrada">↑ Entrada/Estorno: R$ {formatarMoeda(totalEntrada)}</span>
                             <span className="saida">↓ Saída: R$ {formatarMoeda(totalSaida)}</span>
                           </div>
                         </div>
@@ -471,7 +475,8 @@ function Lancamentos() {
                                   {lancamento.tipo === 'entrada' ? '↑ Entrada' : 
                                    lancamento.tipo === 'saida' ? '↓ Saída' : 
                                    lancamento.tipo === 'transferencia' ? '⇄ Transfer' : 
-                                   lancamento.tipo === 'pagamento_fatura' ? '💳 Pagar Fatura' : '⊝ Neutro'}
+                                   lancamento.tipo === 'pagamento_fatura' ? '💳 Pagar Fatura' : 
+                                   lancamento.tipo === 'estorno' ? '↺ Estorno' : '⊝ Neutro'}
                                 </span>
                               </div>
                               <div className="item-descricao">
@@ -508,7 +513,7 @@ function Lancamentos() {
                                   <span className="conta-nome">{lancamento.conta_nome || '-'}</span>
                                 </div>
                               </div>
-                              <div className={`item-valor ${lancamento.tipo === 'entrada' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
+                              <div className={`item-valor ${lancamento.tipo === 'entrada' || lancamento.tipo === 'estorno' ? 'valor-positivo' : lancamento.tipo === 'saida' ? 'valor-negativo' : ''}`}>
                                 R$ {formatarMoeda(Number(lancamento.valor) || 0)}
                               </div>
                               <div className="item-pago">
@@ -582,6 +587,24 @@ function Lancamentos() {
                   >
                     Neutro
                   </button>
+                  <button
+                    type="button"
+                    className={formData.tipo === 'estorno' ? 'active' : ''}
+                    onClick={() => {
+                      const firstCard = contas.find(c => c.tipo === 'Cartão de Crédito');
+                      setFormData({
+                        ...formData,
+                        tipo: 'estorno',
+                        categoria_id: '',
+                        subcategoria_id: '',
+                        conta_id: firstCard ? firstCard.id.toString() : '',
+                        pago: false
+                      });
+                    }}
+                    style={{ backgroundColor: formData.tipo === 'estorno' ? '#7c3aed' : '', color: formData.tipo === 'estorno' ? 'white' : '' }}
+                  >
+                    Estorno
+                  </button>
                 </div>
               </div>
 
@@ -651,9 +674,11 @@ function Lancamentos() {
                   required
                 >
                   <option value="">Selecione a conta</option>
-                  {contas.map(conta => (
-                    <option key={conta.id} value={conta.id}>{conta.nome}</option>
-                  ))}
+                  {contas
+                    .filter(c => formData.tipo === 'estorno' ? c.tipo === 'Cartão de Crédito' : true)
+                    .map(conta => (
+                      <option key={conta.id} value={conta.id}>{conta.nome}</option>
+                    ))}
                 </select>
               </div>
 
@@ -716,7 +741,7 @@ function Lancamentos() {
                 <label>Classificação</label>
                 <div className="categoria-buttons">
                   {categorias
-                    .filter(cat => cat.tipo === formData.tipo)
+                    .filter(cat => formData.tipo === 'estorno' ? cat.tipo === 'saida' : cat.tipo === formData.tipo)
                     .map(categoria => (
                       <button
                         key={categoria.id}
