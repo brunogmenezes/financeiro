@@ -94,6 +94,11 @@ function Dashboard() {
   const [filterAtraso, setFilterAtraso] = useState(false);
   const [categorias, setCategorias] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
+
+  // Custom Month Picker States
+  const monthPickerRef = useRef(null);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   
   const [formData, setFormData] = useState({
     descricao: '',
@@ -121,6 +126,54 @@ function Dashboard() {
       setSelectedContaInfo(null);
     }
   }, [formData.conta_id, contas]);
+
+  // Custom Month Picker logic
+  useEffect(() => {
+    if (filterMes && filterMes !== 'TODOS') {
+      const [year] = filterMes.split('-').map(Number);
+      setPickerYear(year);
+    } else {
+      setPickerYear(new Date().getFullYear());
+    }
+  }, [filterMes]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (monthPickerRef.current && !monthPickerRef.current.contains(event.target)) {
+        setShowMonthPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getFilterMesLabel = () => {
+    if (!filterMes || filterMes === 'TODOS') return 'Todos os meses';
+    const [year, monthNum] = filterMes.split('-');
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return `${meses[parseInt(monthNum, 10) - 1]}/${year}`;
+  };
+
+  const handlePrevYear = (e) => {
+    e.stopPropagation();
+    setPickerYear(prev => prev - 1);
+  };
+
+  const handleNextYear = (e) => {
+    e.stopPropagation();
+    setPickerYear(prev => prev + 1);
+  };
+
+  const handleSelectMonth = (monthIndex) => {
+    const formattedMonth = String(monthIndex + 1).padStart(2, '0');
+    setFilterMes(`${pickerYear}-${formattedMonth}`);
+    setShowMonthPicker(false);
+  };
+
+  const handleSelectTodos = () => {
+    setFilterMes('TODOS');
+    setShowMonthPicker(false);
+  };
 
   const triggerToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -940,7 +993,16 @@ function Dashboard() {
 
   // Processar dados para o gráfico
   const processChartData = () => {
-    const meses = [...new Set(dashboardData.map(item => item.mes))].sort();
+    const target = filterMes && filterMes !== 'TODOS' ? filterMes : mesAtual;
+    const [year, month] = target.split('-').map(Number);
+    
+    const meses = [];
+    for (let i = -6; i <= 6; i++) {
+      const d = new Date(year, month - 1 + i, 1);
+      const yStr = d.getFullYear();
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      meses.push(`${yStr}-${mStr}`);
+    }
     
     const entradas = meses.map(mes => {
       const item = dashboardData.find(d => d.mes === mes && d.tipo === 'entrada');
@@ -1928,23 +1990,54 @@ function Dashboard() {
           {showFilters && (
             <div className="filters-container active" ref={filterRef}>
               <div className="filters-grid">
-                <div className="filter-group">
+                <div className="filter-group month-picker-group">
                   <label>Mês</label>
-                  <select 
-                    value={filterMes} 
-                    onChange={(e) => setFilterMes(e.target.value)}
-                    className="filter-select"
-                  >
-                    <option value="TODOS">Todos os meses</option>
-                    {[...new Set(lancamentos.map(l => {
-                      const data = new Date(l.data);
-                      return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-                    }))].sort().reverse().map(mes => {
-                      const [ano, mesNum] = mes.split('-');
-                      const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                      return <option key={mes} value={mes}>{meses[parseInt(mesNum) - 1]}/{ano}</option>;
-                    })}
-                  </select>
+                  <div className="month-picker-wrapper" ref={monthPickerRef}>
+                    <button 
+                      type="button" 
+                      className={`filter-select select-trigger-btn ${showMonthPicker ? 'active' : ''}`}
+                      onClick={() => setShowMonthPicker(!showMonthPicker)}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="calendar-emoji">📅</span> {getFilterMesLabel()}
+                      </span>
+                      <span className="dropdown-arrow">▼</span>
+                    </button>
+                    {showMonthPicker && (
+                      <div className="month-picker-popover">
+                        <div className="month-picker-header">
+                          <button type="button" className="btn-picker-nav" onClick={handlePrevYear}>&lt;</button>
+                          <span className="picker-year-label">{pickerYear}</span>
+                          <button type="button" className="btn-picker-nav" onClick={handleNextYear}>&gt;</button>
+                        </div>
+                        <div className="month-picker-grid">
+                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((mesNome, index) => {
+                            const formattedMonth = `${pickerYear}-${String(index + 1).padStart(2, '0')}`;
+                            const isSelected = filterMes === formattedMonth;
+                            return (
+                              <button
+                                key={mesNome}
+                                type="button"
+                                className={`month-picker-cell ${isSelected ? 'active' : ''}`}
+                                onClick={() => handleSelectMonth(index)}
+                              >
+                                {mesNome}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="month-picker-footer">
+                          <button 
+                            type="button" 
+                            className={`btn-picker-all ${filterMes === 'TODOS' ? 'active' : ''}`}
+                            onClick={handleSelectTodos}
+                          >
+                            Todos os meses
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="filter-group">

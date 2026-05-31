@@ -3379,3 +3379,135 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Custom Month Picker */
+.month-picker-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.calendar-emoji {
+  font-size: 1.1rem;
+}
+
+.month-picker-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1000;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 12px 28px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -5px rgba(0, 0, 0, 0.03);
+  padding: 16px;
+  width: 280px;
+  box-sizing: border-box;
+  animation: slideDownFade 0.2s ease-out;
+}
+
+.month-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 8px;
+}
+
+.btn-picker-nav {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-picker-nav:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.picker-year-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.month-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.month-picker-cell {
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.month-picker-cell:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+
+.month-picker-cell.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+}
+
+.month-picker-footer {
+  margin-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+}
+
+.btn-picker-all {
+  width: 100%;
+  padding: 10px;
+  border: 1.5px dashed #cbd5e1;
+  background: transparent;
+  border-radius: 10px;
+  color: #64748b;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.btn-picker-all:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #f5f3ff;
+}
+
+.btn-picker-all.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+}
