@@ -2049,10 +2049,10 @@ function Dashboard() {
                   >
                     <option value="TODOS">Todos os tipos</option>
                     <option value="entrada">Entradas</option>
+                    <option value="estorno">Estornos</option>
+                    <option value="neutro">Neutros</option>
                     <option value="saida">Saídas</option>
                     <option value="transferencia">Transferências</option>
-                    <option value="neutro">Neutros</option>
-                    <option value="estorno">Estornos</option>
                   </select>
                 </div>
 
@@ -2064,7 +2064,7 @@ function Dashboard() {
                     className="filter-select"
                   >
                     <option value="TODAS">Todas as contas</option>
-                    {contas.map(conta => (
+                    {[...contas].sort((a, b) => a.nome.localeCompare(b.nome)).map(conta => (
                       <option key={conta.id} value={conta.id}>{conta.nome}</option>
                     ))}
                   </select>
@@ -2078,7 +2078,7 @@ function Dashboard() {
                     className="filter-select"
                   >
                     <option value="TODAS">Todas as categorias</option>
-                    {getCategoriasDisponiveis().map(cat => (
+                    {[...getCategoriasDisponiveis()].sort((a, b) => a.nome.localeCompare(b.nome)).map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.nome}</option>
                     ))}
                   </select>
@@ -2093,7 +2093,7 @@ function Dashboard() {
                       className="filter-select"
                     >
                       <option value="TODAS">Todas as subcategorias</option>
-                      {subcategorias.map(subCat => (
+                      {[...subcategorias].sort((a, b) => a.nome.localeCompare(b.nome)).map(subCat => (
                         <option key={subCat.id} value={subCat.id}>{subCat.nome}</option>
                       ))}
                     </select>
