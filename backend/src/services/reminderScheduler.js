@@ -31,16 +31,72 @@ async function fetchPending(targetDateISO) {
        AND (l.pago = false OR l.pago IS NULL)
        AND l.data = $1
        AND u.whatsapp IS NOT NULL
-       AND u.whatsapp <> ''`,
+       AND u.whatsapp <> ''
+       AND (c.tipo IS NULL OR c.tipo <> 'Cartão de Crédito')`,
     [targetDateISO]
   );
   return result.rows;
 }
 
+async function fetchOverdueCreditCards(reminderDate) {
+  const result = await pool.query(
+    `SELECT c.id, c.nome as conta_nome, c.dia_vencimento, u.id as usuario_id, u.nome as usuario_nome, u.whatsapp
+     FROM contas c
+     JOIN usuarios u ON u.id = c.usuario_id
+     WHERE c.tipo = 'Cartão de Crédito'
+       AND c.dia_vencimento = $1
+       AND u.whatsapp IS NOT NULL
+       AND u.whatsapp <> ''`,
+    [reminderDate.getDate()]
+  );
+  
+  const overdueCards = [];
+  for (const card of result.rows) {
+    const lancs = await pool.query(
+      `SELECT l.tipo, l.valor, l.conta_id, l.conta_destino_id
+       FROM lancamentos l
+       WHERE (l.conta_id = $1 OR (l.tipo = 'pagamento_fatura' AND l.conta_destino_id = $1))
+         AND EXTRACT(YEAR FROM l.data) = $2
+         AND EXTRACT(MONTH FROM l.data) = $3`,
+      [card.id, reminderDate.getFullYear(), reminderDate.getMonth() + 1]
+    );
+
+    let totalGasto = 0;
+    let totalPago = 0;
+
+    for (const l of lancs.rows) {
+      const valor = parseFloat(l.valor);
+      if (l.tipo === 'saida' && Number(l.conta_id) === Number(card.id)) {
+        totalGasto += valor;
+      } else if (l.tipo === 'estorno' && Number(l.conta_id) === Number(card.id)) {
+        totalGasto -= valor;
+      } else if (l.tipo === 'entrada' && Number(l.conta_id) === Number(card.id)) {
+        totalPago += valor;
+      } else if (l.tipo === 'pagamento_fatura' && Number(l.conta_destino_id) === Number(card.id)) {
+        totalPago += valor;
+      }
+    }
+
+    const saldoRestante = Math.round((totalGasto - totalPago) * 100) / 100;
+    if (saldoRestante > 0.01) {
+      overdueCards.push({
+        ...card,
+        totalGasto,
+        totalPago,
+        saldoRestante
+      });
+    }
+  }
+
+  return overdueCards;
+}
+
 async function sendReminder(reminderDate) {
   const isoDate = reminderDate.toISOString().slice(0, 10);
   const pendentes = await fetchPending(isoDate);
-  if (!pendentes.length) return;
+  const creditCards = await fetchOverdueCreditCards(reminderDate);
+
+  if (!pendentes.length && !creditCards.length) return;
 
   // Verificar conexão uma vez antes de enviar
   try {
@@ -50,6 +106,7 @@ async function sendReminder(reminderDate) {
     return;
   }
 
+  // Enviar lembretes individuais (não-cartões)
   for (const lanc of pendentes) {
     try {
       const message = [
@@ -67,6 +124,28 @@ async function sendReminder(reminderDate) {
       console.log(`✔️ Lembrete enviado para ${lanc.whatsapp} (lançamento ${lanc.id})`);
     } catch (error) {
       console.error(`Erro ao enviar lembrete para ${lanc.whatsapp}:`, error.message);
+    }
+  }
+
+  // Enviar lembretes consolidados de cartão de crédito
+  for (const card of creditCards) {
+    try {
+      const vencimentoDate = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), card.dia_vencimento);
+      const message = [
+        `Oi ${card.usuario_nome || ''}!`,
+        `Lembrete de Vencimento do Cartão de Crédito: *${card.conta_nome}*`,
+        `Vencimento: ${formatDateBR(vencimentoDate)}`,
+        `Valor Total da Fatura: ${formatMoney(card.totalGasto)}`,
+        `Valor Já Pago: ${formatMoney(card.totalPago)}`,
+        `Saldo em Aberto (A Pagar): *${formatMoney(card.saldoRestante)}*`,
+        '',
+        'Marque o pagamento da fatura no Financeiro se já realizou o pagamento.'
+      ].join('\n');
+
+      await sendText(card.whatsapp, message);
+      console.log(`✔️ Lembrete de cartão enviado para ${card.whatsapp} (cartão ${card.id})`);
+    } catch (error) {
+      console.error(`Erro ao enviar lembrete de cartão para ${card.whatsapp}:`, error.message);
     }
   }
 }

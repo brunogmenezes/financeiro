@@ -6,7 +6,7 @@ const geminiService = require('../services/geminiService');
 exports.getAll = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, 
+      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, c.dia_vencimento as conta_dia_vencimento,
               cat.nome as categoria_nome, cat.cor as categoria_cor, 
               subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor, 
               lim.valor_limite as subcategoria_meta
@@ -31,7 +31,7 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, 
+      `SELECT l.*, c.nome as conta_nome, c.tipo as conta_tipo, c.dia_vencimento as conta_dia_vencimento,
               cat.nome as categoria_nome, cat.cor as categoria_cor, 
               subcat.nome as subcategoria_nome, subcat.cor as subcategoria_cor, 
               lim.valor_limite as subcategoria_meta

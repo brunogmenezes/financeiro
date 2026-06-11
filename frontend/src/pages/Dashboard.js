@@ -643,8 +643,8 @@ function Dashboard() {
     setSelectedCalendarDay(null);
   };
 
-  const calcularFaturaMes = (contaId) => {
-    const mesParaFiltro = filterMes !== 'TODOS' ? filterMes : new Date().toLocaleDateString('en-CA').slice(0, 7);
+  const calcularFaturaMes = (contaId, mesFiltro = null) => {
+    const mesParaFiltro = mesFiltro || (filterMes !== 'TODOS' ? filterMes : new Date().toLocaleDateString('en-CA').slice(0, 7));
     let totalGasto = 0;
     let totalPago = 0;
 
@@ -677,7 +677,7 @@ function Dashboard() {
     return { 
       totalGasto, 
       totalPago, 
-      saldoRestante: totalGasto - totalPago 
+      saldoRestante: Math.round((totalGasto - totalPago) * 100) / 100 
     };
   };
 
@@ -829,9 +829,23 @@ function Dashboard() {
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
       filtrados = filtrados.filter(l => {
-        if (l.tipo !== 'saida' || l.pago) return false;
-        const dataLancamento = new Date(l.data);
-        return dataLancamento < hoje;
+        if (l.tipo !== 'saida') return false;
+        const isCard = l.conta_tipo === 'Cartão de Crédito';
+        if (!isCard) {
+          return !l.pago && new Date(l.data) < hoje;
+        } else {
+          const conta = contas.find(c => Number(c.id) === Number(l.conta_id));
+          if (!conta || !conta.dia_vencimento) return false;
+          
+          const dataLancamento = new Date(l.data);
+          const mesAno = `${dataLancamento.getFullYear()}-${String(dataLancamento.getMonth() + 1).padStart(2, '0')}`;
+          const [year, month] = mesAno.split('-').map(Number);
+          const dataVencimento = new Date(year, month - 1, conta.dia_vencimento, 23, 59, 59);
+          if (dataVencimento >= hoje) return false;
+          
+          const { saldoRestante } = calcularFaturaMes(conta.id, mesAno);
+          return saldoRestante > 0.01;
+        }
       });
     }
 
@@ -865,7 +879,8 @@ function Dashboard() {
 
     let filtrados = lancamentos.filter(l => {
       const dataLancamento = new Date(l.data);
-      return l.tipo === 'saida' && !l.pago && dataLancamento < hoje;
+      const isCard = l.conta_tipo === 'Cartão de Crédito';
+      return l.tipo === 'saida' && !l.pago && dataLancamento < hoje && !isCard;
     });
 
     // Aplicar filtro de mês se não for "TODOS"
@@ -877,8 +892,37 @@ function Dashboard() {
       });
     }
 
-    const quantidade = filtrados.length;
-    const valorTotal = filtrados.reduce((sum, l) => sum + parseFloat(l.valor), 0);
+    let quantidade = filtrados.length;
+    let valorTotal = filtrados.reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+    // Calcular atrasos consolidados por cartão de crédito
+    contas.forEach(conta => {
+      if (conta.tipo === 'Cartão de Crédito') {
+        const mesesComTransacoes = new Set();
+        lancamentos.forEach(l => {
+          if (Number(l.conta_id) === Number(conta.id) || (l.tipo === 'pagamento_fatura' && Number(l.conta_destino_id) === Number(conta.id))) {
+            const data = new Date(l.data);
+            const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+            mesesComTransacoes.add(mesAno);
+          }
+        });
+
+        mesesComTransacoes.forEach(mesAno => {
+          if (filterMes !== 'TODOS' && mesAno !== filterMes) return;
+
+          const [year, month] = mesAno.split('-').map(Number);
+          const dataVencimento = new Date(year, month - 1, conta.dia_vencimento || 1, 23, 59, 59);
+          
+          if (dataVencimento < hoje) {
+            const { saldoRestante } = calcularFaturaMes(conta.id, mesAno);
+            if (saldoRestante > 0.01) {
+              quantidade += 1;
+              valorTotal += saldoRestante;
+            }
+          }
+        });
+      }
+    });
 
     return { quantidade, valorTotal };
   };
@@ -2150,9 +2194,23 @@ function Dashboard() {
               const hoje = new Date();
               hoje.setHours(0, 0, 0, 0);
               filtrados = filtrados.filter(l => {
-                if (l.tipo !== 'saida' || l.pago) return false;
-                const dataLancamento = new Date(l.data);
-                return dataLancamento < hoje;
+                if (l.tipo !== 'saida') return false;
+                const isCard = l.conta_tipo === 'Cartão de Crédito';
+                if (!isCard) {
+                  return !l.pago && new Date(l.data) < hoje;
+                } else {
+                  const conta = contas.find(c => Number(c.id) === Number(l.conta_id));
+                  if (!conta || !conta.dia_vencimento) return false;
+                  
+                  const dataLancamento = new Date(l.data);
+                  const mesAno = `${dataLancamento.getFullYear()}-${String(dataLancamento.getMonth() + 1).padStart(2, '0')}`;
+                  const [year, month] = mesAno.split('-').map(Number);
+                  const dataVencimento = new Date(year, month - 1, conta.dia_vencimento, 23, 59, 59);
+                  if (dataVencimento >= hoje) return false;
+                  
+                  const { saldoRestante } = calcularFaturaMes(conta.id, mesAno);
+                  return saldoRestante > 0.01;
+                }
               });
             }
 
