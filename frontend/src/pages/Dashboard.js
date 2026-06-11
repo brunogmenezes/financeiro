@@ -788,6 +788,20 @@ function Dashboard() {
         <div className="calendar-days">
           {dias}
         </div>
+        <div className="calendar-legend">
+          <div className="legend-item">
+            <span className="legend-dot dot-green"></span>
+            <span>Receita</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot dot-red"></span>
+            <span>Pago</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot dot-yellow"></span>
+            <span>Pendente</span>
+          </div>
+        </div>
       </div>
     );
   };
