@@ -14,6 +14,7 @@ async function createSmtpConfig() {
         secure BOOLEAN DEFAULT TRUE,
         from_email VARCHAR(255) NOT NULL,
         from_name VARCHAR(255) NOT NULL,
+        system_url VARCHAR(255) DEFAULT 'http://localhost:3000',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -32,10 +33,11 @@ async function createSmtpConfig() {
       const secure = true;
       const from_email = '';
       const from_name = 'Controle Financeiro';
+      const system_url = 'http://localhost:3000';
       
       await pool.query(
-        'INSERT INTO smtp_config (host, port, username, password, secure, from_email, from_name) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [host, port, username, password, secure, from_email, from_name]
+        'INSERT INTO smtp_config (host, port, username, password, secure, from_email, from_name, system_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [host, port, username, password, secure, from_email, from_name, system_url]
       );
       
       console.log('✔️ Configuração SMTP inicial inserida com sucesso!');

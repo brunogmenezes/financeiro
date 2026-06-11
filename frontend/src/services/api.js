@@ -92,6 +92,7 @@ export const adminDeleteUser = (id) => api.delete(`/admin/users/${id}`);
 export const adminGetUserPayments = (id) => api.get(`/admin/users/${id}/payments`);
 export const adminGetConfigs = () => api.get('/admin/configs');
 export const adminUpdateConfig = (chave, valor) => api.post('/admin/configs', { chave, valor });
+export const adminSendEmailBatch = (userIds, templateSlug) => api.post('/admin/users/send-email-batch', { userIds, templateSlug });
 
 // Subscription
 export const generatePixSubscription = () => api.post('/subscription/generate-pix');

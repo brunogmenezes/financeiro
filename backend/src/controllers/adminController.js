@@ -182,3 +182,89 @@ exports.updateConfig = async (req, res) => {
     res.status(500).json({ error: 'Erro ao atualizar configuração' });
   }
 };
+
+// Enviar e-mails manuais em lote (ou individual)
+exports.sendManualEmailBatch = async (req, res) => {
+  try {
+    const { userIds, templateSlug } = req.body;
+
+    if (!templateSlug) {
+      return res.status(400).json({ error: 'O modelo de e-mail (templateSlug) é obrigatório' });
+    }
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'Lista de usuários (userIds) é obrigatória' });
+    }
+
+    const query = 'SELECT * FROM usuarios WHERE id = ANY($1)';
+    const usersResult = await pool.query(query, [userIds]);
+    
+    if (usersResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Nenhum usuário correspondente encontrado' });
+    }
+
+    const { sendEmailTemplate } = require('../services/emailService');
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    for (const user of usersResult.rows) {
+      try {
+        // Preparar as variáveis baseadas no tipo de template
+        let variables = {
+          nome: user.nome,
+          email: user.email
+        };
+
+        if (templateSlug === 'inactivity') {
+          const lastActivity = user.ultima_atividade || user.created_at || new Date();
+          const diffTime = Math.abs(new Date() - new Date(lastActivity));
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          variables.dias_inativo = String(diffDays);
+        } else if (templateSlug === 'expiration') {
+          const proExpires = user.pro_expires_at ? new Date(user.pro_expires_at) : new Date();
+          const dataFormatada = proExpires.toLocaleDateString('pt-BR');
+          const diffTime = proExpires - new Date();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          variables.data_vencimento = dataFormatada;
+          variables.dias_restantes = String(diffDays > 0 ? diffDays : 0);
+        }
+
+        const emailSentInfo = await sendEmailTemplate({
+          to: user.email,
+          templateSlug,
+          variables
+        });
+
+        if (emailSentInfo) {
+          successCount++;
+          // Registrar Log individual
+          await registrarLog(
+            req.userId,
+            'Admin',
+            'EDITAR',
+            'usuarios',
+            user.id,
+            `E-mail manual (${templateSlug}) enviado para ${user.email} pelo administrador.`
+          );
+        } else {
+          failCount++;
+          errors.push(`Falha no envio para ${user.email} (erro SMTP).`);
+        }
+      } catch (err) {
+        failCount++;
+        errors.push(`Erro ao enviar para ${user.email}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: `Processamento concluído. Sucesso: ${successCount}, Falha: ${failCount}`,
+      successCount,
+      failCount,
+      errors
+    });
+  } catch (error) {
+    console.error('Erro ao enviar e-mails em lote:', error);
+    res.status(500).json({ error: 'Erro ao enviar e-mails em lote: ' + error.message });
+  }
+};
+

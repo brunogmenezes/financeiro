@@ -12,6 +12,7 @@ router.post('/users/:id/reset-password', adminController.resetPassword);
 router.patch('/users/:id/toggle-admin', adminController.toggleAdmin);
 router.patch('/users/:id/toggle-pro', adminController.togglePro);
 router.delete('/users/:id', adminController.deleteUser);
+router.post('/users/send-email-batch', adminController.sendManualEmailBatch);
 
 // Histórico de pagamentos do usuário
 router.get('/users/:id/payments', adminController.getUserPaymentHistory);

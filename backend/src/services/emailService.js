@@ -30,12 +30,23 @@ async function sendMail({ to, subject, text, html }) {
     }
   });
 
+  const systemUrl = config.system_url || 'http://localhost:3000';
+  let processedHtml = html;
+  let processedText = text;
+
+  if (processedHtml) {
+    processedHtml = processedHtml.replace(/http:\/\/localhost:3000/g, systemUrl);
+  }
+  if (processedText) {
+    processedText = processedText.replace(/http:\/\/localhost:3000/g, systemUrl);
+  }
+
   const mailOptions = {
     from: `"${config.from_name}" <${config.from_email || config.username}>`,
     to,
     subject,
-    text,
-    html,
+    text: processedText,
+    html: processedHtml,
   };
 
   const info = await transporter.sendMail(mailOptions);

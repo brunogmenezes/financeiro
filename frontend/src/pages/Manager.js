@@ -15,7 +15,8 @@ import {
   updateSmtpConfig,
   sendTestEmail,
   getEmailTemplates,
-  updateEmailTemplate
+  updateEmailTemplate,
+  adminSendEmailBatch
 } from '../services/api';
 import './Manager.css';
 
@@ -32,7 +33,7 @@ function Manager() {
   const [remindersLoading, setRemindersLoading] = useState(false);
 
   // SMTP / Email Config
-  const [smtpConfig, setSmtpConfig] = useState({ host: '', port: 465, username: '', password: '', secure: true, from_email: '', from_name: '' });
+  const [smtpConfig, setSmtpConfig] = useState({ host: '', port: 465, username: '', password: '', secure: true, from_email: '', from_name: '', system_url: '' });
   const [smtpLoading, setSmtpLoading] = useState(false);
   const [testEmailDest, setTestEmailDest] = useState('');
   const [testEmailLoading, setTestEmailLoading] = useState(false);
@@ -54,6 +55,69 @@ function Manager() {
   const [userHistory, setUserHistory] = useState([]);
   const [newPassword, setNewPassword] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Novas variáveis de estado para envio manual de e-mail em lote
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [emailBatchLoading, setEmailBatchLoading] = useState(false);
+  const [activeUserDropdown, setActiveUserDropdown] = useState(null);
+
+  // Fechar dropdowns de e-mail ao clicar fora
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      setActiveUserDropdown(null);
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, []);
+
+  const handleSendEmails = async (templateSlug, userIdsToTarget = null) => {
+    const targets = userIdsToTarget || selectedUserIds;
+    if (targets.length === 0) {
+      return triggerToast('Selecione pelo menos um usuário', 'error');
+    }
+
+    setEmailBatchLoading(true);
+    try {
+      const response = await adminSendEmailBatch(targets, templateSlug);
+      const { successCount, failCount, errors } = response.data;
+      
+      if (failCount === 0) {
+        triggerToast(`Sucesso! ${successCount} e-mail(s) enviado(s). ✉️`);
+      } else {
+        triggerToast(`Enviados: ${successCount}. Falhas: ${failCount}.`, 'error');
+        if (errors && errors.length > 0) {
+          console.error('Erros no disparo de e-mail:', errors);
+        }
+      }
+      
+      if (!userIdsToTarget) {
+        setSelectedUserIds([]);
+      }
+      setActiveUserDropdown(null);
+    } catch (error) {
+      triggerToast(error.response?.data?.error || 'Erro ao disparar e-mails', 'error');
+    } finally {
+      setEmailBatchLoading(false);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedUserIds(users.map(u => u.id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  };
+
+  const handleSelectUser = (userId) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
+  };
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -461,6 +525,15 @@ function Manager() {
                     placeholder="exemplo@dominio.com.br"
                   />
                 </div>
+                <div className="form-group-mini" style={{ gridColumn: 'span 2' }}>
+                  <label>URL do Sistema (Usada nos links dos e-mails)</label>
+                  <input 
+                    type="text" 
+                    value={smtpConfig.system_url || ''} 
+                    onChange={(e) => setSmtpConfig({...smtpConfig, system_url: e.target.value})}
+                    placeholder="http://localhost:3000"
+                  />
+                </div>
               </div>
 
               <div className="email-test-row">
@@ -514,10 +587,55 @@ function Manager() {
             </button>
           </div>
 
+          {/* Barra de Ações em Lote */}
+          {selectedUserIds.length > 0 && (
+            <div className="batch-actions-bar">
+              <div className="batch-info">
+                <span className="batch-count">{selectedUserIds.length}</span> {selectedUserIds.length === 1 ? 'usuário selecionado' : 'usuários selecionados'}
+              </div>
+              <div className="batch-buttons">
+                <button 
+                  className="btn-batch welcome" 
+                  disabled={emailBatchLoading}
+                  onClick={() => handleSendEmails('welcome')}
+                >
+                  {emailBatchLoading ? '...' : '✉️ Boas-vindas'}
+                </button>
+                <button 
+                  className="btn-batch inactivity" 
+                  disabled={emailBatchLoading}
+                  onClick={() => handleSendEmails('inactivity')}
+                >
+                  {emailBatchLoading ? '...' : '💤 Inatividade'}
+                </button>
+                <button 
+                  className="btn-batch expiration" 
+                  disabled={emailBatchLoading}
+                  onClick={() => handleSendEmails('expiration')}
+                >
+                  {emailBatchLoading ? '...' : '📅 Vencimento'}
+                </button>
+                <button 
+                  className="btn-batch-clear" 
+                  onClick={() => setSelectedUserIds([])}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="table-responsive">
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: '40px', textAlign: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      onChange={handleSelectAll} 
+                      checked={users.length > 0 && selectedUserIds.length === users.length}
+                    />
+                  </th>
                   <th>Status</th>
                   <th>Nome / E-mail</th>
                   <th>Assinatura / Vencimento</th>
@@ -526,7 +644,14 @@ function Manager() {
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.id} className={user.is_online ? 'online-row' : ''}>
+                  <tr key={user.id} className={`${user.is_online ? 'online-row' : ''} ${selectedUserIds.includes(user.id) ? 'selected-row' : ''}`}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedUserIds.includes(user.id)}
+                        onChange={() => handleSelectUser(user.id)}
+                      />
+                    </td>
                     <td>
                       <span className={`status-pill ${user.is_online ? 'online' : 'offline'}`}>
                         {user.is_online ? 'Online' : 'Offline'}
@@ -567,7 +692,26 @@ function Manager() {
                       </div>
                     </td>
                     <td>
-                      <div className="action-buttons-v2">
+                      <div className="action-buttons-v2" style={{ position: 'relative' }}>
+                        <button 
+                          className={`btn-action email ${activeUserDropdown === user.id ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveUserDropdown(activeUserDropdown === user.id ? null : user.id);
+                          }} 
+                          title="Enviar E-mail Manual"
+                        >
+                          ✉️
+                        </button>
+                        
+                        {activeUserDropdown === user.id && (
+                          <div className="user-email-dropdown">
+                            <button onClick={() => handleSendEmails('welcome', [user.id])}>Boas-vindas</button>
+                            <button onClick={() => handleSendEmails('inactivity', [user.id])}>Inatividade</button>
+                            <button onClick={() => handleSendEmails('expiration', [user.id])}>Vencimento</button>
+                          </div>
+                        )}
+
                         <button className="btn-action history" onClick={() => viewUserHistory(user)} title="Histórico de Pagamentos">📜</button>
                         <button className="btn-action reset" onClick={() => { setSelectedUser(user); setShowResetModal(true); }} title="Resetar Senha">🔑</button>
                         <button className="btn-action delete" onClick={() => { setSelectedUser(user); setShowDeleteModal(true); }} title="Excluir">🗑️</button>

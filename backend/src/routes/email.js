@@ -10,7 +10,7 @@ router.use(auth, adminAuth);
 
 router.get('/config', async (req, res) => {
   try {
-    const result = await pool.query('SELECT host, port, username, secure, from_email, from_name, password FROM smtp_config LIMIT 1');
+    const result = await pool.query('SELECT host, port, username, secure, from_email, from_name, password, system_url FROM smtp_config LIMIT 1');
     if (!result.rows[0]) {
       return res.status(404).json({ ok: false, error: 'Configuração SMTP não encontrada' });
     }
@@ -30,7 +30,7 @@ router.get('/config', async (req, res) => {
 
 router.post('/config', async (req, res) => {
   try {
-    const { host, port, username, password, secure, from_email, from_name } = req.body;
+    const { host, port, username, password, secure, from_email, from_name, system_url } = req.body;
     
     if (!host || !port || !username || !from_email || !from_name) {
       return res.status(400).json({ ok: false, error: 'Servidor, porta, usuário, e-mail do remetente e nome do remetente são obrigatórios' });
@@ -48,14 +48,14 @@ router.post('/config', async (req, res) => {
       
       // Atualizar
       await pool.query(
-        'UPDATE smtp_config SET host = $1, port = $2, username = $3, password = $4, secure = $5, from_email = $6, from_name = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8',
-        [host, port, username, finalPassword, secure, from_email, from_name, check.rows[0].id]
+        'UPDATE smtp_config SET host = $1, port = $2, username = $3, password = $4, secure = $5, from_email = $6, from_name = $7, system_url = $8, updated_at = CURRENT_TIMESTAMP WHERE id = $9',
+        [host, port, username, finalPassword, secure, from_email, from_name, system_url, check.rows[0].id]
       );
     } else {
       // Criar
       await pool.query(
-        'INSERT INTO smtp_config (host, port, username, password, secure, from_email, from_name) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [host, port, username, finalPassword, secure, from_email, from_name]
+        'INSERT INTO smtp_config (host, port, username, password, secure, from_email, from_name, system_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [host, port, username, finalPassword, secure, from_email, from_name, system_url]
       );
     }
     
