@@ -48,6 +48,7 @@ function Lancamentos() {
     categoria_id: '',
     subcategoria_id: '',
     parcelado: false,
+    recorrente: false,
     num_parcelas: 1,
     pago: false
   });
@@ -70,6 +71,7 @@ function Lancamentos() {
       categoria_id: '',
       subcategoria_id: '',
       parcelado: false,
+      recorrente: false,
       num_parcelas: 1,
       pago: false
     });
@@ -312,6 +314,7 @@ function Lancamentos() {
       categoria_id: '',
       subcategoria_id: '',
       parcelado: false,
+      recorrente: false,
       num_parcelas: 1,
       pago: false
     });
@@ -523,7 +526,17 @@ function Lancamentos() {
                                     onClick={() => handleTogglePago(lancamento)}
                                   >
                                     <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
-                                      {lancamento.pago ? '✓ Pago' : '○ Não pago'}
+                                      {lancamento.pago ? (
+                                        <>
+                                          <span className="status-dot pago"></span>
+                                          Pago
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="status-dot pendente"></span>
+                                          Não pago
+                                        </>
+                                      )}
                                     </span>
                                   </button>
                                 )}
@@ -682,26 +695,37 @@ function Lancamentos() {
                 </select>
               </div>
 
-              {/* Lançamento parcelado */}
-              <div className="form-group">
-                <label>Lançamento parcelado</label>
-                <div className="btn-group">
-                  <button
-                    type="button"
-                    className={!formData.parcelado ? 'active' : ''}
-                    onClick={() => setFormData({...formData, parcelado: false, num_parcelas: 1})}
-                  >
-                    Não
-                  </button>
-                  <button
-                    type="button"
-                    className={formData.parcelado ? 'active' : ''}
-                    onClick={() => setFormData({...formData, parcelado: true, num_parcelas: parseInt(formData.num_parcelas) > 1 ? formData.num_parcelas : 2})}
-                  >
-                    Sim
-                  </button>
+              {/* Repetição do lançamento */}
+              {(formData.tipo === 'saida' || formData.tipo === 'entrada' || formData.tipo === 'neutro') && (
+                <div className="form-group">
+                  <label>Repetição</label>
+                  <div className="btn-group">
+                    <button
+                      type="button"
+                      className={(!formData.parcelado && !formData.recorrente) ? 'active' : ''}
+                      onClick={() => setFormData({...formData, parcelado: false, recorrente: false, num_parcelas: 1})}
+                    >
+                      Único
+                    </button>
+                    {formData.tipo === 'saida' && (
+                      <button
+                        type="button"
+                        className={formData.parcelado ? 'active' : ''}
+                        onClick={() => setFormData({...formData, parcelado: true, recorrente: false, num_parcelas: parseInt(formData.num_parcelas) > 1 ? formData.num_parcelas : 2})}
+                      >
+                        Parcelado
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={formData.recorrente ? 'active' : ''}
+                      onClick={() => setFormData({...formData, recorrente: true, parcelado: false, num_parcelas: 1})}
+                    >
+                      Fixo/Recorrente
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {formData.parcelado && (
                 <div className="form-group col-span-2">

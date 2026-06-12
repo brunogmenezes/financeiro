@@ -403,12 +403,42 @@
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  user-select: none;
 }
 
 .conta-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px -10px rgba(0,0,0,0.08);
   border-color: var(--primary-color);
+}
+
+.conta-card.selected {
+  border-color: var(--primary-color) !important;
+  background: rgba(99, 102, 241, 0.03);
+  box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.12);
+  transform: translateY(-6px);
+}
+
+/* Badge indicadora de seleção */
+.selection-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .conta-header {
@@ -1648,13 +1678,71 @@
   text-overflow: ellipsis;
 }
 
-.dashboard-container .badge-pago.pago { background: #d1fae5; color: #065f46; }
-.dashboard-container .badge-pago.pendente { background: #fef3c7; color: #92400e; }
+.dashboard-container .badge-pago {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.dashboard-container .badge-pago.pago { 
+  background: rgba(16, 185, 129, 0.08) !important; 
+  color: #047857 !important; 
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.dashboard-container .badge-pago.pendente { 
+  background: rgba(245, 158, 11, 0.08) !important; 
+  color: #d97706 !important; 
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
 
 .dashboard-container .badge-pago.card-cc-badge {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: 1px solid #e5e7eb;
+  background: rgba(100, 116, 139, 0.08) !important;
+  color: #475569 !important;
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
+/* Status Dot styling */
+.dashboard-container .status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transition: all 0.25s ease;
+}
+
+.dashboard-container .status-dot.pago {
+  background-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+.dashboard-container .status-dot.pendente {
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+  animation: status-pulse 2s infinite ease-in-out;
+}
+
+@keyframes status-pulse {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
 }
 
 .dashboard-container .item-actions {
@@ -1736,7 +1824,19 @@
 }
 
 .btn-toggle-pago-item:hover {
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
+}
+
+.btn-toggle-pago-item:hover .badge-pago.pago {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.1);
+}
+
+.btn-toggle-pago-item:hover .badge-pago.pendente {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.1);
 }
 
 .btn-toggle-pago-item .badge-pago {
@@ -3535,4 +3635,107 @@
   height: 6px;
   border-radius: 50%;
   display: inline-block;
+}
+
+/* Floating accounts selection summary bar */
+.selected-accounts-summary-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.summary-bar-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 12px 24px;
+  border-radius: 20px;
+  color: white;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.selected-count-label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.selected-count-label strong {
+  color: #a5b4fc;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.selected-sum-value {
+  font-size: 1rem;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.2px;
+}
+
+.selected-sum-value strong {
+  color: #38bdf8; /* Soft blue */
+}
+
+.btn-clear-selection {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-selection:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* Responsiveness for selection bar */
+@media (max-width: 600px) {
+  .selected-accounts-summary-bar {
+    width: 90%;
+    bottom: 16px;
+  }
+  
+  .summary-bar-content {
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    align-items: center;
+    text-align: center;
+    border-radius: 16px;
+  }
+  
+  .summary-divider {
+    display: none;
+  }
+  
+  .btn-clear-selection {
+    width: 100%;
+  }
 }

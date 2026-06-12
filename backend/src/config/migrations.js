@@ -31,6 +31,10 @@ async function ensureOptionalColumns() {
     `);
     
     console.log('✅ Migração de tipo estorno aplicada com sucesso na tabela lancamentos.');
+    
+    // Garantir coluna recorrente na tabela lancamentos
+    await pool.query('ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS recorrente BOOLEAN DEFAULT false');
+    console.log('✅ Migração de coluna recorrente aplicada com sucesso na tabela lancamentos.');
   } catch (error) {
     console.error('Erro ao garantir colunas opcionais:', error.message);
   }

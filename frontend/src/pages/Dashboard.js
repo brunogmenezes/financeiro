@@ -111,10 +111,12 @@ function Dashboard() {
     subcategoria_id: '',
     pago: false,
     parcelado: false,
+    recorrente: false,
     num_parcelas: 1
   });
   const [selectedContaInfo, setSelectedContaInfo] = useState(null);
   const [quickAddType, setQuickAddType] = useState(null); // 'entrada' ou 'saida'
+  const [selectedContas, setSelectedContas] = useState([]);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -226,6 +228,7 @@ function Dashboard() {
       subcategoria_id: '',
       pago: false,
       parcelado: false,
+      recorrente: false,
       num_parcelas: 1
     });
     setSubcategorias([]);
@@ -877,11 +880,11 @@ function Dashboard() {
     const totalSaidas = Math.max(0, saidas.reduce((sum, l) => sum + parseFloat(l.valor), 0) - totalEstornos);
 
     const totalSaidasPagos = Math.max(0, saidas
-      .filter(l => l.pago)
+      .filter(l => l.pago || l.conta_tipo === 'Cartão de Crédito')
       .reduce((sum, l) => sum + parseFloat(l.valor), 0) - totalEstornos);
 
     const totalSaidasPendentes = saidas
-      .filter(l => !l.pago)
+      .filter(l => !l.pago && l.conta_tipo !== 'Cartão de Crédito')
       .reduce((sum, l) => sum + parseFloat(l.valor), 0);
 
     return { totalEntradas, totalSaidas, totalSaidasPagos, totalSaidasPendentes };
@@ -946,6 +949,35 @@ function Dashboard() {
       minimumFractionDigits: 2, 
       maximumFractionDigits: 2 
     });
+  };
+
+  const toggleSelectConta = (contaId) => {
+    setSelectedContas(prev => 
+      prev.includes(contaId) 
+        ? prev.filter(id => id !== contaId) 
+        : [...prev, contaId]
+    );
+  };
+
+  const calcularSomaSelecionadas = () => {
+    let totalNormal = 0;
+    let totalCC = 0;
+    let hasNormal = false;
+    let hasCC = false;
+
+    contas
+      .filter(c => selectedContas.includes(c.id))
+      .forEach(conta => {
+        if (conta.tipo === 'Cartão de Crédito') {
+          totalCC += calcularFaturaMes(conta.id).saldoRestante;
+          hasCC = true;
+        } else {
+          totalNormal += (Number(conta.saldo_inicial) || 0);
+          hasNormal = true;
+        }
+      });
+
+    return { totalNormal, totalCC, hasNormal, hasCC };
   };
 
   // Calcular valores por categoria e subcategoria com base no filtro
@@ -1609,72 +1641,85 @@ function Dashboard() {
                      tipo === 'Dinheiro' ? '💵 Dinheiro' : tipo}
                   </h3>
                   <div className="contas-grid">
-                    {contasOrdenadas.map(conta => (
-                      <div key={conta.id} className="conta-card" data-tipo={conta.tipo}>
-                        <div className="conta-header">
-                          <div className="conta-info">
-                            <h4>{conta.nome}</h4>
+                    {contasOrdenadas.map(conta => {
+                      const isSelected = selectedContas.includes(conta.id);
+                      return (
+                        <div 
+                          key={conta.id} 
+                          className={`conta-card ${isSelected ? 'selected' : ''}`} 
+                          data-tipo={conta.tipo}
+                          onClick={() => toggleSelectConta(conta.id)}
+                        >
+                          <div className="conta-header">
+                            <div className="conta-info">
+                              <h4>{conta.nome}</h4>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {isSelected && (
+                                <span className="selection-badge">✓</span>
+                              )}
+                              {conta.tipo && (
+                                <span className={`conta-tipo-badge badge-${conta.tipo.toLowerCase().replace(' ', '-')}`}>
+                                  {conta.tipo}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {conta.tipo && (
-                            <span className={`conta-tipo-badge badge-${conta.tipo.toLowerCase().replace(' ', '-')}`}>
-                              {conta.tipo}
-                            </span>
+                          <div className="conta-saldo">
+                            {mostrarValores ? (
+                              <>
+                                {conta.tipo === 'Cartão de Crédito' ? (
+                                  <div className="cc-invoice-details">
+                                    <div className="cc-detail-item">
+                                      <span className="cc-detail-label">Gasto:</span>
+                                      <span className="cc-detail-valor">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalGasto)}</span>
+                                    </div>
+                                    <div className="cc-detail-item">
+                                      <span className="cc-detail-label">Pago:</span>
+                                      <span className="cc-detail-valor pago">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalPago)}</span>
+                                    </div>
+                                    <div className="cc-detail-item total">
+                                      <span className="cc-detail-label">Fatura:</span>
+                                      <span className="cc-detail-valor fatura">R$ {formatarMoeda(calcularFaturaMes(conta.id).saldoRestante)}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="label">Saldo:</span>
+                                    <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
+                                      R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
+                                    </span>
+                                  </>
+                                )}
+                                
+                                {conta.tipo === 'Cartão de Crédito' && (
+                                  <div className="limite-container">
+                                    <div className="limite-info">
+                                      <span>Limite: R$ {formatarMoeda(conta.limite_total)}</span>
+                                      <span>{((Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="limite-bar-bg">
+                                      <div 
+                                        className="limite-bar-fill" 
+                                        style={{ 
+                                          width: `${Math.min(100, (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100)}%`,
+                                          backgroundColor: (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) > 0.8 ? '#ef4444' : '#3b82f6'
+                                        }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="valor-oculto">R$ ••••••</span>
+                            )}
+                          </div>
+                          {conta.descricao && (
+                            <div className="conta-descricao">{conta.descricao}</div>
                           )}
                         </div>
-                        <div className="conta-saldo">
-                          {mostrarValores ? (
-                            <>
-                              {conta.tipo === 'Cartão de Crédito' ? (
-                                <div className="cc-invoice-details">
-                                  <div className="cc-detail-item">
-                                    <span className="cc-detail-label">Gasto:</span>
-                                    <span className="cc-detail-valor">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalGasto)}</span>
-                                  </div>
-                                  <div className="cc-detail-item">
-                                    <span className="cc-detail-label">Pago:</span>
-                                    <span className="cc-detail-valor pago">R$ {formatarMoeda(calcularFaturaMes(conta.id).totalPago)}</span>
-                                  </div>
-                                  <div className="cc-detail-item total">
-                                    <span className="cc-detail-label">Fatura:</span>
-                                    <span className="cc-detail-valor fatura">R$ {formatarMoeda(calcularFaturaMes(conta.id).saldoRestante)}</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  <span className="label">Saldo:</span>
-                                  <span className={`valor ${parseFloat(conta.saldo_inicial) >= 0 ? 'positivo' : 'negativo'}`}>
-                                    R$ {formatarMoeda(Number(conta.saldo_inicial) || 0)}
-                                  </span>
-                                </>
-                              )}
-                              
-                              {conta.tipo === 'Cartão de Crédito' && (
-                                <div className="limite-container">
-                                  <div className="limite-info">
-                                    <span>Limite: R$ {formatarMoeda(conta.limite_total)}</span>
-                                    <span>{((Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100).toFixed(1)}%</span>
-                                  </div>
-                                  <div className="limite-bar-bg">
-                                    <div 
-                                      className="limite-bar-fill" 
-                                      style={{ 
-                                        width: `${Math.min(100, (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) * 100)}%`,
-                                        backgroundColor: (Math.abs(Number(conta.saldo_inicial)) / Number(conta.limite_total)) > 0.8 ? '#ef4444' : '#3b82f6'
-                                      }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <span className="valor-oculto">R$ ••••••</span>
-                          )}
-                        </div>
-                        {conta.descricao && (
-                          <div className="conta-descricao">{conta.descricao}</div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -2342,7 +2387,17 @@ function Dashboard() {
                                   title={lancamento.pago ? 'Marcar como não pago' : 'Marcar como pago'}
                                 >
                                   <span className={`badge-pago ${lancamento.pago ? 'pago' : 'pendente'}`}>
-                                    {lancamento.pago ? '✓ Pago' : '○ Não pago'}
+                                    {lancamento.pago ? (
+                                      <>
+                                        <span className="status-dot pago"></span>
+                                        Pago
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="status-dot pendente"></span>
+                                        Não pago
+                                      </>
+                                    )}
                                   </span>
                                 </button>
                               )}
@@ -2610,23 +2665,32 @@ function Dashboard() {
                 </div>
               )}
 
-              {formData.tipo === 'saida' && (
+              {(formData.tipo === 'saida' || formData.tipo === 'entrada' || formData.tipo === 'neutro') && (
                 <div className="form-group">
-                  <label>Forma de Pagamento</label>
+                  <label>Repetição</label>
                   <div className="btn-group">
                     <button
                       type="button"
-                      className={!formData.parcelado ? 'active' : ''}
-                      onClick={() => setFormData({...formData, parcelado: false, num_parcelas: 1})}
+                      className={(!formData.parcelado && !formData.recorrente) ? 'active' : ''}
+                      onClick={() => setFormData({...formData, parcelado: false, recorrente: false, num_parcelas: 1})}
                     >
-                      À Vista
+                      Único
                     </button>
+                    {formData.tipo === 'saida' && (
+                      <button
+                        type="button"
+                        className={formData.parcelado ? 'active' : ''}
+                        onClick={() => setFormData({...formData, parcelado: true, recorrente: false, num_parcelas: parseInt(formData.num_parcelas) > 1 ? formData.num_parcelas : 2})}
+                      >
+                        Parcelado
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className={formData.parcelado ? 'active' : ''}
-                      onClick={() => setFormData({...formData, parcelado: true, num_parcelas: parseInt(formData.num_parcelas) > 1 ? formData.num_parcelas : 2})}
+                      className={formData.recorrente ? 'active' : ''}
+                      onClick={() => setFormData({...formData, recorrente: true, parcelado: false, num_parcelas: 1})}
                     >
-                      Parcelado
+                      Fixo/Recorrente
                     </button>
                   </div>
                 </div>
@@ -2886,6 +2950,41 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Barra de Resumo de Contas Selecionadas */}
+      {selectedContas.length > 0 && (() => {
+        const { totalNormal, totalCC, hasNormal, hasCC } = calcularSomaSelecionadas();
+        let displaySum = '';
+        if (hasNormal && !hasCC) {
+          displaySum = `Soma: R$ ${formatarMoeda(totalNormal)}`;
+        } else if (!hasNormal && hasCC) {
+          displaySum = `Soma Faturas: R$ ${formatarMoeda(totalCC)}`;
+        } else {
+          const netTotal = totalNormal - totalCC;
+          displaySum = `Saldo Líquido: R$ ${formatarMoeda(netTotal)}`;
+        }
+
+        return (
+          <div className="selected-accounts-summary-bar">
+            <div className="summary-bar-content">
+              <span className="selected-count-label">
+                <strong>{selectedContas.length}</strong> {selectedContas.length === 1 ? 'conta selecionada' : 'contas selecionadas'}
+              </span>
+              <div className="summary-divider"></div>
+              <span className="selected-sum-value">
+                {mostrarValores ? (
+                  <strong>{displaySum}</strong>
+                ) : (
+                  <strong>Soma: R$ ••••••</strong>
+                )}
+              </span>
+              <button className="btn-clear-selection" onClick={() => setSelectedContas([])}>
+                Desmarcar Tudo
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Botões Flutuantes */}
       <div className="fab-container">

@@ -58,7 +58,7 @@ exports.getById = async (req, res) => {
 // Criar novo lançamento
 exports.create = async (req, res) => {
   try {
-    const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, parcelado, num_parcelas, pago } = req.body;
+    const { descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, parcelado, num_parcelas, pago, recorrente } = req.body;
     const pagoStatus = pago !== undefined ? pago : false;
 
     // Verificar se a conta é Cartão de Crédito para ajustar a data
@@ -78,15 +78,71 @@ exports.create = async (req, res) => {
       dataFinal = novaData.toISOString().split('T')[0];
     }
 
+    // Calcular quantidade de meses para recorrente (até dezembro do ano do lançamento)
+    const startData = new Date(data);
+    const startYear = startData.getUTCFullYear();
+    const startMonth = startData.getUTCMonth(); // 0-indexed (0 = Jan, 11 = Dec)
+    const day = startData.getUTCDate();
+    const monthsToGenerate = Math.max(1, 12 - startMonth);
+
     // Verificar se o usuário é PRO ou ADMIN
     const { is_pro, is_admin } = req.user;
     if (!is_pro && !is_admin) {
       const lancamentosCount = await pool.query('SELECT COUNT(*) FROM lancamentos WHERE usuario_id = $1', [req.userId]);
-      const totalFuturo = parseInt(lancamentosCount.rows[0].count) + (parcelado ? parseInt(num_parcelas) : 1);
+      let qtdNovos = 1;
+      if (parcelado) {
+        qtdNovos = parseInt(num_parcelas);
+      } else if (recorrente) {
+        qtdNovos = monthsToGenerate;
+      }
+      
+      const totalFuturo = parseInt(lancamentosCount.rows[0].count) + qtdNovos;
       
       if (totalFuturo > 10) {
         return res.status(403).json({ error: 'Usuários não PRO possuem limite de 10 lançamentos. Adquira o plano PRO para lançamentos ilimitados!' });
       }
+    }
+
+    // Se for recorrente, criar múltiplos lançamentos até o mês 12 do ano do lançamento
+    if (recorrente) {
+      const lancamentosCriados = [];
+      for (let i = 0; i < monthsToGenerate; i++) {
+        let dataLancamentoStr;
+        const currentMonth = startMonth + i;
+        
+        if ((tipo === 'saida' || tipo === 'estorno') && isCartao && contaObj?.dia_vencimento) {
+          const novaData = new Date(Date.UTC(startYear, currentMonth, contaObj.dia_vencimento));
+          dataLancamentoStr = novaData.toISOString().split('T')[0];
+        } else {
+          const novaData = new Date(Date.UTC(startYear, currentMonth, day));
+          dataLancamentoStr = novaData.toISOString().split('T')[0];
+        }
+        
+        const result = await pool.query(
+          'INSERT INTO lancamentos (descricao, valor, tipo, data, conta_id, categoria_id, subcategoria_id, usuario_id, pago, parcelado, num_parcelas, parcela_atual, recorrente) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+          [descricao, valor, tipo, dataLancamentoStr, conta_id, categoria_id || null, subcategoria_id || null, req.userId, pagoStatus, false, 1, 1, true]
+        );
+        
+        // Atualizar saldo da conta
+        if (tipo === 'entrada') {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+        } else if (tipo === 'saida') {
+          if (isCartao) {
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+          } else if (pagoStatus) {
+            await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial - $1 WHERE id = $2', [valor, conta_id]);
+          }
+        } else if (tipo === 'estorno') {
+          await pool.query('UPDATE contas SET saldo_inicial = saldo_inicial + $1 WHERE id = $2', [valor, conta_id]);
+        }
+        
+        lancamentosCriados.push(result.rows[0]);
+      }
+      
+      const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
+      await registrarLog(req.userId, user.rows[0]?.nome || 'Usuário', 'CRIAR', 'lancamentos', null, `Lançamento recorrente "${descricao}" criado até Dezembro (${monthsToGenerate}x)`);
+      
+      return res.status(201).json({ message: `${monthsToGenerate} lançamentos recorrentes criados`, lancamentos: lancamentosCriados });
     }
 
     // Se for parcelado, criar múltiplos lançamentos

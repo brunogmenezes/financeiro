@@ -232,15 +232,80 @@
 .lancamentos-page-container .valor-negativo { color: #ef4444; }
 
 .lancamentos-page-container .badge-pago {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.7rem;
-  font-weight: 800;
-  padding: 6px 12px;
-  border-radius: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
-.lancamentos-page-container .badge-pago.pago { background: #d1fae5; color: #065f46; }
-.lancamentos-page-container .badge-pago.pendente { background: #fef3c7; color: #92400e; }
+.lancamentos-page-container .badge-pago.pago { 
+  background: rgba(16, 185, 129, 0.08) !important; 
+  color: #047857 !important; 
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.lancamentos-page-container .badge-pago.pendente { 
+  background: rgba(245, 158, 11, 0.08) !important; 
+  color: #d97706 !important; 
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+.lancamentos-page-container .badge-pago.card-cc-badge {
+  background: rgba(100, 116, 139, 0.08) !important;
+  color: #475569 !important;
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
+/* Status Dot styling */
+.lancamentos-page-container .status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transition: all 0.25s ease;
+}
+
+.lancamentos-page-container .status-dot.pago {
+  background-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+.lancamentos-page-container .status-dot.pendente {
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+  animation: status-pulse 2s infinite ease-in-out;
+}
+
+.lancamentos-page-container .btn-toggle-pago-item {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.lancamentos-page-container .btn-toggle-pago-item:hover {
+  transform: translateY(-1px) scale(1.05);
+}
+
+.lancamentos-page-container .btn-toggle-pago-item:hover .badge-pago.pago {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.1);
+}
+
+.lancamentos-page-container .btn-toggle-pago-item:hover .badge-pago.pendente {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.1);
+}
 
 .lancamentos-page-container .item-conta {
   display: flex;
