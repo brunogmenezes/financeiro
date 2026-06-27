@@ -359,6 +359,22 @@ function Dashboard() {
     }
   };
 
+  const handleRefreshData = async () => {
+    try {
+      triggerToast('Atualizando dados... 🔄');
+      await Promise.all([
+        loadDashboard(),
+        loadLancamentos(),
+        loadContas(),
+        loadCategorias(),
+        loadEntradasProjetivas()
+      ]);
+      triggerToast('Dados atualizados! 🚀');
+    } catch (e) {
+      triggerToast('Erro ao atualizar os dados', 'error');
+    }
+  };
+
   const handleUpgradeClick = () => {
     setProLimitMessage('Esta funcionalidade de análise avançada está disponível apenas para usuários PRO.');
     setShowProLimitModal(true);
@@ -1049,6 +1065,7 @@ function Dashboard() {
       if (!grupos[categoriaId]) {
         const catOriginal = categorias.find(c => String(c.id) === String(categoriaId));
         grupos[categoriaId] = {
+          id: categoriaId,
           nome: categoriaNome,
           cor: categoriaCor,
           total: 0,
@@ -1062,6 +1079,7 @@ function Dashboard() {
 
       if (!grupos[categoriaId].subcategorias[subcategoriaId]) {
         grupos[categoriaId].subcategorias[subcategoriaId] = {
+          id: subcategoriaId,
           nome: subcategoriaNome,
           total: 0,
           meta: lancamento.subcategoria_meta || null
@@ -1079,6 +1097,50 @@ function Dashboard() {
         subcategorias: Object.values(categoria.subcategorias)
           .sort((a, b) => b.total - a.total)
       }));
+  };
+
+  // Calcular totais de gastos, somatório de metas e economia potencial
+  const calcularResumoMetas = () => {
+    const catsFiltradas = calcularValoresPorCategoria();
+    let totalGasto = 0;
+    let somaMetaCategorias = 0;
+    let somaMetaSubcategorias = 0;
+    let economiaCategorias = 0;
+    let economiaSubcategorias = 0;
+
+    catsFiltradas.forEach(categoria => {
+      // Procurar categoria original para verificar o tipo
+      const catOriginal = categorias.find(c => String(c.id) === String(categoria.id));
+      const isSaida = catOriginal ? catOriginal.tipo === 'saida' : true; 
+
+      if (isSaida) {
+        totalGasto += categoria.total;
+        
+        if (categoria.meta && Number(categoria.meta) > 0) {
+          somaMetaCategorias += Number(categoria.meta);
+          if (categoria.total > Number(categoria.meta)) {
+            economiaCategorias += (categoria.total - Number(categoria.meta));
+          }
+        }
+      }
+
+      categoria.subcategorias.forEach(sub => {
+        if (sub.meta && Number(sub.meta) > 0 && isSaida) {
+          somaMetaSubcategorias += Number(sub.meta);
+          if (sub.total > Number(sub.meta)) {
+            economiaSubcategorias += (sub.total - Number(sub.meta));
+          }
+        }
+      });
+    });
+
+    return {
+      totalGasto,
+      somaMetaCategorias,
+      somaMetaSubcategorias,
+      economiaCategorias,
+      economiaSubcategorias
+    };
   };
 
   // Processar dados para o gráfico
@@ -1944,6 +2006,69 @@ function Dashboard() {
                 {/* Barras horizontais por categoria e subcategoria */}
                 <div className="category-bars-section">
                   <h3>📊 Valores por Categoria</h3>
+
+                  {calcularValoresPorCategoria().length > 0 && (() => {
+                    const { totalGasto, somaMetaCategorias, somaMetaSubcategorias, economiaCategorias, economiaSubcategorias } = calcularResumoMetas();
+                    return (
+                      <div className="metas-summary-grid">
+                        <div className="meta-summary-card total-gasto">
+                          <div className="card-header">
+                            <span className="card-emoji">💰</span>
+                            <span className="card-title">Total Gasto (Filtro)</span>
+                          </div>
+                          <div className="card-body">
+                            <span className="card-amount">
+                              {mostrarValores ? `R$ ${formatarMoeda(totalGasto)}` : 'R$ ••••••'}
+                            </span>
+                            <span className="card-subtitle">Despesas no filtro definido</span>
+                          </div>
+                        </div>
+
+                        {somaMetaCategorias > 0 && (
+                          <div className="meta-summary-card category-metas">
+                            <div className="card-header">
+                              <span className="card-emoji">🎯</span>
+                              <span className="card-title">Meta de Categorias</span>
+                            </div>
+                            <div className="card-body">
+                              <span className="card-amount">
+                                {mostrarValores ? `R$ ${formatarMoeda(somaMetaCategorias)}` : 'R$ ••••••'}
+                              </span>
+                              {mostrarValores && (
+                                <span className={`card-badge ${economiaCategorias > 0 ? 'warning' : 'success'}`}>
+                                  {economiaCategorias > 0 
+                                    ? `Economizaria R$ ${formatarMoeda(economiaCategorias)}` 
+                                    : 'Dentro da meta'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {somaMetaSubcategorias > 0 && (
+                          <div className="meta-summary-card subcategory-metas">
+                            <div className="card-header">
+                              <span className="card-emoji">🧩</span>
+                              <span className="card-title">Meta de Subcategorias</span>
+                            </div>
+                            <div className="card-body">
+                              <span className="card-amount">
+                                {mostrarValores ? `R$ ${formatarMoeda(somaMetaSubcategorias)}` : 'R$ ••••••'}
+                              </span>
+                              {mostrarValores && (
+                                <span className={`card-badge ${economiaSubcategorias > 0 ? 'warning' : 'success'}`}>
+                                  {economiaSubcategorias > 0 
+                                    ? `Economizaria R$ ${formatarMoeda(economiaSubcategorias)}` 
+                                    : 'Dentro da meta'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <div className="category-bars-container">
                     {calcularValoresPorCategoria().length > 0 ? (
                       calcularValoresPorCategoria().map((categoria, idx) => {
@@ -2988,6 +3113,13 @@ function Dashboard() {
 
       {/* Botões Flutuantes */}
       <div className="fab-container">
+        <button 
+          className="fab-item fab-refresh" 
+          onClick={handleRefreshData}
+          title="Atualizar Dados"
+        >
+          🔄
+        </button>
         <button 
           className="fab-item fab-add" 
           onClick={() => { setQuickAddType(null); setFormData({...formData, tipo: 'saida', categoria_id: '', subcategoria_id: '', conta_destino_id: ''}); setShowModal(true); }}
