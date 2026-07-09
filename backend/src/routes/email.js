@@ -68,7 +68,7 @@ router.post('/config', async (req, res) => {
 // Obter todos os templates
 router.get('/templates', async (req, res) => {
   try {
-    const result = await pool.query('SELECT slug, name, subject, body, variables FROM email_templates ORDER BY slug;');
+    const result = await pool.query('SELECT slug, name, subject, body, variables, whatsapp_body FROM email_templates ORDER BY slug;');
     res.json({ ok: true, data: result.rows });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message });
@@ -79,15 +79,15 @@ router.get('/templates', async (req, res) => {
 router.put('/templates/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    const { subject, body } = req.body;
+    const { subject, body, whatsapp_body } = req.body;
     
     if (!subject || !body) {
       return res.status(400).json({ ok: false, error: 'Assunto e corpo do e-mail são obrigatórios' });
     }
     
     const result = await pool.query(
-      'UPDATE email_templates SET subject = $1, body = $2, updated_at = CURRENT_TIMESTAMP WHERE slug = $3 RETURNING *;',
-      [subject, body, slug]
+      'UPDATE email_templates SET subject = $1, body = $2, whatsapp_body = $3, updated_at = CURRENT_TIMESTAMP WHERE slug = $4 RETURNING *;',
+      [subject, body, whatsapp_body || null, slug]
     );
     
     if (result.rows.length === 0) {

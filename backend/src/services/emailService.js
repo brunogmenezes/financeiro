@@ -55,12 +55,12 @@ async function sendMail({ to, subject, text, html }) {
 
 async function sendEmailTemplate({ to, templateSlug, variables }) {
   try {
-    const result = await pool.query('SELECT subject, body FROM email_templates WHERE slug = $1', [templateSlug]);
+    const result = await pool.query('SELECT subject, body, whatsapp_body FROM email_templates WHERE slug = $1', [templateSlug]);
     if (!result.rows[0]) {
       throw new Error(`Template de e-mail com slug '${templateSlug}' não encontrado`);
     }
     
-    let { subject, body } = result.rows[0];
+    let { subject, body, whatsapp_body } = result.rows[0];
     
     // Substituir as variáveis do template
     if (variables) {
@@ -68,6 +68,35 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
         const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
         subject = subject.replace(placeholder, value || '');
         body = body.replace(placeholder, value || '');
+        if (whatsapp_body) {
+          whatsapp_body = whatsapp_body.replace(placeholder, value || '');
+        }
+      }
+    }
+    
+    // Enviar WhatsApp se houver whatsapp_body configurado e o usuário tiver número de WhatsApp
+    if (whatsapp_body) {
+      try {
+        const userResult = await pool.query('SELECT whatsapp FROM usuarios WHERE email = $1 LIMIT 1', [to]);
+        const whatsappNumber = userResult.rows[0]?.whatsapp;
+        
+        if (whatsappNumber && whatsappNumber.trim() !== '') {
+          let systemUrl = 'https://financeiro.netsolutions.com.br';
+          try {
+            const config = await getSmtpConfig();
+            if (config.system_url) systemUrl = config.system_url;
+          } catch (e) {
+            if (process.env.SYSTEM_URL) systemUrl = process.env.SYSTEM_URL;
+          }
+          whatsapp_body = whatsapp_body.replace(/http:\/\/localhost:3000/g, systemUrl);
+
+          const { sendText, getConnectionState } = require('./evolutionService');
+          await getConnectionState();
+          await sendText(whatsappNumber, whatsapp_body);
+          console.log(`✔️ WhatsApp de template '${templateSlug}' enviado com sucesso para ${whatsappNumber}`);
+        }
+      } catch (waError) {
+        console.error(`❌ Erro ao enviar WhatsApp do template '${templateSlug}' para ${to}:`, waError.message);
       }
     }
     

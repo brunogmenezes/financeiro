@@ -43,7 +43,7 @@ function Manager() {
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [activeTemplateTab, setActiveTemplateTab] = useState('');
   const [activeWorkTab, setActiveWorkTab] = useState('edit');
-  const [editingTemplate, setEditingTemplate] = useState({ subject: '', body: '' });
+  const [editingTemplate, setEditingTemplate] = useState({ subject: '', body: '', whatsapp_body: '' });
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const textareaRef = React.useRef(null);
 
@@ -221,12 +221,16 @@ function Manager() {
         const first = response.data.data[0];
         if (first) {
           setActiveTemplateTab(first.slug);
-          setEditingTemplate({ subject: first.subject, body: first.body });
+          setEditingTemplate({ 
+            subject: first.subject, 
+            body: first.body,
+            whatsapp_body: first.whatsapp_body || ''
+          });
         }
       }
       setShowTemplatesModal(true);
     } catch (error) {
-      triggerToast('Erro ao carregar modelos de e-mail', 'error');
+      triggerToast('Erro ao carregar modelos', 'error');
     } finally {
       setTemplatesLoading(false);
     }
@@ -236,7 +240,11 @@ function Manager() {
     const found = templates.find(t => t.slug === slug);
     if (found) {
       setActiveTemplateTab(slug);
-      setEditingTemplate({ subject: found.subject, body: found.body });
+      setEditingTemplate({ 
+        subject: found.subject, 
+        body: found.body,
+        whatsapp_body: found.whatsapp_body || ''
+      });
       setActiveWorkTab('edit');
     }
   };
@@ -245,14 +253,20 @@ function Manager() {
     try {
       const response = await updateEmailTemplate(activeTemplateTab, {
         subject: editingTemplate.subject,
-        body: editingTemplate.body
+        body: editingTemplate.body,
+        whatsapp_body: editingTemplate.whatsapp_body
       });
       if (response.data?.ok) {
-        triggerToast('Modelo de e-mail atualizado! 💾');
-        setTemplates(prev => prev.map(t => t.slug === activeTemplateTab ? { ...t, subject: editingTemplate.subject, body: editingTemplate.body } : t));
+        triggerToast('Modelo atualizado com sucesso! 💾');
+        setTemplates(prev => prev.map(t => t.slug === activeTemplateTab ? { 
+          ...t, 
+          subject: editingTemplate.subject, 
+          body: editingTemplate.body,
+          whatsapp_body: editingTemplate.whatsapp_body
+        } : t));
       }
     } catch (error) {
-      triggerToast('Erro ao salvar modelo de e-mail', 'error');
+      triggerToast('Erro ao salvar modelo', 'error');
     }
   };
 
@@ -550,7 +564,7 @@ function Manager() {
 
               <div className="evolution-actions email-actions-row">
                 <button type="button" className="btn-edit-templates" onClick={handleOpenTemplatesModal} disabled={templatesLoading}>
-                  {templatesLoading ? 'Carregando...' : '✏️ Modelos de E-mail'}
+                  {templatesLoading ? 'Carregando...' : '✏️ Modelos de Notificação'}
                 </button>
                 <button className="btn-save-mini" onClick={handleSaveSmtpConfig} disabled={smtpLoading}>
                   {smtpLoading ? 'Salvando...' : 'Salvar Config'}
@@ -798,12 +812,12 @@ function Manager() {
         </div>
       )}
 
-      {/* Modal de Modelos de E-mail */}
+      {/* Modal de Modelos de E-mail & WhatsApp */}
       {showTemplatesModal && (
         <div className="modal email-templates-modal-wrapper">
           <div className="modal-content templates-modal premium-card">
             <div className="modal-header">
-              <h3>Modelos de E-mail HTML ({templates.length})</h3>
+              <h3>Modelos de Notificação (E-mail & WhatsApp)</h3>
               <button className="btn-close" onClick={() => setShowTemplatesModal(false)}>✕</button>
             </div>
 
@@ -918,6 +932,73 @@ function Manager() {
                   />
                 </div>
               )}
+
+              {/* WhatsApp Template Editing Section */}
+              <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="editor-label" style={{ marginBottom: 0 }}>Mensagem do WhatsApp (Evolution API)</label>
+                  <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 'bold' }}>⚡ Envio automático ativo</span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 10px 0' }}>
+                  Escreva a mensagem que será enviada para o WhatsApp do cliente. Você pode usar negrito com <code>*texto*</code>, itálico com <code>_texto_</code> e as tags dinâmicas abaixo:
+                </p>
+                <div className="html-toolbar" style={{ borderBottom: '1px solid #e2e8f0', borderRadius: '10px 10px 0 0' }}>
+                  <span className="variables-label">Tags:</span>
+                  {(() => {
+                    const activeObj = templates.find(t => t.slug === activeTemplateTab);
+                    const vars = activeObj?.variables || [];
+                    return vars.map(v => (
+                      <button 
+                        key={v}
+                        type="button" 
+                        className="var-badge-btn"
+                        onClick={() => {
+                          const waTextarea = document.getElementById('whatsapp-template-textarea');
+                          if (waTextarea) {
+                            const start = waTextarea.selectionStart;
+                            const end = waTextarea.selectionEnd;
+                            const currentVal = editingTemplate.whatsapp_body || '';
+                            const newVal = currentVal.substring(0, start) + `{{${v}}}` + currentVal.substring(end);
+                            setEditingTemplate({
+                              ...editingTemplate,
+                              whatsapp_body: newVal
+                            });
+                            setTimeout(() => {
+                              waTextarea.focus();
+                              waTextarea.selectionStart = waTextarea.selectionEnd = start + v.length + 4;
+                            }, 50);
+                          }
+                        }}
+                        title={`Inserir tag dinâmica {{${v}}}`}
+                      >
+                        {`{{${v}}}`}
+                      </button>
+                    ));
+                  })()}
+                </div>
+                <textarea 
+                  id="whatsapp-template-textarea"
+                  style={{
+                    width: '100%',
+                    height: '120px',
+                    border: '1px solid #e2e8f0',
+                    borderTop: 'none',
+                    borderRadius: '0 0 10px 10px',
+                    padding: '12px 15px',
+                    fontFamily: 'monospace',
+                    fontSize: '0.85rem',
+                    lineHeight: '1.5',
+                    color: '#0f172a',
+                    background: '#fafafa',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                  }}
+                  value={editingTemplate.whatsapp_body || ''}
+                  onChange={(e) => setEditingTemplate({...editingTemplate, whatsapp_body: e.target.value})}
+                  placeholder="Escreva a mensagem do WhatsApp..."
+                />
+              </div>
             </div>
 
             <div className="modal-actions">
