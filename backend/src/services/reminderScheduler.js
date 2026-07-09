@@ -106,18 +106,41 @@ async function sendReminder(reminderDate) {
     return;
   }
 
+  const today = nowInTZ();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const isToday = reminderDate.getDate() === today.getDate() &&
+                  reminderDate.getMonth() === today.getMonth() &&
+                  reminderDate.getFullYear() === today.getFullYear();
+
+  const isTomorrow = reminderDate.getDate() === tomorrow.getDate() &&
+                     reminderDate.getMonth() === tomorrow.getMonth() &&
+                     reminderDate.getFullYear() === tomorrow.getFullYear();
+
+  let statusVencimento = formatDateBR(reminderDate);
+  if (isToday) statusVencimento = 'Hoje';
+  else if (isTomorrow) statusVencimento = 'Amanhã';
+
+  const emojiVencimento = isToday ? '⚠️' : '⏰';
+  const systemUrl = process.env.SYSTEM_URL || 'https://financeiro.netsolutions.com.br';
+
   // Enviar lembretes individuais (não-cartões)
   for (const lanc of pendentes) {
     try {
+      const saudacao = lanc.usuario_nome ? `Olá, *${lanc.usuario_nome}*! 👋` : 'Olá! 👋';
       const message = [
-        `Oi ${lanc.usuario_nome || ''}!`,
-        `Lembrete: ${lanc.descricao}`,
-        `Valor: ${formatMoney(lanc.valor)}`,
-        `Vencimento: ${formatDateBR(new Date(lanc.data))}`,
-        lanc.conta_nome ? `Conta: ${lanc.conta_nome}` : null,
-        'Status: não pago',
+        saudacao,
         '',
-        'Marque como pago no Financeiro se já quitou.'
+        `*Lembrete de Vencimento (${statusVencimento})* ${emojiVencimento}`,
+        `📌 *Descrição:* ${lanc.descricao}`,
+        `💰 *Valor:* ${formatMoney(lanc.valor)}`,
+        `📅 *Vencimento:* ${formatDateBR(new Date(lanc.data))}`,
+        lanc.conta_nome ? `🏦 *Conta:* ${lanc.conta_nome}` : null,
+        `🔴 *Status:* Não pago`,
+        '',
+        `Marque como pago no sistema se já quitou:`,
+        `🔗 ${systemUrl}`
       ].filter(Boolean).join('\n');
 
       await sendText(lanc.whatsapp, message);
@@ -130,16 +153,20 @@ async function sendReminder(reminderDate) {
   // Enviar lembretes consolidados de cartão de crédito
   for (const card of creditCards) {
     try {
+      const saudacao = card.usuario_nome ? `Olá, *${card.usuario_nome}*! 👋` : 'Olá! 👋';
       const vencimentoDate = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), card.dia_vencimento);
       const message = [
-        `Oi ${card.usuario_nome || ''}!`,
-        `Lembrete de Vencimento do Cartão de Crédito: *${card.conta_nome}*`,
-        `Vencimento: ${formatDateBR(vencimentoDate)}`,
-        `Valor Total da Fatura: ${formatMoney(card.totalGasto)}`,
-        `Valor Já Pago: ${formatMoney(card.totalPago)}`,
-        `Saldo em Aberto (A Pagar): *${formatMoney(card.saldoRestante)}*`,
+        saudacao,
         '',
-        'Marque o pagamento da fatura no Financeiro se já realizou o pagamento.'
+        `*Vencimento do Cartão (${statusVencimento})* ${emojiVencimento}`,
+        `💳 *Cartão:* ${card.conta_nome}`,
+        `📅 *Vencimento:* ${formatDateBR(vencimentoDate)}`,
+        `💰 *Valor Total da Fatura:* ${formatMoney(card.totalGasto)}`,
+        `✅ *Valor Já Pago:* ${formatMoney(card.totalPago)}`,
+        `💵 *Saldo em Aberto (A Pagar):* *${formatMoney(card.saldoRestante)}*`,
+        '',
+        `Marque o pagamento da fatura no sistema se já quitou:`,
+        `🔗 ${systemUrl}`
       ].join('\n');
 
       await sendText(card.whatsapp, message);
