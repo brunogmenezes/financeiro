@@ -59,6 +59,8 @@ router.post('/config', auth, adminAuth, async (req, res) => {
 });
 
 router.post('/test-message', auth, async (req, res) => {
+  let testMessage = '';
+  let cleanWhatsapp = '';
   try {
     const { whatsapp } = req.body;
     
@@ -66,15 +68,32 @@ router.post('/test-message', auth, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Número de WhatsApp é obrigatório' });
     }
     
+    cleanWhatsapp = whatsapp;
     const user = await pool.query('SELECT nome FROM usuarios WHERE id = $1', [req.userId]);
     const userName = user.rows[0]?.nome || 'Usuário';
     
-    const testMessage = `Olá ${userName}! 🎉\n\nEsta é uma mensagem de teste da integração do Financeiro com WhatsApp.\n\nSe você está recebendo isso, tudo está funcionando corretamente! ✅\n\nData/Hora: ${new Date().toLocaleString('pt-BR')}`;
+    testMessage = `Olá ${userName}! 🎉\n\nEsta é uma mensagem de teste da integração do Financeiro com WhatsApp.\n\nSe você está recebendo isso, tudo está funcionando corretamente! ✅\n\nData/Hora: ${new Date().toLocaleString('pt-BR')}`;
     
     await sendText(whatsapp, testMessage);
     
+    const { logEnvio } = require('../services/emailService');
+    await logEnvio({
+      tipo: 'whatsapp',
+      destinatario: whatsapp,
+      mensagem: testMessage,
+      status: 'sucesso'
+    });
+    
     res.json({ ok: true, message: 'Mensagem de teste enviada com sucesso!' });
   } catch (error) {
+    const { logEnvio } = require('../services/emailService');
+    await logEnvio({
+      tipo: 'whatsapp',
+      destinatario: cleanWhatsapp || 'Desconhecido',
+      mensagem: testMessage || 'Mensagem de teste',
+      status: 'erro',
+      erro: error.message
+    });
     res.status(400).json({ ok: false, error: error.message });
   }
 });

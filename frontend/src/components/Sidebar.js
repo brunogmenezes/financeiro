@@ -107,6 +107,13 @@ function Sidebar() {
             </button>
 
             {user.is_admin && (
+              <button onClick={() => handleNavigate('/logs-envios')} className={`nav-item ${isActive('/logs-envios') ? 'active' : ''}`}>
+                <span className="nav-icon">📨</span>
+                <span>Logs de Envios</span>
+              </button>
+            )}
+
+            {user.is_admin && (
               <button onClick={() => handleNavigate('/manager')} className={`nav-item ${isActive('/manager') ? 'active' : ''}`}>
                 <span className="nav-icon">⚙️</span>
                 <span>Manager</span>

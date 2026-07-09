@@ -129,6 +129,17 @@ function Navbar() {
 
             {user.is_admin && (
               <button 
+                onClick={() => handleNavigate('/logs-envios')} 
+                className={`nav-item ${isActive('/logs-envios') ? 'active' : ''}`}
+              >
+                <span className="nav-icon">📨</span>
+                <span>Logs de Envios</span>
+                {isActive('/logs-envios') && <span className="active-indicator"></span>}
+              </button>
+            )}
+
+            {user.is_admin && (
+              <button 
                 onClick={() => handleNavigate('/manager')} 
                 className={`nav-item ${isActive('/manager') ? 'active' : ''}`}
               >

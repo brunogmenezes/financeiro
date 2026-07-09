@@ -2,6 +2,18 @@ const pool = require('./database');
 
 async function ensureOptionalColumns() {
   try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS logs_envios (
+        id SERIAL PRIMARY KEY,
+        tipo VARCHAR(50) NOT NULL,
+        destinatario VARCHAR(255) NOT NULL,
+        assunto VARCHAR(255),
+        mensagem TEXT NOT NULL,
+        status VARCHAR(50) NOT NULL,
+        erro TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cor_tema VARCHAR(50) DEFAULT \'roxo\'');
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(30)');
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS evolution_instance_name VARCHAR(100)');

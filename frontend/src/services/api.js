@@ -46,6 +46,7 @@ export const confirmInvoiceImport = (data) => api.post('/lancamentos/confirm-imp
 
 // Logs
 export const getLogs = () => api.get('/logs');
+export const getLogsEnvios = (params) => api.get('/logs/envios', { params });
 
 // Categorias
 export const getCategorias = () => api.get('/categorias');

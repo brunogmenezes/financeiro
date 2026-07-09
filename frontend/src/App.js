@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Contas from './pages/Contas';
 import Lancamentos from './pages/Lancamentos';
 import Logs from './pages/Logs';
+import LogsEnvios from './pages/LogsEnvios';
 import Categorias from './pages/Categorias';
 import Manager from './pages/Manager';
 import Assinatura from './pages/Assinatura';
@@ -59,6 +60,12 @@ function App() {
             <PrivateRoute>
               <Logs />
             </PrivateRoute>
+          } />
+
+          <Route path="/logs-envios" element={
+            <AdminRoute>
+              <LogsEnvios />
+            </AdminRoute>
           } />
 
           <Route path="/categorias" element={

@@ -9,6 +9,17 @@ async function getSmtpConfig() {
   return result.rows[0];
 }
 
+async function logEnvio({ tipo, destinatario, assunto, mensagem, status, erro }) {
+  try {
+    await pool.query(
+      'INSERT INTO logs_envios (tipo, destinatario, assunto, mensagem, status, erro) VALUES ($1, $2, $3, $4, $5, $6)',
+      [tipo, destinatario, assunto || null, mensagem, status, erro || null]
+    );
+  } catch (e) {
+    console.error('Erro ao salvar log de envio:', e.message);
+  }
+}
+
 async function sendMail({ to, subject, text, html }) {
   const config = await getSmtpConfig();
   
@@ -49,8 +60,27 @@ async function sendMail({ to, subject, text, html }) {
     html: processedHtml,
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  return info;
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    await logEnvio({
+      tipo: 'email',
+      destinatario: to,
+      assunto: subject,
+      mensagem: processedHtml || processedText,
+      status: 'sucesso'
+    });
+    return info;
+  } catch (error) {
+    await logEnvio({
+      tipo: 'email',
+      destinatario: to,
+      assunto: subject,
+      mensagem: processedHtml || processedText,
+      status: 'erro',
+      erro: error.message
+    });
+    throw error;
+  }
 }
 
 async function sendEmailTemplate({ to, templateSlug, variables }) {
@@ -90,9 +120,10 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
     
     // Enviar WhatsApp se houver whatsapp_body configurado e o usuário tiver número de WhatsApp
     if (whatsapp_body) {
+      let whatsappNumber = null;
       try {
         const userResult = await pool.query('SELECT whatsapp FROM usuarios WHERE email = $1 LIMIT 1', [to]);
-        const whatsappNumber = userResult.rows[0]?.whatsapp;
+        whatsappNumber = userResult.rows[0]?.whatsapp;
         
         if (whatsappNumber && whatsappNumber.trim() !== '') {
           whatsapp_body = whatsapp_body.replace(/http:\/\/localhost:3000/g, systemUrl);
@@ -100,10 +131,25 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
           const { sendText, getConnectionState } = require('./evolutionService');
           await getConnectionState();
           await sendText(whatsappNumber, whatsapp_body);
+          
+          await logEnvio({
+            tipo: 'whatsapp',
+            destinatario: whatsappNumber,
+            mensagem: whatsapp_body,
+            status: 'sucesso'
+          });
+
           console.log(`✔️ WhatsApp de template '${templateSlug}' enviado com sucesso para ${whatsappNumber}`);
         }
       } catch (waError) {
         console.error(`❌ Erro ao enviar WhatsApp do template '${templateSlug}' para ${to}:`, waError.message);
+        await logEnvio({
+          tipo: 'whatsapp',
+          destinatario: whatsappNumber || to,
+          mensagem: whatsapp_body || `Template: ${templateSlug}`,
+          status: 'erro',
+          erro: waError.message
+        });
       }
     }
     
@@ -115,6 +161,14 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
     });
   } catch (error) {
     console.error(`❌ Erro ao enviar e-mail de template '${templateSlug}' para ${to}:`, error.message);
+    await logEnvio({
+      tipo: 'email',
+      destinatario: to,
+      assunto: `Template: ${templateSlug}`,
+      mensagem: `Erro ao renderizar template: ${templateSlug}`,
+      status: 'erro',
+      erro: error.message
+    });
     return null; // Retorna null para evitar quebrar o cadastro ou logins se o SMTP falhar
   }
 }
@@ -122,5 +176,6 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
 module.exports = {
   getSmtpConfig,
   sendMail,
-  sendEmailTemplate
+  sendEmailTemplate,
+  logEnvio
 };

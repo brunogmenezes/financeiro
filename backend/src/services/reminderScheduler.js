@@ -2,6 +2,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const pool = require('../config/database');
 const { sendText, getConnectionState } = require('./evolutionService');
+const { logEnvio } = require('./emailService');
 
 const TZ = process.env.REMINDER_TZ || 'America/Sao_Paulo';
 const REMINDER_HOUR = process.env.REMINDER_HOUR || '09:00';
@@ -127,9 +128,10 @@ async function sendReminder(reminderDate) {
 
   // Enviar lembretes individuais (não-cartões)
   for (const lanc of pendentes) {
+    let message = '';
     try {
       const saudacao = lanc.usuario_nome ? `Olá, *${lanc.usuario_nome}*! 👋` : 'Olá! 👋';
-      const message = [
+      message = [
         saudacao,
         '',
         `*Lembrete de Vencimento (${statusVencimento})* ${emojiVencimento}`,
@@ -144,18 +146,32 @@ async function sendReminder(reminderDate) {
       ].filter(Boolean).join('\n');
 
       await sendText(lanc.whatsapp, message);
+      await logEnvio({
+        tipo: 'whatsapp',
+        destinatario: lanc.whatsapp,
+        mensagem: message,
+        status: 'sucesso'
+      });
       console.log(`✔️ Lembrete enviado para ${lanc.whatsapp} (lançamento ${lanc.id})`);
     } catch (error) {
+      await logEnvio({
+        tipo: 'whatsapp',
+        destinatario: lanc.whatsapp,
+        mensagem: message || `Lembrete: ${lanc.descricao}`,
+        status: 'erro',
+        erro: error.message
+      });
       console.error(`Erro ao enviar lembrete para ${lanc.whatsapp}:`, error.message);
     }
   }
 
   // Enviar lembretes consolidados de cartão de crédito
   for (const card of creditCards) {
+    let message = '';
     try {
       const saudacao = card.usuario_nome ? `Olá, *${card.usuario_nome}*! 👋` : 'Olá! 👋';
       const vencimentoDate = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), card.dia_vencimento);
-      const message = [
+      message = [
         saudacao,
         '',
         `*Vencimento do Cartão (${statusVencimento})* ${emojiVencimento}`,
@@ -170,8 +186,21 @@ async function sendReminder(reminderDate) {
       ].join('\n');
 
       await sendText(card.whatsapp, message);
+      await logEnvio({
+        tipo: 'whatsapp',
+        destinatario: card.whatsapp,
+        mensagem: message,
+        status: 'sucesso'
+      });
       console.log(`✔️ Lembrete de cartão enviado para ${card.whatsapp} (cartão ${card.id})`);
     } catch (error) {
+      await logEnvio({
+        tipo: 'whatsapp',
+        destinatario: card.whatsapp,
+        mensagem: message || `Cartão: ${card.conta_nome}`,
+        status: 'erro',
+        erro: error.message
+      });
       console.error(`Erro ao enviar lembrete de cartão para ${card.whatsapp}:`, error.message);
     }
   }

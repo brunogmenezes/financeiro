@@ -56,4 +56,64 @@ exports.getByUsuario = async (req, res) => {
   }
 };
 
+// Buscar logs de envios (Email e WhatsApp) com paginação e filtros
+exports.getEnvios = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, tipo, status, search } = req.query;
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const limitInt = parseInt(limit, 10);
+
+    let whereClauses = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (tipo && tipo !== 'todos') {
+      whereClauses.push(`tipo = $${paramIndex++}`);
+      params.push(tipo);
+    }
+
+    if (status && status !== 'todos') {
+      whereClauses.push(`status = $${paramIndex++}`);
+      params.push(status);
+    }
+
+    if (search && search.trim() !== '') {
+      whereClauses.push(`(destinatario ILIKE $${paramIndex} OR assunto ILIKE $${paramIndex} OR mensagem ILIKE $${paramIndex})`);
+      params.push(`%${search.trim()}%`);
+      paramIndex++;
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    // Contagem total
+    const countQuery = `SELECT COUNT(*) FROM logs_envios ${whereSql}`;
+    const countResult = await pool.query(countQuery, params);
+    const totalCount = parseInt(countResult.rows[0].count, 10);
+
+    // Registros paginados
+    const selectParams = [...params, limitInt, offset];
+    const selectQuery = `
+      SELECT * FROM logs_envios 
+      ${whereSql} 
+      ORDER BY created_at DESC 
+      LIMIT $${paramIndex++} OFFSET $${paramIndex}
+    `;
+    const result = await pool.query(selectQuery, selectParams);
+
+    res.json({
+      ok: true,
+      data: result.rows,
+      pagination: {
+        total: totalCount,
+        page: parseInt(page, 10),
+        limit: limitInt,
+        pages: Math.ceil(totalCount / limitInt)
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar logs de envios:', error);
+    res.status(500).json({ error: 'Erro ao buscar logs de envios' });
+  }
+};
+
 module.exports.registrarLog = registrarLog;
