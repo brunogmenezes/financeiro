@@ -742,6 +742,77 @@ td {
   transform: none;
 }
 
+.whatsapp-test-row {
+  display: flex;
+  gap: 8px;
+  margin: 15px 0;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 15px;
+}
+
+.whatsapp-test-row select {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.whatsapp-test-row select:focus {
+  border-color: #7c3aed;
+  background: white;
+}
+
+.whatsapp-test-row input {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #1e293b;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.whatsapp-test-row input:focus {
+  outline: none;
+  border-color: #7c3aed;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.btn-test-whatsapp {
+  background: #0284c7;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.btn-test-whatsapp:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+}
+
+.btn-test-whatsapp:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Layout para os cards de configuração */
 .manager-configs-container {
   display: grid;

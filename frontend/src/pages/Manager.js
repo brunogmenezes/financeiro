@@ -16,7 +16,8 @@ import {
   sendTestEmail,
   getEmailTemplates,
   updateEmailTemplate,
-  adminSendEmailBatch
+  adminSendEmailBatch,
+  sendTestMessage
 } from '../services/api';
 import './Manager.css';
 
@@ -31,6 +32,9 @@ function Manager() {
   const [waStatus, setWaStatus] = useState({ state: 'desconhecido', message: '' });
   const [configLoading, setConfigLoading] = useState(false);
   const [remindersLoading, setRemindersLoading] = useState(false);
+  const [testDdi, setTestDdi] = useState('+55');
+  const [testWaNum, setTestWaNum] = useState('');
+  const [testWaLoading, setTestWaLoading] = useState(false);
 
   // SMTP / Email Config
   const [smtpConfig, setSmtpConfig] = useState({ host: '', port: 465, username: '', password: '', secure: true, from_email: '', from_name: '', system_url: '' });
@@ -171,6 +175,28 @@ function Manager() {
       triggerToast('Erro ao disparar lembretes', 'error');
     } finally {
       setRemindersLoading(false);
+    }
+  };
+
+  const handleSendTestWhatsApp = async () => {
+    if (!testWaNum) {
+      return triggerToast('Informe o número de celular para o teste', 'error');
+    }
+    const cleanNum = testWaNum.replace(/\D/g, '');
+    if (cleanNum.length < 8) {
+      return triggerToast('Número de celular inválido', 'error');
+    }
+    const cleanDdi = testDdi.replace(/\+/g, '');
+    const fullNumber = `${cleanDdi}${cleanNum}`;
+
+    setTestWaLoading(true);
+    try {
+      await sendTestMessage(fullNumber);
+      triggerToast('WhatsApp de teste enviado com sucesso! 📱');
+    } catch (error) {
+      triggerToast(error.response?.data?.error || 'Erro ao enviar WhatsApp de teste', 'error');
+    } finally {
+      setTestWaLoading(false);
     }
   };
 
@@ -451,6 +477,32 @@ function Manager() {
                     placeholder="API Key"
                   />
                 </div>
+              </div>
+
+              <div className="whatsapp-test-row">
+                <select 
+                  value={testDdi} 
+                  onChange={(e) => setTestDdi(e.target.value)}
+                >
+                  <option value="+55">🇧🇷 +55</option>
+                  <option value="+351">🇵🇹 +351</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+34">🇪🇸 +34</option>
+                  <option value="+44">🇬🇧 +44</option>
+                </select>
+                <input 
+                  type="text" 
+                  placeholder="Celular de teste..." 
+                  value={testWaNum} 
+                  onChange={(e) => setTestWaNum(e.target.value)}
+                />
+                <button 
+                  className="btn-test-whatsapp" 
+                  onClick={handleSendTestWhatsApp} 
+                  disabled={testWaLoading}
+                >
+                  {testWaLoading ? 'Enviando...' : '📱 Testar Envios'}
+                </button>
               </div>
 
               <div className="evolution-actions">
