@@ -113,18 +113,23 @@ function Lembretes() {
     }
   };
 
+  const getLocalDateString = (dateOrStr) => {
+    if (!dateOrStr) return '';
+    const date = new Date(dateOrStr);
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
   const openCreateModal = () => {
     setEditingId(null);
     setTitulo('');
     setDescricao('');
     
-    // Set default datetime value to local current time + 1 hour formatted for datetime-local
     const now = new Date();
     now.setHours(now.getHours() + 1);
     now.setMinutes(0);
-    const formatted = now.toISOString().slice(0, 16);
     
-    setDataHora(formatted);
+    setDataHora(getLocalDateString(now));
     setRecorrencia('unico');
     setShowFormModal(true);
   };
@@ -134,9 +139,7 @@ function Lembretes() {
     setTitulo(lembrete.titulo);
     setDescricao(lembrete.descricao || '');
     
-    // Format date string for datetime-local input
-    const formattedDate = new Date(lembrete.data_hora).toISOString().slice(0, 16);
-    setDataHora(formattedDate);
+    setDataHora(getLocalDateString(lembrete.data_hora));
     setRecorrencia(lembrete.recorrencia);
     setShowFormModal(true);
   };
