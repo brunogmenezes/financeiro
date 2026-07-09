@@ -21,6 +21,31 @@ import {
 } from '../services/api';
 import './Manager.css';
 
+const formatWhatsAppPreview = (text) => {
+  if (!text) return '';
+  
+  let formatted = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+    
+  formatted = formatted.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+  formatted = formatted.replace(/_(.*?)_/g, '<em>$1</em>');
+  formatted = formatted.replace(/```([\s\S]*?)```/g, '<code>$1</code>');
+  formatted = formatted.replace(/~(.*?)~/g, '<del>$1</del>');
+  formatted = formatted.replace(/\n/g, '<br />');
+
+  formatted = formatted
+    .replace(/\{\{nome\}\}/g, 'Fulano de Tal')
+    .replace(/\{\{data_hora\}\}/g, new Date().toLocaleString('pt-BR'))
+    .replace(/\{\{data_vencimento\}\}/g, new Date(Date.now() + 3*24*60*60*1000).toLocaleDateString('pt-BR'))
+    .replace(/\{\{dias_restantes\}\}/g, '3')
+    .replace(/\{\{dias_inativo\}\}/g, '15')
+    .replace(/\{\{email\}\}/g, 'cliente@exemplo.com');
+
+  return formatted;
+};
+
 function Manager() {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +72,7 @@ function Manager() {
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [activeTemplateTab, setActiveTemplateTab] = useState('');
   const [activeWorkTab, setActiveWorkTab] = useState('edit');
+  const [activeChannelTab, setActiveChannelTab] = useState('email');
   const [editingTemplate, setEditingTemplate] = useState({ subject: '', body: '', whatsapp_body: '' });
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const textareaRef = React.useRef(null);
@@ -254,6 +280,7 @@ function Manager() {
           });
         }
       }
+      setActiveChannelTab('email');
       setShowTemplatesModal(true);
     } catch (error) {
       triggerToast('Erro ao carregar modelos', 'error');
@@ -272,6 +299,7 @@ function Manager() {
         whatsapp_body: found.whatsapp_body || ''
       });
       setActiveWorkTab('edit');
+      setActiveChannelTab('email');
     }
   };
 
@@ -892,165 +920,262 @@ function Manager() {
               ))}
             </div>
 
+            {/* Abas de Canais (E-mail / WhatsApp) */}
+            <div className="channel-tabs-bar" style={{ display: 'flex', gap: '8px', padding: '10px 30px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <button 
+                type="button"
+                className={`channel-tab-btn ${activeChannelTab === 'email' ? 'active' : ''}`}
+                onClick={() => setActiveChannelTab('email')}
+                style={{
+                  background: activeChannelTab === 'email' ? '#7c3aed' : 'white',
+                  color: activeChannelTab === 'email' ? 'white' : '#475569',
+                  border: '1px solid ' + (activeChannelTab === 'email' ? '#7c3aed' : '#e2e8f0'),
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                ✉️ Canal E-mail
+              </button>
+              <button 
+                type="button"
+                className={`channel-tab-btn ${activeChannelTab === 'whatsapp' ? 'active' : ''}`}
+                onClick={() => setActiveChannelTab('whatsapp')}
+                style={{
+                  background: activeChannelTab === 'whatsapp' ? '#16a34a' : 'white',
+                  color: activeChannelTab === 'whatsapp' ? 'white' : '#475569',
+                  border: '1px solid ' + (activeChannelTab === 'whatsapp' ? '#16a34a' : '#e2e8f0'),
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                💬 Canal WhatsApp
+              </button>
+            </div>
+
             {/* Corpo do editor */}
             <div className="templates-editor-body">
-              <div className="form-group">
-                <label className="editor-label">Assunto do E-mail</label>
-                <input 
-                  type="text" 
-                  className="template-subject-input"
-                  value={editingTemplate.subject} 
-                  onChange={(e) => setEditingTemplate({...editingTemplate, subject: e.target.value})}
-                  placeholder="Assunto do e-mail..."
-                />
-              </div>
-
-              {/* Sub-abas: Editar / Visualizar */}
-              <div className="editor-work-tabs">
-                <button 
-                  type="button"
-                  className={`work-tab-btn ${activeWorkTab === 'edit' ? 'active' : ''}`}
-                  onClick={() => setActiveWorkTab('edit')}
-                >
-                  📝 Editar HTML
-                </button>
-                <button 
-                  type="button"
-                  className={`work-tab-btn ${activeWorkTab === 'preview' ? 'active' : ''}`}
-                  onClick={() => setActiveWorkTab('preview')}
-                >
-                  👁️ Visualizar Preview
-                </button>
-              </div>
-
-              {activeWorkTab === 'edit' ? (
-                <div className="editor-edit-pane">
-                  {/* Barra de Formatação */}
-                  <div className="html-toolbar">
-                    <button type="button" onClick={() => insertAtCursor('<strong>Negrito</strong>')} title="Negrito"><b>B</b></button>
-                    <button type="button" onClick={() => insertAtCursor('<em>Itálico</em>')} title="Itálico"><i>I</i></button>
-                    <button type="button" onClick={() => insertAtCursor('<h2>Título</h2>')} title="Título">H2</button>
-                    <button type="button" onClick={() => insertAtCursor('<p>Parágrafo</p>')} title="Parágrafo">P</button>
-                    <button type="button" onClick={() => insertAtCursor('<a href="https://..." style="color: #7c3aed; font-weight: bold; text-decoration: underline;">Link</a>')} title="Link">Link</button>
-                    <button type="button" onClick={() => insertAtCursor('<br />')} title="Quebra de Linha">Quebra</button>
-                    
-                    <span className="toolbar-divider">|</span>
-                    
-                    <span className="variables-label">Tags:</span>
-                    {(() => {
-                      const activeObj = templates.find(t => t.slug === activeTemplateTab);
-                      const vars = activeObj?.variables || [];
-                      return vars.map(v => (
-                        <button 
-                          key={v}
-                          type="button" 
-                          className="var-badge-btn"
-                          onClick={() => insertAtCursor(`{{${v}}}`)}
-                          title={`Inserir tag dinâmica {{${v}}}`}
-                        >
-                          {`{{${v}}}`}
-                        </button>
-                      ));
-                    })()}
+              {activeChannelTab === 'email' ? (
+                <>
+                  <div className="form-group">
+                    <label className="editor-label">Assunto do E-mail</label>
+                    <input 
+                      type="text" 
+                      className="template-subject-input"
+                      value={editingTemplate.subject} 
+                      onChange={(e) => setEditingTemplate({...editingTemplate, subject: e.target.value})}
+                      placeholder="Assunto do e-mail..."
+                    />
                   </div>
 
-                  <textarea 
-                    ref={textareaRef}
-                    className="template-html-textarea"
-                    value={editingTemplate.body}
-                    onChange={(e) => setEditingTemplate({...editingTemplate, body: e.target.value})}
-                    placeholder="Escreva seu código HTML aqui..."
-                    spellCheck="false"
-                  />
-                </div>
+                  {/* Sub-abas: Editar / Visualizar */}
+                  <div className="editor-work-tabs">
+                    <button 
+                      type="button"
+                      className={`work-tab-btn ${activeWorkTab === 'edit' ? 'active' : ''}`}
+                      onClick={() => setActiveWorkTab('edit')}
+                    >
+                      📝 Editar HTML
+                    </button>
+                    <button 
+                      type="button"
+                      className={`work-tab-btn ${activeWorkTab === 'preview' ? 'active' : ''}`}
+                      onClick={() => setActiveWorkTab('preview')}
+                    >
+                      👁️ Visualizar Preview
+                    </button>
+                  </div>
+
+                  {activeWorkTab === 'edit' ? (
+                    <div className="editor-edit-pane">
+                      {/* Barra de Formatação */}
+                      <div className="html-toolbar">
+                        <button type="button" onClick={() => insertAtCursor('<strong>Negrito</strong>')} title="Negrito"><b>B</b></button>
+                        <button type="button" onClick={() => insertAtCursor('<em>Itálico</em>')} title="Itálico"><i>I</i></button>
+                        <button type="button" onClick={() => insertAtCursor('<h2>Título</h2>')} title="Título">H2</button>
+                        <button type="button" onClick={() => insertAtCursor('<p>Parágrafo</p>')} title="Parágrafo">P</button>
+                        <button type="button" onClick={() => insertAtCursor('<a href="https://..." style="color: #7c3aed; font-weight: bold; text-decoration: underline;">Link</a>')} title="Link">Link</button>
+                        <button type="button" onClick={() => insertAtCursor('<br />')} title="Quebra de Linha">Quebra</button>
+                        
+                        <span className="toolbar-divider">|</span>
+                        
+                        <span className="variables-label">Tags:</span>
+                        {(() => {
+                          const activeObj = templates.find(t => t.slug === activeTemplateTab);
+                          const vars = activeObj?.variables || [];
+                          return vars.map(v => (
+                            <button 
+                              key={v}
+                              type="button" 
+                              className="var-badge-btn"
+                              onClick={() => insertAtCursor(`{{${v}}}`)}
+                              title={`Inserir tag dinâmica {{${v}}}`}
+                            >
+                              {`{{${v}}}`}
+                            </button>
+                          ));
+                        })()}
+                      </div>
+
+                      <textarea 
+                        ref={textareaRef}
+                        className="template-html-textarea"
+                        value={editingTemplate.body}
+                        onChange={(e) => setEditingTemplate({...editingTemplate, body: e.target.value})}
+                        placeholder="Escreva seu código HTML aqui..."
+                        spellCheck="false"
+                      />
+                    </div>
+                  ) : (
+                    <div className="editor-preview-pane">
+                      <div className="preview-subject-header">
+                        <strong>Assunto:</strong> {editingTemplate.subject || '(Sem assunto)'}
+                      </div>
+                      <div 
+                        className="preview-html-content"
+                        dangerouslySetInnerHTML={{ 
+                          __html: editingTemplate.body 
+                            ? editingTemplate.body
+                                .replace(/\{\{nome\}\}/g, 'Fulano de Tal')
+                                .replace(/\{\{data_hora\}\}/g, new Date().toLocaleString('pt-BR'))
+                                .replace(/\{\{data_vencimento\}\}/g, new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString('pt-BR'))
+                                .replace(/\{\{dias_restantes\}\}/g, '7')
+                                .replace(/\{\{dias_inativo\}\}/g, '15')
+                                .replace(/\{\{email\}\}/g, 'usuario@exemplo.com')
+                            : '<p style="color: #888; text-align: center; padding: 20px;">Escreva algum HTML na aba Editar para ver o preview.</p>' 
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="editor-preview-pane">
-                  <div className="preview-subject-header">
-                    <strong>Assunto:</strong> {editingTemplate.subject || '(Sem assunto)'}
+                <div className="whatsapp-editor-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="whatsapp-editor-left">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label className="editor-label" style={{ marginBottom: 0 }}>Mensagem do WhatsApp (Evolution API)</label>
+                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 'bold' }}>⚡ Envio automático ativo</span>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 10px 0' }}>
+                      Escreva a mensagem que será enviada para o WhatsApp do cliente. Use <code>*texto*</code> para negrito, <code>_texto_</code> para itálico, <code>~texto~</code> para riscado e <code>```texto```</code> para monospace.
+                    </p>
+                    <div className="html-toolbar" style={{ borderBottom: '1px solid #e2e8f0', borderRadius: '10px 10px 0 0' }}>
+                      <span className="variables-label">Tags:</span>
+                      {(() => {
+                        const activeObj = templates.find(t => t.slug === activeTemplateTab);
+                        const vars = activeObj?.variables || [];
+                        return vars.map(v => (
+                          <button 
+                            key={v}
+                            type="button" 
+                            className="var-badge-btn"
+                            onClick={() => {
+                              const waTextarea = document.getElementById('whatsapp-template-textarea');
+                              if (waTextarea) {
+                                const start = waTextarea.selectionStart;
+                                const end = waTextarea.selectionEnd;
+                                const currentVal = editingTemplate.whatsapp_body || '';
+                                const newVal = currentVal.substring(0, start) + `{{${v}}}` + currentVal.substring(end);
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  whatsapp_body: newVal
+                                });
+                                setTimeout(() => {
+                                  waTextarea.focus();
+                                  waTextarea.selectionStart = waTextarea.selectionEnd = start + v.length + 4;
+                                }, 50);
+                              }
+                            }}
+                            title={`Inserir tag dinâmica {{${v}}}`}
+                          >
+                            {`{{${v}}}`}
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                    <textarea 
+                      id="whatsapp-template-textarea"
+                      style={{
+                        width: '100%',
+                        height: '240px',
+                        border: '1px solid #e2e8f0',
+                        borderTop: 'none',
+                        borderRadius: '0 0 10px 10px',
+                        padding: '12px 15px',
+                        fontFamily: 'monospace',
+                        fontSize: '0.85rem',
+                        lineHeight: '1.5',
+                        color: '#0f172a',
+                        background: '#fafafa',
+                        resize: 'none',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                      }}
+                      value={editingTemplate.whatsapp_body || ''}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, whatsapp_body: e.target.value})}
+                      placeholder="Escreva a mensagem do WhatsApp..."
+                    />
                   </div>
-                  <div 
-                    className="preview-html-content"
-                    dangerouslySetInnerHTML={{ 
-                      __html: editingTemplate.body 
-                        ? editingTemplate.body
-                            .replace(/\{\{nome\}\}/g, 'Fulano de Tal')
-                            .replace(/\{\{data_hora\}\}/g, new Date().toLocaleString('pt-BR'))
-                            .replace(/\{\{data_vencimento\}\}/g, new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString('pt-BR'))
-                            .replace(/\{\{dias_restantes\}\}/g, '7')
-                            .replace(/\{\{dias_inativo\}\}/g, '15')
-                            .replace(/\{\{email\}\}/g, 'usuario@exemplo.com')
-                        : '<p style="color: #888; text-align: center; padding: 20px;">Escreva algum HTML na aba Editar para ver o preview.</p>' 
-                    }}
-                  />
+
+                  <div className="whatsapp-editor-right" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <label className="editor-label">Preview Visual (Simulador WhatsApp)</label>
+                    <div className="whatsapp-phone-mockup" style={{
+                      background: '#efeae2',
+                      backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")',
+                      backgroundSize: 'cover',
+                      borderRadius: '12px',
+                      padding: '15px',
+                      border: '1px solid #cbd5e1',
+                      height: '280px',
+                      overflowY: 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      boxSizing: 'border-box'
+                    }}>
+                      <div className="whatsapp-chat-bubble" style={{
+                        background: '#d9fdd3',
+                        borderRadius: '8px',
+                        borderTopLeftRadius: '0',
+                        padding: '8px 12px',
+                        maxWidth: '85%',
+                        boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)',
+                        alignSelf: 'flex-start',
+                        position: 'relative',
+                        fontSize: '0.82rem',
+                        lineHeight: '1.4',
+                        color: '#111b21',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        boxSizing: 'border-box'
+                      }}>
+                        <div dangerouslySetInnerHTML={{ __html: formatWhatsAppPreview(editingTemplate.whatsapp_body) || '<span style="color:#8696a0">Escreva sua mensagem ao lado para ver o preview...</span>' }} />
+                        <span style={{
+                          float: 'right',
+                          fontSize: '0.62rem',
+                          color: '#667781',
+                          marginTop: '4px',
+                          marginLeft: '8px',
+                          display: 'block'
+                        }}>
+                          {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
-
-              {/* WhatsApp Template Editing Section */}
-              <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label className="editor-label" style={{ marginBottom: 0 }}>Mensagem do WhatsApp (Evolution API)</label>
-                  <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 'bold' }}>⚡ Envio automático ativo</span>
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 10px 0' }}>
-                  Escreva a mensagem que será enviada para o WhatsApp do cliente. Você pode usar negrito com <code>*texto*</code>, itálico com <code>_texto_</code> e as tags dinâmicas abaixo:
-                </p>
-                <div className="html-toolbar" style={{ borderBottom: '1px solid #e2e8f0', borderRadius: '10px 10px 0 0' }}>
-                  <span className="variables-label">Tags:</span>
-                  {(() => {
-                    const activeObj = templates.find(t => t.slug === activeTemplateTab);
-                    const vars = activeObj?.variables || [];
-                    return vars.map(v => (
-                      <button 
-                        key={v}
-                        type="button" 
-                        className="var-badge-btn"
-                        onClick={() => {
-                          const waTextarea = document.getElementById('whatsapp-template-textarea');
-                          if (waTextarea) {
-                            const start = waTextarea.selectionStart;
-                            const end = waTextarea.selectionEnd;
-                            const currentVal = editingTemplate.whatsapp_body || '';
-                            const newVal = currentVal.substring(0, start) + `{{${v}}}` + currentVal.substring(end);
-                            setEditingTemplate({
-                              ...editingTemplate,
-                              whatsapp_body: newVal
-                            });
-                            setTimeout(() => {
-                              waTextarea.focus();
-                              waTextarea.selectionStart = waTextarea.selectionEnd = start + v.length + 4;
-                            }, 50);
-                          }
-                        }}
-                        title={`Inserir tag dinâmica {{${v}}}`}
-                      >
-                        {`{{${v}}}`}
-                      </button>
-                    ));
-                  })()}
-                </div>
-                <textarea 
-                  id="whatsapp-template-textarea"
-                  style={{
-                    width: '100%',
-                    height: '120px',
-                    border: '1px solid #e2e8f0',
-                    borderTop: 'none',
-                    borderRadius: '0 0 10px 10px',
-                    padding: '12px 15px',
-                    fontFamily: 'monospace',
-                    fontSize: '0.85rem',
-                    lineHeight: '1.5',
-                    color: '#0f172a',
-                    background: '#fafafa',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                  value={editingTemplate.whatsapp_body || ''}
-                  onChange={(e) => setEditingTemplate({...editingTemplate, whatsapp_body: e.target.value})}
-                  placeholder="Escreva a mensagem do WhatsApp..."
-                />
-              </div>
             </div>
 
             <div className="modal-actions">
