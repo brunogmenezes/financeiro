@@ -260,9 +260,140 @@ async function sendAutomatedEmails() {
   }
 }
 
+async function checkCustomReminders() {
+  try {
+    // Buscar lembretes ativos de usuários PRO que já passaram do horário programado
+    const query = `
+      SELECT l.*, u.email, u.whatsapp, u.nome as usuario_nome, u.is_pro 
+      FROM lembretes l 
+      JOIN usuarios u ON l.usuario_id = u.id 
+      WHERE l.status = 'ativo' 
+        AND u.is_pro = true 
+        AND l.data_hora <= CURRENT_TIMESTAMP
+    `;
+    const result = await pool.query(query);
+    
+    if (result.rows.length === 0) return;
+    
+    console.log(`⏰ Encontrados ${result.rows.length} lembretes customizados PRO para processar.`);
+    const { sendMail, logEnvio } = require('./emailService');
+    const { sendText } = require('./evolutionService');
+    
+    for (const lembrete of result.rows) {
+      const messageTitle = `🔔 Lembrete: ${lembrete.titulo}`;
+      const messageBody = [
+        `Olá, *${lembrete.usuario_nome}*! 👋`,
+        '',
+        `Este é o seu lembrete personalizado do *Prospera*:`,
+        `📌 *Assunto:* *${lembrete.titulo}*`,
+        lembrete.descricao ? `📝 *Descrição:* ${lembrete.descricao}` : null,
+        `📅 *Agendado para:* ${new Date(lembrete.data_hora).toLocaleString('pt-BR')}`,
+        '',
+        `Controle Financeiro Prospera`
+      ].filter(Boolean).join('\n');
+      
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <h2 style="color: #7c3aed; text-align: center;">🔔 Lembrete: ${lembrete.titulo}</h2>
+          <p>Olá, <strong>${lembrete.usuario_nome}</strong>,</p>
+          <p>Este é o seu lembrete personalizado do <strong>Controle Financeiro Prospera</strong>:</p>
+          <div style="background-color: #f3e5f5; padding: 15px; border-left: 4px solid #8e24aa; border-radius: 4px; margin: 20px 0;">
+            <strong>${lembrete.titulo}</strong>
+            ${lembrete.descricao ? `<p style="margin-top: 8px; color: #555;">${lembrete.descricao}</p>` : ''}
+          </div>
+          <p style="font-size: 12px; color: #888; text-align: center;">
+            Agendado para: ${new Date(lembrete.data_hora).toLocaleString('pt-BR')} <br>
+            Controle Financeiro Prospera
+          </p>
+        </div>
+      `;
+      
+      // Enviar por E-mail
+      try {
+        await sendMail({
+          to: lembrete.email,
+          subject: messageTitle,
+          html: emailHtml,
+          text: messageBody.replace(/\*/g, '')
+        });
+      } catch (err) {
+        console.error(`Erro ao enviar e-mail de lembrete personalizado para ${lembrete.email}:`, err.message);
+      }
+      
+      // Enviar por WhatsApp
+      if (lembrete.whatsapp && lembrete.whatsapp.trim() !== '') {
+        try {
+          await sendText(lembrete.whatsapp, messageBody);
+          await logEnvio({
+            tipo: 'whatsapp',
+            destinatario: lembrete.whatsapp,
+            mensagem: messageBody,
+            status: 'sucesso'
+          });
+        } catch (waError) {
+          console.error(`Erro ao enviar WhatsApp de lembrete personalizado para ${lembrete.whatsapp}:`, waError.message);
+          await logEnvio({
+            tipo: 'whatsapp',
+            destinatario: lembrete.whatsapp,
+            mensagem: messageBody,
+            status: 'erro',
+            erro: waError.message
+          });
+        }
+      }
+      
+      // Calcular próximo envio baseado na recorrência
+      let proximoEnvio = null;
+      let novoStatus = 'ativo';
+      const currentDH = new Date(lembrete.data_hora);
+      
+      if (lembrete.recorrencia === 'diario') {
+        currentDH.setDate(currentDH.getDate() + 1);
+        proximoEnvio = currentDH;
+      } else if (lembrete.recorrencia === 'semanal') {
+        currentDH.setDate(currentDH.getDate() + 7);
+        proximoEnvio = currentDH;
+      } else if (lembrete.recorrencia === 'mensal') {
+        currentDH.setMonth(currentDH.getMonth() + 1);
+        proximoEnvio = currentDH;
+      } else if (lembrete.recorrencia === 'anual') {
+        currentDH.setFullYear(currentDH.getFullYear() + 1);
+        proximoEnvio = currentDH;
+      } else {
+        // único
+        novoStatus = 'concluido';
+      }
+      
+      // Atualizar no banco
+      await pool.query(
+        `UPDATE lembretes 
+         SET data_hora = COALESCE($1, data_hora), 
+             status = $2, 
+             ultimo_envio = CURRENT_TIMESTAMP 
+         WHERE id = $3`,
+        [proximoEnvio, novoStatus, lembrete.id]
+      );
+    }
+  } catch (error) {
+    console.error('❌ Erro ao processar lembretes customizados PRO:', error.message);
+  }
+}
+
 function startReminderScheduler() {
   console.log(`⏰ Agendador de lembretes ativo para ${REMINDER_HOUR} (${TZ})`);
+  
+  // Executar imediatamente na inicialização
+  checkCustomReminders().catch(err => console.error('Erro ao verificar lembretes customizados na inicialização:', err));
+
   setInterval(async () => {
+    // 1. Processar lembretes customizados PRO (a cada minuto)
+    try {
+      await checkCustomReminders();
+    } catch (error) {
+      console.error('Erro no processador de lembretes customizados PRO:', error.message);
+    }
+
+    // 2. Processar relatórios diários
     const now = nowInTZ();
     if (now.getHours() === HOUR && now.getMinutes() === MIN) {
       const todayKey = now.toISOString().slice(0, 10);
@@ -284,4 +415,4 @@ function startReminderScheduler() {
   }, 60 * 1000);
 }
 
-module.exports = { startReminderScheduler, sendReminder, sendAutomatedEmails };
+module.exports = { startReminderScheduler, sendReminder, sendAutomatedEmails, checkCustomReminders };

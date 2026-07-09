@@ -9,6 +9,7 @@ import LogsEnvios from './pages/LogsEnvios';
 import Categorias from './pages/Categorias';
 import Manager from './pages/Manager';
 import Assinatura from './pages/Assinatura';
+import Lembretes from './pages/Lembretes';
 
 import Layout from './components/Layout';
 
@@ -54,6 +55,11 @@ function App() {
           <Route path="/lancamentos" element={
             <UserRoute>
               <Lancamentos />
+            </UserRoute>
+          } />
+          <Route path="/lembretes" element={
+            <UserRoute>
+              <Lembretes />
             </UserRoute>
           } />
           <Route path="/logs" element={

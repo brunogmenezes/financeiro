@@ -86,6 +86,10 @@ function Sidebar() {
                   <span className="nav-icon">🏦</span>
                   <span>Contas</span>
                 </button>
+                <button onClick={() => handleNavigate('/lembretes')} className={`nav-item ${isActive('/lembretes') ? 'active' : ''} ${user.is_pro ? 'nav-item-pro' : ''}`}>
+                  <span className="nav-icon">🔔</span>
+                  <span>Lembretes</span>
+                </button>
               </>
             )}
 

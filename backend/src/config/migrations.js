@@ -14,6 +14,21 @@ async function ensureOptionalColumns() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lembretes (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+        titulo VARCHAR(150) NOT NULL,
+        descricao TEXT,
+        data_hora TIMESTAMP NOT NULL,
+        recorrencia VARCHAR(50) NOT NULL,
+        ultimo_envio TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'ativo',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cor_tema VARCHAR(50) DEFAULT \'roxo\'');
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(30)');
     await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS evolution_instance_name VARCHAR(100)');

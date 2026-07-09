@@ -101,4 +101,10 @@ export const checkSubscriptionStatus = (txid) => api.get(`/subscription/status/$
 export const getSubscriptionHistory = () => api.get('/subscription/history');
 export const getPublicSubscriptionConfig = () => api.get('/subscription/config');
 
+// Lembretes
+export const getLembretes = () => api.get('/lembretes');
+export const createLembrete = (data) => api.post('/lembretes', data);
+export const updateLembrete = (id, data) => api.put(`/lembretes/${id}`, data);
+export const deleteLembrete = (id) => api.delete(`/lembretes/${id}`);
+
 export default api;

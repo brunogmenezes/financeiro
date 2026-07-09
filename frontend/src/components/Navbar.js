@@ -95,6 +95,14 @@ function Navbar() {
                   <span>Contas</span>
                   {isActive('/contas') && <span className="active-indicator"></span>}
                 </button>
+                <button 
+                  onClick={() => handleNavigate('/lembretes')} 
+                  className={`nav-item ${isActive('/lembretes') ? 'active' : ''} ${user.is_pro ? 'nav-item-pro' : ''}`}
+                >
+                  <span className="nav-icon">🔔</span>
+                  <span>Lembretes</span>
+                  {isActive('/lembretes') && <span className="active-indicator"></span>}
+                </button>
               </>
             )}
 

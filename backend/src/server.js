@@ -13,6 +13,7 @@ const entradasProjetivasRoutes = require('./routes/entradasProjetivas');
 const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
 const emailRoutes = require('./routes/email');
+const lembretesRoutes = require('./routes/lembretes');
 const { ensureOptionalColumns } = require('./config/migrations');
 const { createEmailTemplates } = require('./config/createEmailTemplates');
 const { startReminderScheduler } = require('./services/reminderScheduler');
@@ -34,6 +35,7 @@ app.use('/api/entradas-projetivas', entradasProjetivasRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/lembretes', lembretesRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {
