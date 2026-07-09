@@ -123,13 +123,22 @@ router.post('/test-email', async (req, res) => {
       subject = templateResult.rows[0].subject;
       html = templateResult.rows[0].body;
       
+      // Obter URL do sistema
+      let systemUrl = 'https://financeiro.netsolutions.com.br';
+      try {
+        const resultSmtp = await pool.query('SELECT system_url FROM smtp_config LIMIT 1');
+        if (resultSmtp.rows[0]?.system_url) systemUrl = resultSmtp.rows[0].system_url;
+      } catch (e) {}
+
       // Substituir variáveis dinâmicas
       html = html.replace(/\{\{nome\}\}/g, adminName);
       html = html.replace(/\{\{data_hora\}\}/g, dataHoraStr);
+      html = html.replace(/\{\{url_sistema\}\}/g, systemUrl);
       
       // Também substituir no assunto se aplicável
       subject = subject.replace(/\{\{nome\}\}/g, adminName);
       subject = subject.replace(/\{\{data_hora\}\}/g, dataHoraStr);
+      subject = subject.replace(/\{\{url_sistema\}\}/g, systemUrl);
     } else {
       // Fallback padrão se por algum motivo não houver o template no banco
       html = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">

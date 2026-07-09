@@ -62,9 +62,23 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
     
     let { subject, body, whatsapp_body } = result.rows[0];
     
+    // Obter URL do sistema
+    let systemUrl = 'https://financeiro.netsolutions.com.br';
+    try {
+      const config = await getSmtpConfig();
+      if (config.system_url) systemUrl = config.system_url;
+    } catch (e) {
+      if (process.env.SYSTEM_URL) systemUrl = process.env.SYSTEM_URL;
+    }
+
+    const mergedVariables = {
+      url_sistema: systemUrl,
+      ...variables
+    };
+
     // Substituir as variáveis do template
-    if (variables) {
-      for (const [key, value] of Object.entries(variables)) {
+    if (mergedVariables) {
+      for (const [key, value] of Object.entries(mergedVariables)) {
         const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
         subject = subject.replace(placeholder, value || '');
         body = body.replace(placeholder, value || '');
@@ -81,13 +95,6 @@ async function sendEmailTemplate({ to, templateSlug, variables }) {
         const whatsappNumber = userResult.rows[0]?.whatsapp;
         
         if (whatsappNumber && whatsappNumber.trim() !== '') {
-          let systemUrl = 'https://financeiro.netsolutions.com.br';
-          try {
-            const config = await getSmtpConfig();
-            if (config.system_url) systemUrl = config.system_url;
-          } catch (e) {
-            if (process.env.SYSTEM_URL) systemUrl = process.env.SYSTEM_URL;
-          }
           whatsapp_body = whatsapp_body.replace(/http:\/\/localhost:3000/g, systemUrl);
 
           const { sendText, getConnectionState } = require('./evolutionService');

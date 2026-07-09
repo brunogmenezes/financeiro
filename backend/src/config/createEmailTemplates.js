@@ -27,8 +27,8 @@ async function createEmailTemplates() {
         slug: 'test',
         name: 'E-mail de Teste',
         subject: 'Teste de Configuração SMTP 📩',
-        variables: JSON.stringify(['nome', 'data_hora']),
-        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nEste é uma mensagem de teste da sua integração de WhatsApp com o Financeiro. Tudo funcionando perfeitamente! ✅\n\nData/Hora: {{data_hora}}',
+        variables: JSON.stringify(['nome', 'data_hora', 'url_sistema']),
+        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nEste é uma mensagem de teste da sua integração de WhatsApp com o Financeiro. Tudo funcionando perfeitamente! ✅\n\nData/Hora: {{data_hora}}\n🔗 {{url_sistema}}',
         body: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
   <h2 style="color: #6a1b9a; text-align: center;">Conexão SMTP Estabelecida! 🎉</h2>
   <p>Olá, <strong>{{nome}}</strong>!</p>
@@ -39,6 +39,7 @@ async function createEmailTemplates() {
   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
   <p style="font-size: 12px; color: #888; text-align: center;">
     Data/Hora do envio: {{data_hora}} <br>
+    Sistema: <a href="{{url_sistema}}" style="color: #7c3aed; font-weight: bold;">{{url_sistema}}</a> <br>
     Controle Financeiro Prospera
   </p>
 </div>`
@@ -47,8 +48,8 @@ async function createEmailTemplates() {
         slug: 'expiration',
         name: 'Aviso de Vencimento de Assinatura',
         subject: 'Aviso Importante: Sua assinatura vence em breve 💎',
-        variables: JSON.stringify(['nome', 'data_vencimento', 'dias_restantes']),
-        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nNotamos que sua assinatura PRO está prestes a expirar. 💎\n\nDias restantes: *{{dias_restantes}}*\nData de vencimento: *{{data_vencimento}}*\n\nEvite interrupções e continue organizando suas finanças com recursos premium!\n\n🔗 http://localhost:3000',
+        variables: JSON.stringify(['nome', 'data_vencimento', 'dias_restantes', 'url_sistema']),
+        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nNotamos que sua assinatura PRO está prestes a expirar. 💎\n\nDias restantes: *{{dias_restantes}}*\nData de vencimento: *{{data_vencimento}}*\n\nEvite interrupções e continue organizando suas finanças com recursos premium!\n\n🔗 {{url_sistema}}',
         body: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
   <h2 style="color: #e65100; text-align: center;">Sua assinatura vence em breve! ⚠️</h2>
   <p>Olá, <strong>{{nome}}</strong>,</p>
@@ -58,7 +59,7 @@ async function createEmailTemplates() {
     Para continuar controlando suas finanças com recursos avançados de forma ininterrupta, realize o pagamento da sua fatura acessando a página de assinaturas no painel do sistema.
   </div>
   <p style="text-align: center; margin: 25px 0;">
-    <a href="http://localhost:3000/assinatura" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Renovar Minha Assinatura 💎</a>
+    <a href="{{url_sistema}}/assinatura" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Renovar Minha Assinatura 💎</a>
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
   <p style="font-size: 12px; color: #888; text-align: center;">
@@ -71,8 +72,8 @@ async function createEmailTemplates() {
         slug: 'inactivity',
         name: 'Aviso de Inatividade de Usuário',
         subject: 'Sentimos sua falta no Prospera! 🥺',
-        variables: JSON.stringify(['nome', 'dias_inativo']),
-        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nSentimos sua falta no sistema de controle financeiro. 🥺\n\nVocê não realiza novos lançamentos ou acessa o painel há *{{dias_inativo}} dias*.\n\nQue tal dedicar 5 minutinhos hoje para manter seu orçamento atualizado?\n\n🔗 http://localhost:3000',
+        variables: JSON.stringify(['nome', 'dias_inativo', 'url_sistema']),
+        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nSentimos sua falta no sistema de controle financeiro. 🥺\n\nVocê não realiza novos lançamentos ou acessa o painel há *{{dias_inativo}} dias*.\n\nQue tal dedicar 5 minutinhos hoje para manter seu orçamento atualizado?\n\n🔗 {{url_sistema}}',
         body: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
   <h2 style="color: #7c3aed; text-align: center;">Sentimos sua falta! 💜</h2>
   <p>Olá, <strong>{{nome}}</strong>,</p>
@@ -82,7 +83,7 @@ async function createEmailTemplates() {
     Que tal reservar 5 minutinhos hoje para atualizar seus lançamentos e ver como está a sua saúde financeira este mês?
   </p>
   <p style="text-align: center; margin: 25px 0;">
-    <a href="http://localhost:3000" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Acessar Meu Painel 🚀</a>
+    <a href="{{url_sistema}}" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Acessar Meu Painel 🚀</a>
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
   <p style="font-size: 12px; color: #888; text-align: center;">
@@ -95,15 +96,15 @@ async function createEmailTemplates() {
         slug: 'welcome',
         name: 'Boas-vindas (Novo Usuário)',
         subject: 'Bem-vindo ao Prospera! 🚀',
-        variables: JSON.stringify(['nome', 'email']),
-        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nBem-vindo ao *Controle Financeiro Prospera*! 🚀\n\nA partir de agora, você tem acesso a ferramentas completas de organização, dashboards inteligentes e controle de contas.\n\nSeu e-mail cadastrado: {{email}}\n\n🔗 http://localhost:3000',
+        variables: JSON.stringify(['nome', 'email', 'url_sistema']),
+        whatsapp_body: 'Olá, *{{nome}}*! 👋\n\nBem-vindo ao *Controle Financeiro Prospera*! 🚀\n\nA partir de agora, você tem acesso a ferramentas completas de organização, dashboards inteligentes e controle de contas.\n\nSeu e-mail cadastrado: {{email}}\n\n🔗 {{url_sistema}}',
         body: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
   <h2 style="color: #6a1b9a; text-align: center;">Bem-vindo ao Prospera! 🚀</h2>
   <p>Olá, <strong>{{nome}}</strong>!</p>
   <p>É uma grande alegria ter você conosco na nossa plataforma de organização e inteligência financeira.</p>
   <p>A partir de agora, você tem acesso a ferramentas incríveis para:</p>
   <ul style="color: #334155; line-height: 1.6;">
-    <li>Gerenciar múltiplas contas bancárias em um único lugar.</li>
+    <li>Gerenciar múltiplas contas bancárias in um único lugar.</li>
     <li>Categorizar seus lançamentos de receitas e despesas.</li>
     <li>Analisar faturas automaticamente e gerar relatórios visuais.</li>
     <li>Criar orçamentos e planejar suas metas mensais.</li>
@@ -112,7 +113,7 @@ async function createEmailTemplates() {
     Dica de Ouro: Cadastre suas contas hoje mesmo e faça seus primeiros lançamentos para ver a mágica do dashboard acontecer! 📊
   </div>
   <p style="text-align: center; margin: 25px 0;">
-    <a href="http://localhost:3000" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Começar Agora 💸</a>
+    <a href="{{url_sistema}}" style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Começar Agora 💸</a>
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
   <p style="font-size: 12px; color: #888; text-align: center;">
@@ -133,6 +134,9 @@ async function createEmailTemplates() {
         );
         console.log(`✔️ Template "${t.slug}" inserido com sucesso!`);
       } else {
+        // Garantir que as variáveis do template existente sejam atualizadas no banco
+        await pool.query('UPDATE email_templates SET variables = $1 WHERE slug = $2', [t.variables, t.slug]);
+        
         // Se já existe mas whatsapp_body estiver nulo, atualiza com o valor padrão
         const checkWhatsapp = await pool.query('SELECT whatsapp_body FROM email_templates WHERE slug = $1', [t.slug]);
         if (!checkWhatsapp.rows[0].whatsapp_body && t.whatsapp_body) {

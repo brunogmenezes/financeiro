@@ -21,7 +21,7 @@ import {
 } from '../services/api';
 import './Manager.css';
 
-const formatWhatsAppPreview = (text) => {
+const formatWhatsAppPreview = (text, systemUrl = 'https://financeiro.netsolutions.com.br') => {
   if (!text) return '';
   
   let formatted = text
@@ -41,7 +41,8 @@ const formatWhatsAppPreview = (text) => {
     .replace(/\{\{data_vencimento\}\}/g, new Date(Date.now() + 3*24*60*60*1000).toLocaleDateString('pt-BR'))
     .replace(/\{\{dias_restantes\}\}/g, '3')
     .replace(/\{\{dias_inativo\}\}/g, '15')
-    .replace(/\{\{email\}\}/g, 'cliente@exemplo.com');
+    .replace(/\{\{email\}\}/g, 'cliente@exemplo.com')
+    .replace(/\{\{url_sistema\}\}/g, systemUrl);
 
   return formatted;
 };
@@ -1160,7 +1161,7 @@ function Manager() {
                         whiteSpace: 'pre-wrap',
                         boxSizing: 'border-box'
                       }}>
-                        <div dangerouslySetInnerHTML={{ __html: formatWhatsAppPreview(editingTemplate.whatsapp_body) || '<span style="color:#8696a0">Escreva sua mensagem ao lado para ver o preview...</span>' }} />
+                        <div dangerouslySetInnerHTML={{ __html: formatWhatsAppPreview(editingTemplate.whatsapp_body, smtpConfig.system_url) || '<span style="color:#8696a0">Escreva sua mensagem ao lado para ver o preview...</span>' }} />
                         <span style={{
                           float: 'right',
                           fontSize: '0.62rem',
